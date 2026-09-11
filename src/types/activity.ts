@@ -14,3 +14,21 @@ export interface Activity {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ActivityComment {
+  id: string;
+  activityId: string;
+  userId: string | null;
+  comment: string;
+  createdAt: string;
+}
+
+export interface CreateActivityPayload {
+  type: ActivityType;
+  subject?: string;
+  dueDate?: string;
+  status?: string;
+  assignedTo?: string;
+  details?: Record<string, unknown>;
+}
+

@@ -1,20 +1,32 @@
 import { useState } from "react";
 import { Layout, Menu, Button, Dropdown, Drawer, Grid } from "antd";
 import type { MenuProps } from "antd";
-import { DashboardOutlined, LogoutOutlined, MenuOutlined, UserOutlined } from "@ant-design/icons";
+import { LogoutOutlined, MenuOutlined, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { NAV_GROUPS } from "./nav-config";
+import { SoftphoneWidget } from "./SoftphoneWidget";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
-const NAV_ITEMS = [{ key: "/", icon: <DashboardOutlined />, label: "Dashboard" }];
+const MENU_ITEMS: MenuProps["items"] = NAV_GROUPS.map((group, index) => ({
+  key: `group-${index}`,
+  type: "group",
+  label: group.groupLabel.toUpperCase(),
+  children: group.items.map((item) => ({
+    key: item.path,
+    icon: item.icon,
+    label: item.label,
+  })),
+}));
 
 function Logo({ collapsed }: { collapsed: boolean }) {
   return (
     <div
       style={{
         height: 56,
+        flexShrink: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -42,12 +54,13 @@ export function AppLayout() {
     { key: "logout", icon: <LogoutOutlined />, label: "Log out", onClick: logout },
   ];
 
-  const navMenu = (
+  const renderNavMenu = (inlineCollapsed: boolean) => (
     <Menu
       theme="dark"
       mode="inline"
+      inlineCollapsed={inlineCollapsed}
       selectedKeys={[location.pathname]}
-      items={NAV_ITEMS}
+      items={MENU_ITEMS}
       onClick={({ key }) => {
         navigate(key);
         setMobileNavOpen(false);
@@ -55,27 +68,41 @@ export function AppLayout() {
     />
   );
 
+  // The window itself never scrolls - only the nav list and the main content
+  // area scroll independently, each capped to its own box. This avoids the
+  // "scroll chaining" problem where scrolling inside the sidebar leaks out
+  // into scrolling the whole page.
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ height: "100vh", overflow: "hidden" }}>
       {isMobile ? (
         <Drawer
           placement="left"
           closable={false}
           onClose={() => setMobileNavOpen(false)}
           open={mobileNavOpen}
-          styles={{ body: { padding: 0, background: "#001529" } }}
-          size={220}
+          styles={{ body: { padding: 0, background: "#001529", display: "flex", flexDirection: "column" } }}
+          size={240}
         >
           <Logo collapsed={false} />
-          {navMenu}
+          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+            {renderNavMenu(false)}
+          </div>
         </Drawer>
       ) : (
-        <Sider collapsed={desktopCollapsed} onCollapse={setDesktopCollapsed} trigger={null}>
+        <Sider
+          collapsed={desktopCollapsed}
+          onCollapse={setDesktopCollapsed}
+          trigger={null}
+          width={240}
+          style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+        >
           <Logo collapsed={desktopCollapsed} />
-          {navMenu}
+          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+            {renderNavMenu(desktopCollapsed)}
+          </div>
         </Sider>
       )}
-      <Layout>
+      <Layout style={{ height: "100vh" }}>
         <Header
           style={{
             background: "#fff",
@@ -84,6 +111,7 @@ export function AppLayout() {
             alignItems: "center",
             justifyContent: "space-between",
             borderBottom: "1px solid #f0f0f0",
+            flexShrink: 0,
           }}
         >
           <Button
@@ -91,13 +119,16 @@ export function AppLayout() {
             icon={<MenuOutlined />}
             onClick={() => (isMobile ? setMobileNavOpen(true) : setDesktopCollapsed(!desktopCollapsed))}
           />
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Button type="text" icon={<UserOutlined />}>
-              {user?.name}
-            </Button>
-          </Dropdown>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {!isMobile && <SoftphoneWidget />}
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Button type="text" icon={<UserOutlined />}>
+                {user?.name}
+              </Button>
+            </Dropdown>
+          </div>
         </Header>
-        <Content style={{ margin: 16 }}>
+        <Content style={{ margin: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
           <Outlet />
         </Content>
       </Layout>
