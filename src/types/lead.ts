@@ -1,0 +1,142 @@
+export interface Lead {
+  id: string;
+  fullName: string;
+  contactName: string | null;
+  profession: string | null;
+  startDate: string | null;
+  qualifiedPerson: string | null;
+  financialStatus: string | null;
+  welcomeMessageSent: boolean | null;
+  status: string;
+  prospectStatus: string | null;
+  category: string | null;
+  ownerId: string | null;
+  ownerName: string | null;
+  salesTeamId: string | null;
+  leadScore: number | null;
+  phone: string | null;
+  altPhone: string | null;
+  email: string | null;
+  website: string | null;
+  preferredLanguage: string | null;
+  pincode: string | null;
+  zoneId: string | null;
+  stateId: string | null;
+  districtId: string | null;
+  areaId: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  territory: string | null;
+  companyName: string | null;
+  source: string | null;
+  inquiryCategory: string | null;
+  inquirySource: string | null;
+  captureChannel: string | null;
+  utmTags: string | null;
+  campaignId: string | null;
+  expectedValue: number | null;
+  receivedAt: string | null;
+  internalNotes: string | null;
+  rmRemark: string | null;
+  lgRemark: string | null;
+  hasStoreLocation: boolean | null;
+  storeName: string | null;
+  storeAddress: string | null;
+  storePincode: string | null;
+  storeCity: string | null;
+  storeState: string | null;
+  carpetArea: string | null;
+  frontage: string | null;
+  ownership: string | null;
+  investmentCapacity: number | null;
+  existingBusiness: string | null;
+  expectedOpening: string | null;
+  gstNumber: string | null;
+  panNumber: string | null;
+  drugLicenceNumber: string | null;
+  fssaiNumber: string | null;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Only present on list responses. */
+  hasOverdueActivity?: boolean;
+}
+
+export interface LeadConsent {
+  id: string;
+  captured: boolean;
+  method: string | null;
+  purposes: string | null;
+  evidenceRef: string | null;
+  notes: string | null;
+  status: string;
+  capturedAt: string | null;
+}
+
+export interface LeadListFilters {
+  status?: string;
+  ownerId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateLeadPayload {
+  fullName: string;
+  contactName?: string;
+  profession?: string;
+  startDate?: string;
+  qualifiedPerson?: string;
+  financialStatus?: string;
+  welcomeMessageSent?: boolean;
+  status?: string;
+  prospectStatus?: string;
+  category?: string;
+  ownerId?: string;
+  salesTeamId?: string;
+  leadScore?: number;
+  phone?: string;
+  altPhone?: string;
+  email?: string;
+  website?: string;
+  preferredLanguage?: string;
+  pincode?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  territory?: string;
+  companyName?: string;
+  source?: string;
+  inquiryCategory?: string;
+  inquirySource?: string;
+  captureChannel?: string;
+  utmTags?: string;
+  expectedValue?: number;
+  receivedAt?: string;
+  internalNotes?: string;
+  rmRemark?: string;
+  lgRemark?: string;
+  hasStoreLocation?: boolean;
+  storeName?: string;
+  storeAddress?: string;
+  storePincode?: string;
+  storeCity?: string;
+  storeState?: string;
+  carpetArea?: string;
+  frontage?: string;
+  ownership?: string;
+  investmentCapacity?: number;
+  existingBusiness?: string;
+  expectedOpening?: string;
+  gstNumber?: string;
+  panNumber?: string;
+  drugLicenceNumber?: string;
+  fssaiNumber?: string;
+  consent?: {
+    captured?: boolean;
+    method?: string;
+    purposes?: string;
+    evidenceRef?: string;
+    notes?: string;
+  };
+}
