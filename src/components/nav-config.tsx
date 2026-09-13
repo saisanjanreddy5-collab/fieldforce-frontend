@@ -61,7 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     groupLabel: "Sales force",
-    items: [{ path: "/sales-force-management", label: "Sales force management", icon: <ClusterOutlined /> }],
+    items: [{ path: "/sales-force-management", label: "Sales force management", icon: <ClusterOutlined />, built: true }],
   },
   {
     groupLabel: "Govern",

@@ -61,6 +61,8 @@ export interface Lead {
   updatedAt: string;
   /** Only present on list responses. */
   hasOverdueActivity?: boolean;
+  /** Only present on list responses. */
+  consentPending?: boolean;
 }
 
 export interface LeadConsent {
