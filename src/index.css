@@ -24,3 +24,27 @@ body {
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+/* A thin, subtle scroll indicator (rounded bar, no arrows/track chrome) -
+   used where we still want a visible hint that a row scrolls, without the
+   bulky native scrollbar look. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 999px;
+}
+.scrollbar-thin::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}

@@ -73,6 +73,12 @@ export default function LeadsPage() {
       });
     }
     base.push({ key: "highScore", label: "High score", count: leads.filter((l) => (l.leadScore ?? 0) >= 70).length, dotColor: "#0ca30c" });
+    base.push({
+      key: "consentPending",
+      label: "Consent pending",
+      count: leads.filter((l) => l.consentPending).length,
+      dotColor: "#e87ba4",
+    });
     return base;
   }, [leads, categories, user?.id]);
 
@@ -83,6 +89,7 @@ export default function LeadsPage() {
     else if (activeTab === "unassigned") result = result.filter((l) => !l.ownerId);
     else if (activeTab === "overdue") result = result.filter((l) => l.hasOverdueActivity);
     else if (activeTab === "highScore") result = result.filter((l) => (l.leadScore ?? 0) >= 70);
+    else if (activeTab === "consentPending") result = result.filter((l) => l.consentPending);
     else if (activeTab.startsWith("category:")) {
       const category = activeTab.slice("category:".length);
       result = result.filter((l) => l.category === category);
