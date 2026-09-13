@@ -84,20 +84,14 @@ export function AppLayout() {
           size={240}
         >
           <Logo collapsed={false} />
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+          <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
             {renderNavMenu(false)}
           </div>
         </Drawer>
       ) : (
-        <Sider
-          collapsed={desktopCollapsed}
-          onCollapse={setDesktopCollapsed}
-          trigger={null}
-          width={240}
-          style={{ height: "100vh", display: "flex", flexDirection: "column" }}
-        >
+        <Sider collapsed={desktopCollapsed} onCollapse={setDesktopCollapsed} trigger={null} width={240} style={{ height: "100vh" }}>
           <Logo collapsed={desktopCollapsed} />
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+          <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
             {renderNavMenu(desktopCollapsed)}
           </div>
         </Sider>

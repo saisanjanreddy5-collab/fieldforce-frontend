@@ -18,7 +18,11 @@ const { useBreakpoint } = Grid;
 export default function LeadsPage() {
   const { user } = useAuth();
   const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  // Below "lg" rather than "md" - at tablet widths (~768-900px) there isn't
+  // enough room left for both the fixed-width list column and a usable
+  // detail pane once the sidebar and page margins are subtracted, so those
+  // widths get the single-column "tap a lead to see it" mobile treatment too.
+  const isMobile = !screens.lg;
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
