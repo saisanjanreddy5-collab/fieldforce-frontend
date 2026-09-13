@@ -105,8 +105,8 @@ export function LeadFilterBar({
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div ref={scrollRef} className="scrollbar-hidden" style={{ display: "flex", gap: 8, overflowX: "auto", flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", rowGap: 8 }}>
+        <div ref={scrollRef} className="scrollbar-hidden" style={{ display: "flex", gap: 8, overflowX: "auto", flex: 1, minWidth: 160 }}>
           {tabs.map((tab) => {
             const selected = tab.key === activeTab;
             return (
@@ -118,7 +118,7 @@ export function LeadFilterBar({
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "4px 12px",
+                  padding: "8px 14px",
                   fontSize: 13,
                   lineHeight: "20px",
                   borderRadius: 999,

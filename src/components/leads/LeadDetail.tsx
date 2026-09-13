@@ -1,7 +1,11 @@
-import { App, Avatar, Button, Progress, Tabs, Tag, Tooltip, Typography } from "antd";
+import { useState } from "react";
+import { App, Avatar, Button, DatePicker, Form, Input, Modal, Progress, Select, Tabs, Tag, Tooltip, Typography } from "antd";
 import { CloudUploadOutlined, EditOutlined, MailOutlined, PhoneOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import dayjs, { type Dayjs } from "dayjs";
 import type { Lead } from "../../types/lead";
 import { initials, scoreColor } from "../../utils/lead-format";
+import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
+import * as microsoftApi from "../../api/microsoft-api";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
@@ -17,12 +21,68 @@ interface LeadDetailProps {
   onEdit: () => void;
 }
 
+interface EmailFormValues {
+  subject: string;
+  body: string;
+}
+
+interface MeetingFormValues {
+  subject: string;
+  startTime: Dayjs;
+  durationMinutes: number;
+}
+
 const DISABLED_TOOLTIP_CALL = "Calling requires the telephony integration - credentials coming later";
-const DISABLED_TOOLTIP_MAIL = "Email/Teams requires Microsoft 365 integration - not connected yet";
+const NOT_CONNECTED_TOOLTIP = "Connect your Microsoft 365 account under Sales force management first";
 
 export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
+  const { connected: microsoftConnected } = useMicrosoftConnection();
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [creatingMeeting, setCreatingMeeting] = useState(false);
+  const [emailForm] = Form.useForm<EmailFormValues>();
+  const [meetingForm] = Form.useForm<MeetingFormValues>();
   const contactLine = [lead.contactName, lead.phone, lead.email].filter(Boolean).join(" · ");
+
+  const handleSendEmail = async (values: EmailFormValues) => {
+    setSendingEmail(true);
+    try {
+      await microsoftApi.sendLeadEmail(lead.id, values.subject, values.body);
+      message.success("Email sent");
+      emailForm.resetFields();
+      setEmailOpen(false);
+    } catch {
+      message.error("Failed to send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleCreateMeeting = async (values: MeetingFormValues) => {
+    setCreatingMeeting(true);
+    try {
+      const startTime = values.startTime.toISOString();
+      const endTime = values.startTime.add(values.durationMinutes, "minute").toISOString();
+      const { joinUrl } = await microsoftApi.createTeamsMeeting(lead.id, values.subject, startTime, endTime);
+      message.success("Teams meeting created");
+      meetingForm.resetFields();
+      setMeetingOpen(false);
+      Modal.success({
+        title: "Teams meeting created",
+        content: (
+          <a href={joinUrl} target="_blank" rel="noreferrer">
+            {joinUrl}
+          </a>
+        ),
+      });
+    } catch {
+      message.error("Failed to create Teams meeting");
+    } finally {
+      setCreatingMeeting(false);
+    }
+  };
 
   return (
     <div>
@@ -59,8 +119,8 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
             Call
           </Button>
         </Tooltip>
-        <Tooltip title={DISABLED_TOOLTIP_MAIL}>
-          <Button icon={<MailOutlined />} disabled>
+        <Tooltip title={!microsoftConnected ? NOT_CONNECTED_TOOLTIP : !lead.email ? "This lead has no email address on file" : ""}>
+          <Button icon={<MailOutlined />} disabled={!microsoftConnected || !lead.email} onClick={() => setEmailOpen(true)}>
             Email
           </Button>
         </Tooltip>
@@ -69,8 +129,8 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
             WhatsApp
           </Button>
         </Tooltip>
-        <Tooltip title={DISABLED_TOOLTIP_MAIL}>
-          <Button icon={<TeamOutlined />} disabled>
+        <Tooltip title={!microsoftConnected ? NOT_CONNECTED_TOOLTIP : ""}>
+          <Button icon={<TeamOutlined />} disabled={!microsoftConnected} onClick={() => setMeetingOpen(true)}>
             Teams meeting
           </Button>
         </Tooltip>
@@ -100,6 +160,57 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
           { key: "documents", label: "Documents", children: <DocumentsTab /> },
         ]}
       />
+
+      <Modal
+        title={`Email ${lead.fullName}`}
+        open={emailOpen}
+        onCancel={() => setEmailOpen(false)}
+        onOk={() => emailForm.submit()}
+        okText="Send"
+        confirmLoading={sendingEmail}
+      >
+        <Text type="secondary">To: {lead.email}</Text>
+        <Form form={emailForm} layout="vertical" onFinish={handleSendEmail} style={{ marginTop: 12 }}>
+          <Form.Item name="subject" label="Subject" rules={[{ required: true, message: "Subject is required" }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="body" label="Message" rules={[{ required: true, message: "Message is required" }]}>
+            <Input.TextArea rows={6} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`Schedule Teams meeting with ${lead.fullName}`}
+        open={meetingOpen}
+        onCancel={() => setMeetingOpen(false)}
+        onOk={() => meetingForm.submit()}
+        okText="Create meeting"
+        confirmLoading={creatingMeeting}
+      >
+        <Form
+          form={meetingForm}
+          layout="vertical"
+          onFinish={handleCreateMeeting}
+          initialValues={{ startTime: dayjs().add(1, "hour").minute(0), durationMinutes: 30 }}
+        >
+          <Form.Item name="subject" label="Subject" rules={[{ required: true, message: "Subject is required" }]}>
+            <Input placeholder={`Call with ${lead.fullName}`} />
+          </Form.Item>
+          <Form.Item name="startTime" label="Start time" rules={[{ required: true, message: "Start time is required" }]}>
+            <DatePicker showTime style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="durationMinutes" label="Duration">
+            <Select
+              options={[
+                { value: 15, label: "15 minutes" },
+                { value: 30, label: "30 minutes" },
+                { value: 60, label: "1 hour" },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

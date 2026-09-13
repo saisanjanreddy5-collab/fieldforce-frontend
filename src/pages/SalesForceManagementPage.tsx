@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import * as userApi from "../api/user-api";
 import type { CreateUserPayload, TeamMember } from "../types/user";
+import { MicrosoftConnectionCard } from "../components/MicrosoftConnectionCard";
 
 const { Title, Text } = Typography;
 
@@ -87,11 +88,14 @@ export default function SalesForceManagementPage() {
         </Button>
       </div>
 
+      <MicrosoftConnectionCard />
+
       <Table
         rowKey="id"
         loading={loading}
         dataSource={users}
         pagination={false}
+        scroll={{ x: 600 }}
         columns={[
           { title: "Name", dataIndex: "name" },
           { title: "Email", dataIndex: "email" },
