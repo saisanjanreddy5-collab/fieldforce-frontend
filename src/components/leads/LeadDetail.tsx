@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { App, Avatar, Button, DatePicker, Form, Input, Modal, Progress, Select, Tabs, Tag, Tooltip, Typography } from "antd";
+import { App, Avatar, Button, DatePicker, Form, Input, Modal, Progress, Select, Tag, Tooltip, Typography } from "antd";
 import { CloudUploadOutlined, EditOutlined, MailOutlined, PhoneOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import type { Lead } from "../../types/lead";
 import { initials, scoreColor } from "../../utils/lead-format";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import * as microsoftApi from "../../api/microsoft-api";
+import { ScrollableTabBar } from "../ScrollableTabBar";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
@@ -20,6 +21,16 @@ interface LeadDetailProps {
   lead: Lead;
   onEdit: () => void;
 }
+
+const DETAIL_TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "opportunities", label: "Opportunities" },
+  { key: "activity", label: "Activity & calls" },
+  { key: "logs", label: "Logs" },
+  { key: "consent", label: "Consent" },
+  { key: "approvals", label: "Approvals" },
+  { key: "documents", label: "Documents" },
+];
 
 interface EmailFormValues {
   subject: string;
@@ -38,6 +49,7 @@ const NOT_CONNECTED_TOOLTIP = "Connect your Microsoft 365 account under Sales fo
 export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
   const { connected: microsoftConnected } = useMicrosoftConnection();
+  const [activeTabKey, setActiveTabKey] = useState("overview");
   const [emailOpen, setEmailOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -148,18 +160,18 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
         </Tooltip>
       </div>
 
-      <Tabs
-        style={{ marginTop: 16 }}
-        items={[
-          { key: "overview", label: "Overview", children: <OverviewTab lead={lead} /> },
-          { key: "opportunities", label: "Opportunities", children: <OpportunitiesTab leadId={lead.id} /> },
-          { key: "activity", label: "Activity & calls", children: <ActivityTab leadId={lead.id} /> },
-          { key: "logs", label: "Logs", children: <LogsTab leadId={lead.id} /> },
-          { key: "consent", label: "Consent", children: <ConsentTab leadId={lead.id} /> },
-          { key: "approvals", label: "Approvals", children: <ApprovalsTab /> },
-          { key: "documents", label: "Documents", children: <DocumentsTab /> },
-        ]}
-      />
+      <div style={{ marginTop: 16 }}>
+        <ScrollableTabBar items={DETAIL_TABS} activeKey={activeTabKey} onChange={setActiveTabKey} />
+        <div style={{ marginTop: 16 }}>
+          {activeTabKey === "overview" && <OverviewTab lead={lead} />}
+          {activeTabKey === "opportunities" && <OpportunitiesTab leadId={lead.id} />}
+          {activeTabKey === "activity" && <ActivityTab leadId={lead.id} />}
+          {activeTabKey === "logs" && <LogsTab leadId={lead.id} />}
+          {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
+          {activeTabKey === "approvals" && <ApprovalsTab />}
+          {activeTabKey === "documents" && <DocumentsTab />}
+        </div>
+      </div>
 
       <Modal
         title={`Email ${lead.fullName}`}

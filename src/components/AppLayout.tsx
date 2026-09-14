@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Layout, Menu, Button, Dropdown, Drawer, Grid } from "antd";
+import { Layout, Menu, Button, Dropdown, Drawer, Grid, Input, Avatar } from "antd";
 import type { MenuProps } from "antd";
-import { LogoutOutlined, MenuOutlined, UserOutlined } from "@ant-design/icons";
+import { LogoutOutlined, MenuOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { NAV_GROUPS } from "./nav-config";
@@ -34,11 +34,16 @@ function Logo({ collapsed }: { collapsed: boolean }) {
         fontWeight: 600,
         overflow: "hidden",
         whiteSpace: "nowrap",
+        borderBottom: "1px solid rgba(255,255,255,0.12)",
       }}
     >
       {collapsed ? "FF" : "FieldForce"}
     </div>
   );
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 export function AppLayout() {
@@ -84,14 +89,20 @@ export function AppLayout() {
           size={240}
         >
           <Logo collapsed={false} />
-          <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+          <div
+            className="scrollbar-thin"
+            style={{ height: "calc(100vh - 56px)", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}
+          >
             {renderNavMenu(false)}
           </div>
         </Drawer>
       ) : (
         <Sider collapsed={desktopCollapsed} onCollapse={setDesktopCollapsed} trigger={null} width={240} style={{ height: "100vh" }}>
           <Logo collapsed={desktopCollapsed} />
-          <div style={{ height: "calc(100vh - 56px)", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}>
+          <div
+            className="scrollbar-thin"
+            style={{ height: "calc(100vh - 56px)", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain" }}
+          >
             {renderNavMenu(desktopCollapsed)}
           </div>
         </Sider>
@@ -108,17 +119,54 @@ export function AppLayout() {
             flexShrink: 0,
           }}
         >
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            onClick={() => (isMobile ? setMobileNavOpen(true) : setDesktopCollapsed(!desktopCollapsed))}
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              onClick={() => (isMobile ? setMobileNavOpen(true) : setDesktopCollapsed(!desktopCollapsed))}
+            />
+            {/* A single, static label rather than a Sales/Onboarding/Support-style
+                tab switcher - this app is just the one CRM module, there's
+                nothing else to switch between. */}
+            <div
+              style={{
+                background: "#e6f4ff",
+                color: "#1677ff",
+                fontWeight: 600,
+                fontSize: 13,
+                lineHeight: "20px",
+                padding: "4px 14px",
+                borderRadius: 8,
+                border: "1px solid #91caff",
+              }}
+            >
+              CRM
+            </div>
+          </div>
+
+          {!isMobile && (
+            <Input
+              disabled
+              prefix={<SearchOutlined />}
+              placeholder="Search leads, opportunities, contacts"
+              style={{ maxWidth: 360, margin: "0 24px" }}
+            />
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             {!isMobile && <SoftphoneWidget />}
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <Button type="text" icon={<UserOutlined />}>
-                {user?.name}
-              </Button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <Avatar size={32} icon={<UserOutlined />} />
+                {!isMobile && (
+                  <div style={{ lineHeight: 1.3, textAlign: "left" }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{user?.name}</div>
+                    <div style={{ fontSize: 11, color: "#898781" }}>
+                      {user?.designation ?? (user ? capitalize(user.role) : "")}
+                    </div>
+                  </div>
+                )}
+              </div>
             </Dropdown>
           </div>
         </Header>
