@@ -47,6 +47,18 @@ export default function LeadsPage() {
 
   useEffect(load, []);
 
+  // Auto-select the first lead so the detail panel isn't empty once leads
+  // have loaded - matches the reference design. Skipped on mobile, where
+  // the list and detail are separate full-width screens rather than a
+  // side-by-side split, so jumping straight to a detail view would hide
+  // the list the user just opened. Runs as its own effect (rather than
+  // inline in `load`) because `isMobile` isn't reliably resolved yet on
+  // the very first render - antd's useBreakpoint reports it a tick later.
+  useEffect(() => {
+    if (isMobile || leads.length === 0) return;
+    setSelectedId((current) => current ?? leads[0].id);
+  }, [leads, isMobile]);
+
   const categories = useMemo(
     () => Array.from(new Set(leads.map((l) => l.category).filter((c): c is string => Boolean(c)))),
     [leads]
