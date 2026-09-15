@@ -141,8 +141,8 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
             WhatsApp
           </Button>
         </Tooltip>
-        <Tooltip title={!microsoftConnected ? NOT_CONNECTED_TOOLTIP : ""}>
-          <Button icon={<TeamOutlined />} disabled={!microsoftConnected} onClick={() => setMeetingOpen(true)}>
+        <Tooltip title={!microsoftConnected ? NOT_CONNECTED_TOOLTIP : !lead.email ? "This lead has no email address on file" : ""}>
+          <Button icon={<TeamOutlined />} disabled={!microsoftConnected || !lead.email} onClick={() => setMeetingOpen(true)}>
             Teams meeting
           </Button>
         </Tooltip>
@@ -200,17 +200,23 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
         okText="Create meeting"
         confirmLoading={creatingMeeting}
       >
+        <Text type="secondary">Inviting: {lead.email}</Text>
         <Form
           form={meetingForm}
           layout="vertical"
           onFinish={handleCreateMeeting}
           initialValues={{ startTime: dayjs().add(1, "hour").minute(0), durationMinutes: 30 }}
+          style={{ marginTop: 12 }}
         >
           <Form.Item name="subject" label="Subject" rules={[{ required: true, message: "Subject is required" }]}>
             <Input placeholder={`Call with ${lead.fullName}`} />
           </Form.Item>
           <Form.Item name="startTime" label="Start time" rules={[{ required: true, message: "Start time is required" }]}>
-            <DatePicker showTime style={{ width: "100%" }} />
+            <DatePicker
+              showTime
+              style={{ width: "100%" }}
+              styles={{ popup: { body: { maxHeight: 200, overflowY: "auto" } } }}
+            />
           </Form.Item>
           <Form.Item name="durationMinutes" label="Duration">
             <Select
