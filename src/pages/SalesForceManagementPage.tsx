@@ -27,6 +27,7 @@ interface FormValues {
   role: "admin" | "manager" | "agent";
   designation?: string;
   managerId?: string;
+  smartfloAgentNumber?: string;
 }
 
 export default function SalesForceManagementPage() {
@@ -57,6 +58,7 @@ export default function SalesForceManagementPage() {
         role: values.role,
         designation: values.designation,
         managerId: values.managerId,
+        smartfloAgentNumber: values.smartfloAgentNumber,
       };
       await userApi.createUser(payload);
       message.success("Account created");
@@ -105,6 +107,7 @@ export default function SalesForceManagementPage() {
             render: (role: string) => <Tag color={ROLE_COLORS[role]}>{role}</Tag>,
           },
           { title: "Designation", dataIndex: "designation", render: (v: string | null) => v ?? "-" },
+          { title: "Smartflo agent", dataIndex: "smartfloAgentNumber", render: (v: string | null) => v ?? "-" },
           {
             title: "Reports to",
             dataIndex: "managerId",
@@ -163,6 +166,13 @@ export default function SalesForceManagementPage() {
               placeholder="Select a manager"
               options={users.map((u) => ({ value: u.id, label: u.name }))}
             />
+          </Form.Item>
+          <Form.Item
+            name="smartfloAgentNumber"
+            label="Smartflo agent number"
+            tooltip="Their own registered Smartflo agent number/mobile - required for the Call button to work"
+          >
+            <Input placeholder="e.g. 9876543210" />
           </Form.Item>
         </Form>
       </Drawer>
