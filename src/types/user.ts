@@ -5,6 +5,7 @@ export interface TeamMember {
   role: "admin" | "manager" | "agent";
   designation: string | null;
   managerId: string | null;
+  smartfloAgentNumber: string | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -16,4 +17,5 @@ export interface CreateUserPayload {
   role: "admin" | "manager" | "agent";
   designation?: string;
   managerId?: string;
+  smartfloAgentNumber?: string;
 }

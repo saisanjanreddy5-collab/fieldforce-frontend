@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { App, Avatar, Button, DatePicker, Form, Input, Modal, Progress, Select, Tag, Tooltip, Typography } from "antd";
 import { CloudUploadOutlined, EditOutlined, MailOutlined, PhoneOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { isAxiosError } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import type { Lead } from "../../types/lead";
 import { initials, scoreColor } from "../../utils/lead-format";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import * as microsoftApi from "../../api/microsoft-api";
+import * as smartfloApi from "../../api/smartflo-api";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
@@ -43,8 +45,11 @@ interface MeetingFormValues {
   durationMinutes: number;
 }
 
-const DISABLED_TOOLTIP_CALL = "Calling requires the telephony integration - credentials coming later";
 const NOT_CONNECTED_TOOLTIP = "Connect your Microsoft 365 account under Sales force management first";
+
+function errorMessageFrom(err: unknown, fallback: string): string {
+  return isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : fallback;
+}
 
 export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
@@ -54,6 +59,7 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [creatingMeeting, setCreatingMeeting] = useState(false);
+  const [calling, setCalling] = useState(false);
   const [emailForm] = Form.useForm<EmailFormValues>();
   const [meetingForm] = Form.useForm<MeetingFormValues>();
   const contactLine = [lead.contactName, lead.phone, lead.email].filter(Boolean).join(" · ");
@@ -65,8 +71,8 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
       message.success("Email sent");
       emailForm.resetFields();
       setEmailOpen(false);
-    } catch {
-      message.error("Failed to send email");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to send email"));
     } finally {
       setSendingEmail(false);
     }
@@ -89,11 +95,30 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
           </a>
         ),
       });
-    } catch {
-      message.error("Failed to create Teams meeting");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to create Teams meeting"));
     } finally {
       setCreatingMeeting(false);
     }
+  };
+
+  const handleCall = () => {
+    Modal.confirm({
+      title: `Call ${lead.fullName}?`,
+      content: `This will ring your own registered phone first, then connect you to ${lead.phone}.`,
+      okText: "Call now",
+      onOk: async () => {
+        setCalling(true);
+        try {
+          await smartfloApi.callLead(lead.id);
+          message.success("Call started - answer your phone to connect");
+        } catch (err) {
+          message.error(errorMessageFrom(err, "Failed to start call"));
+        } finally {
+          setCalling(false);
+        }
+      },
+    });
   };
 
   return (
@@ -126,8 +151,8 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        <Tooltip title={DISABLED_TOOLTIP_CALL}>
-          <Button icon={<PhoneOutlined />} disabled>
+        <Tooltip title={!lead.phone ? "This lead has no phone number on file" : ""}>
+          <Button icon={<PhoneOutlined />} disabled={!lead.phone} loading={calling} onClick={handleCall}>
             Call
           </Button>
         </Tooltip>
