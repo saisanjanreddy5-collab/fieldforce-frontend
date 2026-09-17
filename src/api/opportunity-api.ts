@@ -1,9 +1,14 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
-import type { CreateOpportunityPayload, Opportunity } from "../types/opportunity";
+import type { CreateOpportunityPayload, ListOpportunitiesFilters, Opportunity } from "../types/opportunity";
 
 export async function listOpportunitiesForLead(leadId: string): Promise<Opportunity[]> {
   const response = await apiClient.get<ApiSuccess<Opportunity[]>>(`/leads/${leadId}/opportunities`);
+  return response.data.data;
+}
+
+export async function listOpportunities(filters: ListOpportunitiesFilters = {}): Promise<Opportunity[]> {
+  const response = await apiClient.get<ApiSuccess<Opportunity[]>>("/opportunities", { params: { limit: 200, ...filters } });
   return response.data.data;
 }
 

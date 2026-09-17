@@ -12,6 +12,20 @@ export interface Opportunity {
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Only present on list responses (joined from the lead). */
+  leadFullName?: string;
+  leadCategory?: string | null;
+  leadStoreCity?: string | null;
+  leadStoreState?: string | null;
+  ownerId?: string | null;
+  ownerName?: string | null;
+}
+
+export interface ListOpportunitiesFilters {
+  stage?: string;
+  category?: string;
+  ownerId?: string;
+  search?: string;
 }
 
 export interface CreateOpportunityPayload {

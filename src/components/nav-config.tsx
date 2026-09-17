@@ -38,7 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/", label: "Dashboard", icon: <DashboardOutlined />, built: true },
       { path: "/leads", label: "Leads", icon: <AimOutlined />, built: true },
-      { path: "/opportunities", label: "Opportunities", icon: <TableOutlined /> },
+      { path: "/opportunities", label: "Opportunities", icon: <TableOutlined />, built: true },
       { path: "/fofo-onboarding", label: "FOFO onboarding", icon: <ExportOutlined /> },
     ],
   },
