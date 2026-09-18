@@ -11,6 +11,12 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+export function formatDurationSeconds(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.round(totalSeconds % 60);
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
 export function formatCompactCurrency(value: number | null): string {
   if (value === null) return "-";
   return new Intl.NumberFormat("en-IN", {
