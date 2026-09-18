@@ -3,7 +3,7 @@ import { Button, Checkbox, Dropdown, Empty, Input, Spin, Tag, Tooltip, Typograph
 import { DownOutlined, MailOutlined, PhoneOutlined, PlayCircleOutlined, ShopOutlined, TeamOutlined } from "@ant-design/icons";
 import * as activityApi from "../../../api/activity-api";
 import type { Activity, ActivityComment, ActivityType } from "../../../types/activity";
-import { formatDateTime } from "../../../utils/lead-format";
+import { formatDateTime, formatDurationSeconds } from "../../../utils/lead-format";
 
 const { Text } = Typography;
 
@@ -95,6 +95,8 @@ function CommentThread({ activityId }: { activityId: string }) {
 function ActivityCard({ activity }: { activity: Activity }) {
   const outcome = typeof activity.details.outcome === "string" ? activity.details.outcome : undefined;
   const recordingUrl = typeof activity.details.recordingUrl === "string" ? activity.details.recordingUrl : undefined;
+  const durationSeconds =
+    typeof activity.details.durationSeconds === "number" ? activity.details.durationSeconds : undefined;
   const transcriptUrl = typeof activity.details.transcriptUrl === "string" ? activity.details.transcriptUrl : undefined;
   const emailBody = typeof activity.details.body === "string" ? activity.details.body : undefined;
   const joinUrl = typeof activity.details.joinUrl === "string" ? activity.details.joinUrl : undefined;
@@ -121,6 +123,7 @@ function ActivityCard({ activity }: { activity: Activity }) {
           {recordingUrl ? (
             <a href={recordingUrl} target="_blank" rel="noreferrer">
               <PlayCircleOutlined /> Recording
+              {durationSeconds !== undefined ? ` · ${formatDurationSeconds(durationSeconds)}` : ""}
             </a>
           ) : (
             <Tooltip title="Recording will appear here once the telephony integration is connected">
