@@ -4,6 +4,7 @@ import { DownOutlined, MailOutlined, PhoneOutlined, PlayCircleOutlined, ShopOutl
 import * as activityApi from "../../../api/activity-api";
 import type { Activity, ActivityComment, ActivityType } from "../../../types/activity";
 import { formatDateTime, formatDurationSeconds } from "../../../utils/lead-format";
+import { useHasPermission } from "../../../hooks/use-permission";
 
 const { Text } = Typography;
 
@@ -33,6 +34,7 @@ interface LogsTabProps {
 }
 
 function CommentThread({ activityId }: { activityId: string }) {
+  const hasPermission = useHasPermission();
   const [comments, setComments] = useState<ActivityComment[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
@@ -76,18 +78,20 @@ function CommentThread({ activityId }: { activityId: string }) {
           </div>
         </div>
       ))}
-      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-        <Input
-          size="small"
-          placeholder="Write a comment for the team..."
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onPressEnter={submit}
-        />
-        <Button size="small" onClick={submit} loading={posting}>
-          Add
-        </Button>
-      </div>
+      {hasPermission("activities.create") && (
+        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+          <Input
+            size="small"
+            placeholder="Write a comment for the team..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onPressEnter={submit}
+          />
+          <Button size="small" onClick={submit} loading={posting}>
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

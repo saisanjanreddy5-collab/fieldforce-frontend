@@ -2,6 +2,7 @@ import { Avatar, Progress, Tag, Tooltip, Typography } from "antd";
 import { CommentOutlined } from "@ant-design/icons";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency, formatDate, initials } from "../../utils/lead-format";
+import { useHasPermission } from "../../hooks/use-permission";
 import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY } from "./stages";
 
 const { Text } = Typography;
@@ -13,13 +14,15 @@ interface OpportunityCardProps {
 }
 
 export function OpportunityCard({ opportunity, onClick, onDragStart }: OpportunityCardProps) {
+  const hasPermission = useHasPermission();
+  const canDrag = hasPermission("opportunities.update");
   const title = opportunity.name ?? opportunity.leadFullName ?? "Untitled";
   const location = [opportunity.leadStoreCity, opportunity.leadStoreState].filter(Boolean).join(", ");
   const probability = opportunity.probability ?? STAGE_DEFAULT_PROBABILITY[opportunity.stage] ?? null;
 
   return (
     <div
-      draggable
+      draggable={canDrag}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", opportunity.id);
         onDragStart();
@@ -30,7 +33,7 @@ export function OpportunityCard({ opportunity, onClick, onDragStart }: Opportuni
         borderRadius: 8,
         padding: 10,
         background: "#fff",
-        cursor: "grab",
+        cursor: canDrag ? "grab" : "pointer",
         marginBottom: 8,
       }}
     >

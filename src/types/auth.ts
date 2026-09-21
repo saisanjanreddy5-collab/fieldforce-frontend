@@ -13,6 +13,7 @@ export interface AuthUser {
   districtId: string | null;
   areaId: string | null;
   isActive: boolean;
+  permissions: string[];
 }
 
 export interface LoginResponse {

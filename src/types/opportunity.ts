@@ -8,6 +8,8 @@ export interface Opportunity {
   probability: number | null;
   contactName: string | null;
   notes: string | null;
+  /** Set automatically the moment stage transitions into 'won' - not user-editable. */
+  wonAt: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -17,6 +19,9 @@ export interface Opportunity {
   leadCategory?: string | null;
   leadStoreCity?: string | null;
   leadStoreState?: string | null;
+  leadZoneId?: string | null;
+  leadTerritory?: string | null;
+  leadSalesTeamId?: string | null;
   ownerId?: string | null;
   ownerName?: string | null;
 }
@@ -25,6 +30,9 @@ export interface ListOpportunitiesFilters {
   stage?: string;
   category?: string;
   ownerId?: string;
+  zoneId?: string;
+  territory?: string;
+  salesTeamId?: string;
   search?: string;
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { App, Button, Drawer, Form, Input, InputNumber, Select, Space } from "antd";
 import * as opportunityApi from "../../api/opportunity-api";
 import type { Opportunity } from "../../types/opportunity";
+import { useHasPermission } from "../../hooks/use-permission";
 import { STAGE_OPTIONS } from "./stages";
 
 interface EditOpportunityDrawerProps {
@@ -21,6 +22,7 @@ interface FormValues {
 
 export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditOpportunityDrawerProps) {
   const { message } = App.useApp();
+  const hasPermission = useHasPermission();
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
@@ -58,9 +60,11 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" loading={saving} onClick={() => form.submit()}>
-            Save
-          </Button>
+          {hasPermission("opportunities.update") && (
+            <Button type="primary" loading={saving} onClick={() => form.submit()}>
+              Save
+            </Button>
+          )}
         </Space>
       }
     >
