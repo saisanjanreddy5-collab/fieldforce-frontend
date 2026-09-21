@@ -6,6 +6,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import type { Lead } from "../../types/lead";
 import { initials, scoreColor } from "../../utils/lead-format";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
+import { useHasPermission } from "../../hooks/use-permission";
 import * as microsoftApi from "../../api/microsoft-api";
 import * as smartfloApi from "../../api/smartflo-api";
 import { ScrollableTabBar } from "../ScrollableTabBar";
@@ -53,6 +54,7 @@ function errorMessageFrom(err: unknown, fallback: string): string {
 
 export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
+  const hasPermission = useHasPermission();
   const { connected: microsoftConnected } = useMicrosoftConnection();
   const [activeTabKey, setActiveTabKey] = useState("overview");
   const [emailOpen, setEmailOpen] = useState(false);
@@ -171,9 +173,11 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
             Teams meeting
           </Button>
         </Tooltip>
-        <Button icon={<EditOutlined />} onClick={onEdit}>
-          Edit lead
-        </Button>
+        {hasPermission("leads.update") && (
+          <Button icon={<EditOutlined />} onClick={onEdit}>
+            Edit lead
+          </Button>
+        )}
         <Tooltip title="Onboarding workflow preview - not wired to a real pipeline yet">
           <Button
             type="primary"

@@ -7,6 +7,11 @@ export async function listLeads(filters: LeadListFilters): Promise<Lead[]> {
   return response.data.data;
 }
 
+export async function listTerritories(): Promise<string[]> {
+  const response = await apiClient.get<ApiSuccess<string[]>>("/leads/territories");
+  return response.data.data;
+}
+
 export async function getLead(id: string): Promise<Lead> {
   const response = await apiClient.get<ApiSuccess<Lead>>(`/leads/${id}`);
   return response.data.data;

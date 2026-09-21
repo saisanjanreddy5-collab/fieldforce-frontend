@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import * as activityApi from "../../../api/activity-api";
 import type { Activity, ActivityType } from "../../../types/activity";
 import { formatDateTime } from "../../../utils/lead-format";
+import { useHasPermission } from "../../../hooks/use-permission";
 
 const { Text, Title } = Typography;
 
@@ -25,6 +26,7 @@ interface ActivityTabProps {
 }
 
 export function ActivityTab({ leadId }: ActivityTabProps) {
+  const hasPermission = useHasPermission();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -86,9 +88,11 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
             {scheduled.length} planned · {overdueCount} overdue
           </Text>
         </div>
-        <Button type="primary" onClick={() => setModalOpen(true)}>
-          + Add action
-        </Button>
+        {hasPermission("activities.create") && (
+          <Button type="primary" onClick={() => setModalOpen(true)}>
+            + Add action
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -122,9 +126,11 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
                     </Text>
                   </div>
                 </div>
-                <Button size="small" onClick={() => markDone(activity)}>
-                  Done
-                </Button>
+                {hasPermission("activities.update") && (
+                  <Button size="small" onClick={() => markDone(activity)}>
+                    Done
+                  </Button>
+                )}
               </div>
             );
           })}

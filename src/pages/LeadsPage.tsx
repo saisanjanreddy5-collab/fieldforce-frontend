@@ -4,6 +4,7 @@ import { ArrowLeftOutlined, PlusOutlined, SearchOutlined } from "@ant-design/ico
 import * as leadApi from "../api/lead-api";
 import type { Lead } from "../types/lead";
 import { useAuth } from "../context/AuthContext";
+import { useHasPermission } from "../hooks/use-permission";
 import { LeadCard } from "../components/leads/LeadCard";
 import { LeadFilterBar, type FilterTabDef } from "../components/leads/LeadFilterBar";
 import { LeadDetail } from "../components/leads/LeadDetail";
@@ -17,6 +18,7 @@ const { useBreakpoint } = Grid;
 
 export default function LeadsPage() {
   const { user } = useAuth();
+  const hasPermission = useHasPermission();
   const screens = useBreakpoint();
   // Below "lg" rather than "md" - at tablet widths (~768-900px) there isn't
   // enough room left for both the fixed-width list column and a usable
@@ -152,16 +154,18 @@ export default function LeadsPage() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button onClick={() => setImportOpen(true)}>Import</Button>
             <Button onClick={() => setMiningOpen(true)}>Lead mining</Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingLead(null);
-                setDrawerOpen(true);
-              }}
-            >
-              New lead
-            </Button>
+            {hasPermission("leads.create") && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingLead(null);
+                  setDrawerOpen(true);
+                }}
+              >
+                New lead
+              </Button>
+            )}
           </div>
         </div>
       )}

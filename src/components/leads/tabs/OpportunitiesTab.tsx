@@ -3,6 +3,7 @@ import { Button, Empty, Form, Input, InputNumber, Modal, Spin, Tag, Typography, 
 import * as opportunityApi from "../../../api/opportunity-api";
 import type { Opportunity } from "../../../types/opportunity";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
+import { useHasPermission } from "../../../hooks/use-permission";
 
 const { Text, Title } = Typography;
 
@@ -17,6 +18,7 @@ interface NewOpportunityFormValues {
 }
 
 export function OpportunitiesTab({ leadId }: OpportunitiesTabProps) {
+  const hasPermission = useHasPermission();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,9 +65,11 @@ export function OpportunitiesTab({ leadId }: OpportunitiesTabProps) {
             {openCount} open · {formatCompactCurrency(totalValue)} combined pipeline
           </Text>
         </div>
-        <Button type="primary" onClick={() => setModalOpen(true)}>
-          + New opportunity
-        </Button>
+        {hasPermission("opportunities.create") && (
+          <Button type="primary" onClick={() => setModalOpen(true)}>
+            + New opportunity
+          </Button>
+        )}
       </div>
 
       {loading ? (

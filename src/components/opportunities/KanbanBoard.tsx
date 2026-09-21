@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Typography } from "antd";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency } from "../../utils/lead-format";
+import { useHasPermission } from "../../hooks/use-permission";
 import { OpportunityCard } from "./OpportunityCard";
 import { STAGES } from "./stages";
 
@@ -16,6 +17,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ opportunities, loading, onCardClick, onAddToStage, onMoveStage }: KanbanBoardProps) {
+  const hasPermission = useHasPermission();
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const columns = STAGES.map((stage) => ({ ...stage, items: opportunities.filter((o) => o.stage === stage.key) }));
@@ -71,9 +73,11 @@ export function KanbanBoard({ opportunities, loading, onCardClick, onAddToStage,
                 />
               ))}
 
-            <Button type="dashed" block size="small" onClick={() => onAddToStage(column.key)}>
-              + Add
-            </Button>
+            {hasPermission("opportunities.create") && (
+              <Button type="dashed" block size="small" onClick={() => onAddToStage(column.key)}>
+                + Add
+              </Button>
+            )}
           </div>
         );
       })}
