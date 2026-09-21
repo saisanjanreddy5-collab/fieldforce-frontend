@@ -1,6 +1,6 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
-import type { OverviewStats, PipelineStageStat } from "../types/dashboard";
+import type { OverviewStats, PipelineStageStat, TeamPerformanceStat } from "../types/dashboard";
 import type { Activity } from "../types/activity";
 
 export async function getOverview(): Promise<OverviewStats> {
@@ -10,6 +10,11 @@ export async function getOverview(): Promise<OverviewStats> {
 
 export async function getPipelineByStage(): Promise<PipelineStageStat[]> {
   const response = await apiClient.get<ApiSuccess<PipelineStageStat[]>>("/dashboard/pipeline-by-stage");
+  return response.data.data;
+}
+
+export async function getTeamPerformance(): Promise<TeamPerformanceStat[]> {
+  const response = await apiClient.get<ApiSuccess<TeamPerformanceStat[]>>("/dashboard/team-performance");
   return response.data.data;
 }
 

@@ -11,3 +11,13 @@ export interface PipelineStageStat {
   count: number;
   totalValue: number;
 }
+
+export interface TeamPerformanceStat {
+  userId: string;
+  name: string;
+  leadsOwned: number;
+  opportunitiesOwned: number;
+  activitiesLogged: number;
+  leadsConverted: number;
+  conversionRate: number;
+}
