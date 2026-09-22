@@ -27,28 +27,34 @@ export function MicrosoftConnectionCard() {
   }, [searchParams, setSearchParams, navigate]);
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <Text strong>Your Microsoft 365 connection</Text>
-          <div>
-            {connected ? (
-              <Space size={6}>
-                <Tag color="green">Connected</Tag>
-                <Text type="secondary">{email}</Text>
-              </Space>
-            ) : (
-              <Text type="secondary">Not connected - email and Teams meetings on leads need this first</Text>
-            )}
-          </div>
+    <Card size="small" style={{ marginBottom: 12 }} loading={loading} styles={{ body: { padding: "8px 12px" } }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Text strong style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+            Microsoft 365
+          </Text>
+          {connected ? (
+            <Space size={6}>
+              <Tag color="green" style={{ margin: 0 }}>
+                Connected
+              </Tag>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {email}
+              </Text>
+            </Space>
+          ) : (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Not connected - email and Teams meetings on leads need this first
+            </Text>
+          )}
         </div>
         {connected ? (
-          <Button danger onClick={() => disconnect()}>
+          <Button size="small" danger onClick={() => disconnect()}>
             Disconnect
           </Button>
         ) : (
-          <Button type="primary" onClick={() => connect()}>
-            Connect Microsoft 365
+          <Button size="small" type="primary" onClick={() => connect()}>
+            Connect
           </Button>
         )}
       </div>

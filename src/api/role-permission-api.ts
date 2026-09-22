@@ -12,3 +12,8 @@ export async function setRolePermission(role: Role, permission: string, granted:
   const response = await apiClient.patch<ApiSuccess<RolePermissionMatrix>>("/role-permissions", { role, permission, granted });
   return response.data.data;
 }
+
+export async function resetRoleToDefault(role: Role): Promise<RolePermissionMatrix> {
+  const response = await apiClient.post<ApiSuccess<RolePermissionMatrix>>("/role-permissions/reset", { role });
+  return response.data.data;
+}

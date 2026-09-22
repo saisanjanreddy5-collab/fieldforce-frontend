@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { Button, Checkbox, Drawer, Form, Input, Select, Space, message } from "antd";
+import { Button, Checkbox, Form, Input, Modal, Select, Space, Typography, message } from "antd";
+import { EnvironmentOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import * as officeApi from "../api/office-api";
 import * as salesTeamApi from "../api/sales-team-api";
 import type { Office, OfficeType } from "../types/office";
 import type { State, Zone } from "../types/sales-team";
 import { OFFICE_TYPE_OPTIONS } from "./OfficesCard";
+
+const { Text } = Typography;
 
 interface FormValues {
   name: string;
@@ -43,6 +46,7 @@ function parseLocationTag(value: string | undefined): { latitude?: number; longi
 export function OfficeDrawer({ open, office, zones, onClose, onSaved }: OfficeDrawerProps) {
   const [form] = Form.useForm<FormValues>();
   const [states, setStates] = useState<State[]>([]);
+  const [saving, setSaving] = useState(false);
   const zoneId = Form.useWatch("zoneId", form);
 
   useEffect(() => {
@@ -86,6 +90,7 @@ export function OfficeDrawer({ open, office, zones, onClose, onSaved }: OfficeDr
   }, [open, zoneId, form]);
 
   const handleSubmit = async (values: FormValues) => {
+    setSaving(true);
     try {
       const { locationTag, ...rest } = values;
       const payload = { ...rest, ...parseLocationTag(locationTag) };
@@ -103,78 +108,115 @@ export function OfficeDrawer({ open, office, zones, onClose, onSaved }: OfficeDr
           ? err.response.data.message
           : "Failed to save office";
       message.error(description);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <Drawer
-      title={office ? `Edit ${office.name}` : "Create an office"}
+    <Modal
       open={open}
-      onClose={onClose}
-      size="default"
-      extra={
-        <Space>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" onClick={() => form.submit()}>
-            {office ? "Save office" : "Save office"}
-          </Button>
-        </Space>
+      onCancel={onClose}
+      width={520}
+      styles={{ body: { maxHeight: "calc(100vh - 260px)", overflowY: "auto", paddingRight: 4 } }}
+      title={
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "#e6f4ff",
+              color: "#1677ff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <EnvironmentOutlined />
+          </div>
+          <div>
+            <Text strong style={{ fontSize: 16, display: "block" }}>
+              {office ? `Edit ${office.name}` : "Create an office"}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+              Address, GST state and a map location tag
+            </Text>
+          </div>
+        </div>
+      }
+      footer={
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Offices appear in the employee and territory pickers
+          </Text>
+          <Space>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="primary" loading={saving} onClick={() => form.submit()}>
+              Save office
+            </Button>
+          </Space>
+        </div>
       }
     >
       <Form<FormValues> form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ isActive: true }}>
         <Form.Item name="name" label="Office name" rules={[{ required: true, message: "Name is required" }]}>
           <Input placeholder="e.g. Pune regional office" />
         </Form.Item>
-        <Form.Item name="type" label="Type">
-          <Select allowClear placeholder="Select a type" options={OFFICE_TYPE_OPTIONS} />
-        </Form.Item>
-        <Form.Item name="code" label="Office code">
-          <Input placeholder="e.g. PUN-01 (optional)" />
-        </Form.Item>
-        <Form.Item name="zoneId" label="Region">
-          <Select allowClear placeholder="Select a region" options={zones.map((z) => ({ value: z.id, label: z.name }))} />
-        </Form.Item>
-        <Form.Item name="address" label="Address line 1">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <Form.Item name="type" label="Type" rules={[{ required: true, message: "Type is required" }]}>
+            <Select placeholder="Select a type" options={OFFICE_TYPE_OPTIONS} />
+          </Form.Item>
+          <Form.Item name="zoneId" label="Region" rules={[{ required: true, message: "Region is required" }]}>
+            <Select placeholder="Select a region" options={zones.map((z) => ({ value: z.id, label: z.name }))} />
+          </Form.Item>
+        </div>
+        <Form.Item name="address" label="Address line 1" rules={[{ required: true, message: "Address is required" }]}>
           <Input placeholder="e.g. 4th floor, Amar Tech Park" />
         </Form.Item>
         <Form.Item name="addressLine2" label="Address line 2">
           <Input placeholder="e.g. Balewadi High Street" />
         </Form.Item>
-        <Form.Item name="city" label="City">
-          <Input placeholder="e.g. Pune" />
-        </Form.Item>
-        <Form.Item name="stateId" label="State (GST)">
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            placeholder={zoneId ? "Select a state" : "Select a region first"}
-            disabled={!zoneId}
-            options={states.map((s) => ({ value: s.id, label: s.gstCode ? `${s.name} · ${s.gstCode}` : s.name }))}
-          />
-        </Form.Item>
-        <Form.Item name="pincode" label="Pin code">
-          <Input placeholder="e.g. 411045" />
-        </Form.Item>
-        <Form.Item name="phone" label="Phone">
-          <Input placeholder="e.g. 020 12345678" />
-        </Form.Item>
-        <Form.Item
-          name="locationTag"
-          label="Location tag"
-          tooltip="Used for field check-ins, distance-based expense claims and the office column on every employee record"
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <Form.Item name="city" label="City" rules={[{ required: true, message: "City is required" }]}>
+            <Input placeholder="e.g. Pune" />
+          </Form.Item>
+          <Form.Item name="stateId" label="State (GST)" rules={[{ required: true, message: "State is required" }]}>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder={zoneId ? "Select a state" : "Select a region first"}
+              disabled={!zoneId}
+              options={states.map((s) => ({ value: s.id, label: s.gstCode ? `${s.name} · ${s.gstCode}` : s.name }))}
+            />
+          </Form.Item>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <Form.Item name="pincode" label="Pin code" rules={[{ required: true, message: "Pin code is required" }]}>
+            <Input placeholder="e.g. 411045" />
+          </Form.Item>
+          <Form.Item name="phone" label="Phone">
+            <Input placeholder="e.g. 020 12345678" />
+          </Form.Item>
+        </div>
+        <Form.Item name="locationTag" label="Location tag" style={{ marginBottom: 8 }}>
           <Input placeholder="e.g. 18.5679, 73.7692" />
         </Form.Item>
-        <Form.Item name="isActive" valuePropName="checked">
+        <div style={{ background: "#f0f7ff", border: "1px solid #d6e8ff", borderRadius: 6, padding: "8px 10px", marginBottom: 16 }}>
+          <Text style={{ fontSize: 12, color: "#1677ff" }}>
+            The location tag is used for field check-ins, distance-based expense claims and the office column on every employee record.
+          </Text>
+        </div>
+        <Form.Item name="isActive" valuePropName="checked" style={{ marginBottom: office ? 8 : 0 }}>
           <Checkbox>Active</Checkbox>
         </Form.Item>
         {office && (
-          <Form.Item label="Employees assigned">
+          <Form.Item label="Employees assigned" style={{ marginBottom: 0 }}>
             <Input value={office.employeeCount} disabled />
           </Form.Item>
         )}
       </Form>
-    </Drawer>
+    </Modal>
   );
 }

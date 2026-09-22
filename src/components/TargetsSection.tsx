@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Form, InputNumber, Popconfirm, Progress, Select, Space, Table, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, DatePicker, Form, Input, InputNumber, Popconfirm, Progress, Radio, Space, Table, Typography, message } from "antd";
 import { isAxiosError } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import * as targetApi from "../api/target-api";
@@ -10,6 +9,11 @@ import { useHasPermission } from "../hooks/use-permission";
 
 const { Text } = Typography;
 
+// Cycle only offers what target-service.ts's computePeriodBoundaries
+// actually knows how to compute (monthly/quarterly/annual) - a
+// "Half-yearly" option would need new period-boundary math this session
+// deliberately didn't add, since the instruction was not to invent another
+// target calculation.
 const PERIOD_OPTIONS: { value: PeriodType; label: string }[] = [
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
@@ -32,17 +36,18 @@ interface FormValues {
   periodType: PeriodType;
   periodAnchor: Dayjs;
   targetAmount: number;
+  unitTarget?: string;
 }
 
 interface TargetsSectionProps {
   userId: string;
 }
 
-// Lives inside the Edit User drawer - a person's targets are managed here
-// rather than a separate screen, same "list + inline create" shape as the
-// Sales teams/Offices/Levels cards elsewhere on this page, just scoped to
-// one person and with Edit/Delete since a target is a real record, not a
-// reference-data label.
+// Lives inside the Create/Edit user drawer's "Sales target" section - a
+// person's targets are managed here rather than a separate screen. Keeps
+// the full history (a person's targets change period to period) rather
+// than collapsing to a single current value, since the real backend
+// already supports and depends on that.
 export function TargetsSection({ userId }: TargetsSectionProps) {
   const hasPermission = useHasPermission();
   const [targets, setTargets] = useState<Target[]>([]);
@@ -74,6 +79,7 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
       periodType: target.periodType,
       periodAnchor: dayjs(target.periodStart),
       targetAmount: target.targetAmount,
+      unitTarget: target.unitTarget ?? undefined,
     });
   };
 
@@ -95,6 +101,7 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
         periodType: values.periodType,
         periodAnchor: values.periodAnchor.format("YYYY-MM-DD"),
         targetAmount: values.targetAmount,
+        unitTarget: values.unitTarget,
       };
       if (editingTargetId) {
         await targetApi.updateTarget(editingTargetId, payload);
@@ -117,77 +124,90 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
     }
   };
 
+  const canManage = editingTargetId ? hasPermission("targets.update") : hasPermission("targets.create");
+
   return (
-    <div style={{ marginBottom: 16 }}>
-      <Text strong>Targets</Text>
-      <Table<Target>
-        size="small"
-        rowKey="id"
-        loading={loading}
-        dataSource={targets}
-        pagination={false}
-        style={{ marginTop: 8, marginBottom: 12 }}
-        locale={{ emptyText: "No targets yet - add one below" }}
-        columns={[
-          {
-            title: "Period",
-            key: "period",
-            render: (_, t) => `${PERIOD_LABEL[t.periodType]} · ${t.periodStart} to ${t.periodEnd}`,
-          },
-          { title: "Target", dataIndex: "targetAmount", render: (v: number) => formatCompactCurrency(v) },
-          { title: "Achieved", dataIndex: "achievedAmount", render: (v: number) => formatCompactCurrency(v) },
-          {
-            title: "%",
-            dataIndex: "achievementPercent",
-            width: 140,
-            render: (v: number) => <Progress percent={Math.min(v, 100)} size="small" format={() => `${v}%`} />,
-          },
-          {
-            title: "",
-            key: "actions",
-            render: (_, t) => (
-              <Space size={4}>
-                {hasPermission("targets.update") && (
-                  <Button type="link" size="small" onClick={() => startEdit(t)}>
-                    Edit
-                  </Button>
-                )}
-                {hasPermission("targets.delete") && (
-                  <Popconfirm title="Delete this target?" onConfirm={() => handleDelete(t.id)}>
-                    <Button type="link" size="small" danger>
-                      Delete
-                    </Button>
-                  </Popconfirm>
-                )}
-              </Space>
-            ),
-          },
-        ]}
-      />
-      {(editingTargetId ? hasPermission("targets.update") : hasPermission("targets.create")) && (
-        <Form<FormValues> form={form} layout="inline" onFinish={handleSubmit} initialValues={{ periodType: "monthly" }}>
-          <Form.Item name="periodType" rules={[{ required: true }]}>
-            <Select
-              style={{ width: 110 }}
+    <div>
+      {canManage && (
+        <Form<FormValues> form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ periodType: "monthly" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <Form.Item name="targetAmount" label="Target amount" rules={[{ required: true, message: "Enter an amount" }]}>
+              <InputNumber placeholder="e.g. 4200000" prefix="₹" min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item name="unitTarget" label="Unit target" tooltip="Optional - a non-currency goal alongside the amount">
+              <Input placeholder="e.g. 12 franchises" />
+            </Form.Item>
+          </div>
+          <Form.Item name="periodType" label="Cycle" rules={[{ required: true }]}>
+            <Radio.Group
               options={PERIOD_OPTIONS}
+              optionType="button"
+              buttonStyle="solid"
               onChange={() => form.setFieldValue("periodAnchor", undefined)}
             />
           </Form.Item>
-          <Form.Item name="periodAnchor" rules={[{ required: true, message: "Pick a period" }]}>
-            <DatePicker picker={PICKER_BY_TYPE[periodType]} placeholder="Select period" />
+          <Form.Item name="periodAnchor" label="Effective from" rules={[{ required: true, message: "Pick a period" }]}>
+            <DatePicker picker={PICKER_BY_TYPE[periodType]} placeholder="Select period" style={{ width: "100%", maxWidth: 260 }} />
           </Form.Item>
-          <Form.Item name="targetAmount" rules={[{ required: true, message: "Enter an amount" }]}>
-            <InputNumber placeholder="Target amount" prefix="₹" min={0} style={{ width: 160 }} />
-          </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={saving}>
-                {editingTargetId ? "Save" : "Add"}
-              </Button>
-              {editingTargetId && <Button onClick={startCreate}>Cancel</Button>}
-            </Space>
-          </Form.Item>
+          <Space>
+            <Button type="primary" htmlType="submit" loading={saving}>
+              {editingTargetId ? "Save target" : "Add target"}
+            </Button>
+            {editingTargetId && <Button onClick={startCreate}>Cancel</Button>}
+          </Space>
         </Form>
+      )}
+
+      {targets.length > 0 && (
+        <>
+          <Text strong style={{ display: "block", marginTop: 16, marginBottom: 4 }}>
+            History
+          </Text>
+          <Table<Target>
+            size="small"
+            rowKey="id"
+            loading={loading}
+            dataSource={targets}
+            pagination={false}
+            locale={{ emptyText: "No targets yet" }}
+            columns={[
+              {
+                title: "Period",
+                key: "period",
+                render: (_, t) => `${PERIOD_LABEL[t.periodType]} - ${t.periodStart} to ${t.periodEnd}`,
+              },
+              { title: "Target", dataIndex: "targetAmount", render: (v: number) => formatCompactCurrency(v) },
+              { title: "Unit target", dataIndex: "unitTarget", render: (v: string | null) => v ?? "-" },
+              { title: "Achieved", dataIndex: "achievedAmount", render: (v: number) => formatCompactCurrency(v) },
+              {
+                title: "%",
+                dataIndex: "achievementPercent",
+                width: 140,
+                render: (v: number) => <Progress percent={Math.min(v, 100)} size="small" format={() => `${v}%`} />,
+              },
+              {
+                title: "",
+                key: "actions",
+                render: (_, t) => (
+                  <Space size={4}>
+                    {hasPermission("targets.update") && (
+                      <Button type="link" size="small" onClick={() => startEdit(t)}>
+                        Edit
+                      </Button>
+                    )}
+                    {hasPermission("targets.delete") && (
+                      <Popconfirm title="Delete this target?" onConfirm={() => handleDelete(t.id)}>
+                        <Button type="link" size="small" danger>
+                          Delete
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        </>
       )}
     </div>
   );

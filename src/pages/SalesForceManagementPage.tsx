@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Progress, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Input, Progress, Space, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import * as userApi from "../api/user-api";
 import * as salesTeamApi from "../api/sales-team-api";
+import * as officeApi from "../api/office-api";
+import * as levelApi from "../api/level-api";
 import * as targetApi from "../api/target-api";
 import * as incentivePlanApi from "../api/incentive-plan-api";
 import * as userIncentivePlanApi from "../api/user-incentive-plan-api";
@@ -14,7 +16,7 @@ import type { Level } from "../types/level";
 import type { Target } from "../types/target";
 import type { IncentivePlan } from "../types/incentive-plan";
 import type { UserIncentivePlan } from "../types/user-incentive-plan";
-import { formatCompactCurrency } from "../utils/lead-format";
+import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { resolveCurrentTarget } from "../utils/target-format";
 import dayjs from "dayjs";
 import { useHasPermission } from "../hooks/use-permission";
@@ -30,7 +32,7 @@ import { ReportingLinesCard } from "../components/ReportingLinesCard";
 import { ApprovalBandsCard } from "../components/ApprovalBandsCard";
 import { TerritoryTargetsCard } from "../components/TerritoryTargetsCard";
 import { TestAccessAsModal } from "../components/TestAccessAsModal";
-import { ROLE_COLORS, STATUS_COLORS, STATUS_OPTIONS, UserFormWizard } from "../components/UserFormWizard";
+import { STATUS_COLORS, STATUS_OPTIONS, UserFormWizard } from "../components/UserFormWizard";
 
 const { Title, Text } = Typography;
 
@@ -39,6 +41,15 @@ function resolveCurrentIncentivePlan(userId: string, assignments: UserIncentiveP
   return assignments.find(
     (a) => a.userId === userId && a.effectiveStartDate <= today && (a.effectiveEndDate === null || a.effectiveEndDate >= today)
   );
+}
+
+const BELOW_TARGET_THRESHOLD = 80;
+const AVATAR_COLORS = ["#1677ff", "#722ed1", "#eb2f96", "#0ca30c", "#fa8c16", "#13c2c2", "#eda100", "#2f54eb"];
+
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 type TabKey =
@@ -105,6 +116,20 @@ export default function SalesForceManagementPage() {
   useEffect(() => {
     salesTeamApi.listZones().then(setZones).catch(() => undefined);
   }, []);
+  // Fetched here rather than left to each tab's own card to populate via
+  // onChange - those cards only mount when their own tab is active, so
+  // relying on that left offices/salesTeams/levels empty everywhere else
+  // (Permissions, Roles & access, Org chart, the People table's own
+  // columns) until the user happened to visit that specific tab first.
+  useEffect(() => {
+    officeApi.listOffices().then(setOffices).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    salesTeamApi.listSalesTeams().then(setSalesTeams).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    levelApi.listLevels().then(setLevels).catch(() => undefined);
+  }, []);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { active: 0, on_leave: 0, onboarding: 0, exited: 0 };
@@ -112,10 +137,37 @@ export default function SalesForceManagementPage() {
     return counts;
   }, [users]);
 
+  // Below-target and average attainment are both real averages/counts over
+  // each active person's current target - no fabricated currency figure
+  // here (an "incentive pool" total would need a real rate x achievement
+  // computation engine, which doesn't exist anywhere in FieldForce yet).
+  const belowTargetUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const u of users) {
+      if (!u.isActive) continue;
+      const current = resolveCurrentTarget(u.id, targets);
+      if (current && current.achievementPercent < BELOW_TARGET_THRESHOLD) ids.add(u.id);
+    }
+    return ids;
+  }, [users, targets]);
+
+  const avgAttainment = useMemo(() => {
+    const percents = users
+      .filter((u) => u.isActive)
+      .map((u) => resolveCurrentTarget(u.id, targets)?.achievementPercent)
+      .filter((p): p is number => p !== undefined);
+    if (percents.length === 0) return null;
+    return Math.round(percents.reduce((acc, p) => acc + p, 0) / percents.length);
+  }, [users, targets]);
+
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
-      if (statusFilter && u.status !== statusFilter) return false;
+      if (statusFilter === "below_target") {
+        if (!belowTargetUserIds.has(u.id)) return false;
+      } else if (statusFilter && u.status !== statusFilter) {
+        return false;
+      }
       if (!q) return true;
       return (
         u.name.toLowerCase().includes(q) ||
@@ -125,7 +177,7 @@ export default function SalesForceManagementPage() {
         (u.employeeCode ?? "").toLowerCase().includes(q)
       );
     });
-  }, [users, search, statusFilter]);
+  }, [users, search, statusFilter, belowTargetUserIds]);
 
   const openAddDrawer = () => {
     setEditingUser(null);
@@ -175,59 +227,94 @@ export default function SalesForceManagementPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Sales force management
-          </Title>
-          <Text type="secondary">Every employee with targets, incentives, designation ladder and access, in one place</Text>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <Title level={3} style={{ margin: 0 }}>
+              Sales force management
+            </Title>
+            <Text type="secondary">Every employee with targets, incentives, designation ladder and access, in one place</Text>
+          </div>
+          <Space wrap>
+            {hasPermission("users.view") && (
+              <Button shape="round" onClick={() => setTestAccessOpen(true)}>
+                Test access as...
+              </Button>
+            )}
+            {currentTab === "people" && hasPermission("users.create") && (
+              <Button shape="round" type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
+                Create user
+              </Button>
+            )}
+          </Space>
         </div>
-        <Space wrap>
-          {hasPermission("users.view") && (
-            <Button onClick={() => setTestAccessOpen(true)}>Test access as...</Button>
-          )}
-          {currentTab === "people" && hasPermission("users.create") && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openAddDrawer}>
-              Create user
-            </Button>
-          )}
-        </Space>
+
+        <MicrosoftConnectionCard />
+
+        {visibleTabs.length > 0 && (
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+            {visibleTabs.map((tab) => {
+              const active = currentTab === tab.key;
+              return (
+                <Button
+                  key={tab.key}
+                  size="small"
+                  shape="round"
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    flexShrink: 0,
+                    background: active ? "#fff" : "transparent",
+                    borderColor: active ? "#1677ff" : "#d9d9d9",
+                    color: active ? "#1677ff" : "rgba(0,0,0,0.88)",
+                    fontWeight: active ? 600 : 400,
+                  }}
+                >
+                  {tab.label}
+                </Button>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      <MicrosoftConnectionCard />
-
-      {visibleTabs.length > 0 && (
-        <Space size={8} wrap style={{ marginBottom: 16 }}>
-          {visibleTabs.map((tab) => (
-            <Button
-              key={tab.key}
-              shape="round"
-              type={currentTab === tab.key ? "primary" : "default"}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </Button>
-          ))}
-        </Space>
-      )}
 
       {currentTab === "people" && (
         <>
           {hasPermission("sales_teams.view") && <SalesTeamsCard onChange={setSalesTeams} />}
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-            <div style={{ flex: 1, minWidth: 160, border: "1px solid #f0f0f0", borderRadius: 8, padding: 12 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fafafa", borderRadius: 8, padding: "10px 14px" }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>
                 People
               </Text>
-              <div style={{ fontSize: 20, fontWeight: 600 }}>{users.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3 }}>{users.length}</div>
               <Text type="secondary" style={{ fontSize: 11 }}>
                 on the sales force
               </Text>
             </div>
+            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fff7ec", borderRadius: 8, padding: "10px 14px" }}>
+              <Text style={{ fontSize: 11, color: "#ad6800" }}>Below target</Text>
+              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, color: "#d46b08" }}>{belowTargetUserIds.size}</div>
+              <Text style={{ fontSize: 11, color: "#ad6800" }}>under {BELOW_TARGET_THRESHOLD}%</Text>
+            </div>
+            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fafafa", borderRadius: 8, padding: "10px 14px" }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                Incentive pool
+              </Text>
+              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3 }}>-</div>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                no payout engine yet
+              </Text>
+            </div>
+            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#f0fbf0", borderRadius: 8, padding: "10px 14px" }}>
+              <Text style={{ fontSize: 11, color: "#237804" }}>Avg attainment</Text>
+              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, color: "#237804" }}>
+                {avgAttainment === null ? "-" : `${avgAttainment}%`}
+              </div>
+              <Text style={{ fontSize: 11, color: "#237804" }}>quota, current period</Text>
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
             <Input.Search
               placeholder="Search people, designation, territory, employee code"
               value={search}
@@ -248,54 +335,124 @@ export default function SalesForceManagementPage() {
                   {s.label} {statusCounts[s.value] ?? 0}
                 </Tag.CheckableTag>
               ))}
+              <Tag.CheckableTag
+                checked={statusFilter === "below_target"}
+                onChange={(checked) => setStatusFilter(checked ? "below_target" : null)}
+              >
+                Below target {belowTargetUserIds.size}
+              </Tag.CheckableTag>
             </Space>
           </div>
 
           <Table
+            className="thin-scroll-table"
+            size="small"
             rowKey="id"
             loading={loading}
             dataSource={filteredUsers}
             pagination={false}
-            scroll={{ x: 1900 }}
             columns={[
-              { title: "Name", dataIndex: "name" },
-              { title: "Employee code", dataIndex: "employeeCode", render: (v: string | null) => v ?? "-" },
-              { title: "Email", dataIndex: "email" },
               {
-                title: "Role",
-                dataIndex: "role",
-                render: (role: string) => <Tag color={ROLE_COLORS[role]}>{role}</Tag>,
+                title: "Employee",
+                key: "employee",
+                width: 190,
+                render: (_, user) => {
+                  const level = levels.find((l) => l.id === user.levelId);
+                  const office = offices.find((o) => o.id === user.officeId);
+                  const subtitle = [user.designation ?? level?.name ?? user.role, office?.name, user.employeeCode].filter(Boolean).join(" - ");
+                  return (
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", overflow: "hidden" }}>
+                      <Avatar size={28} style={{ backgroundColor: avatarColor(user.name), flexShrink: 0, fontSize: 12 }}>
+                        {initials(user.name)}
+                      </Avatar>
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Text
+                            strong
+                            style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 85 }}
+                            title={user.name}
+                          >
+                            {user.name}
+                          </Text>
+                          <Tag
+                            color={STATUS_COLORS[user.status]}
+                            style={{ fontSize: 10, lineHeight: "16px", padding: "0 6px", margin: 0, flexShrink: 0 }}
+                          >
+                            {STATUS_OPTIONS.find((s) => s.value === user.status)?.label ?? user.status}
+                          </Tag>
+                        </div>
+                        <Text
+                          type="secondary"
+                          style={{ fontSize: 11, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}
+                          title={subtitle || undefined}
+                        >
+                          {subtitle || "-"}
+                        </Text>
+                      </div>
+                    </div>
+                  );
+                },
               },
               {
-                title: "Status",
-                dataIndex: "status",
-                render: (status: string) => <Tag color={STATUS_COLORS[status]}>{STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status}</Tag>,
-              },
-              { title: "Designation", dataIndex: "designation", render: (v: string | null) => v ?? "-" },
-              {
-                title: "Level",
-                dataIndex: "levelId",
-                render: (levelId: string | null) => levels.find((l) => l.id === levelId)?.name ?? "-",
+                title: "Reports to",
+                dataIndex: "managerId",
+                width: 100,
+                ellipsis: true,
+                render: (managerId: string | null) => users.find((u) => u.id === managerId)?.name ?? "-",
               },
               {
-                title: "Region",
-                dataIndex: "zoneId",
-                render: (zoneId: string | null) => zones.find((z) => z.id === zoneId)?.name ?? "-",
+                title: "Region / territory",
+                key: "regionTerritory",
+                width: 100,
+                render: (_, user) => (
+                  <div style={{ overflow: "hidden" }}>
+                    <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {zones.find((z) => z.id === user.zoneId)?.name ?? "-"}
+                    </div>
+                    <Text
+                      type="secondary"
+                      style={{ fontSize: 11, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                      title={user.territory ?? undefined}
+                    >
+                      {user.territory ?? "-"}
+                    </Text>
+                  </div>
+                ),
               },
-              { title: "Territory", dataIndex: "territory", render: (v: string | null) => v ?? "-" },
               {
                 title: "Office",
                 dataIndex: "officeId",
+                width: 100,
+                ellipsis: true,
                 render: (officeId: string | null) => offices.find((o) => o.id === officeId)?.name ?? "-",
               },
               {
-                title: "Sales team",
-                dataIndex: "salesTeamId",
-                render: (salesTeamId: string | null) => salesTeams.find((t) => t.id === salesTeamId)?.name ?? "-",
+                title: "Target vs achieved",
+                key: "targetVsAchieved",
+                width: 140,
+                render: (_, user) => {
+                  const current = resolveCurrentTarget(user.id, targets);
+                  if (!current) return "-";
+                  return (
+                    <div>
+                      <Text style={{ fontSize: 12 }}>
+                        {formatCompactCurrency(current.targetAmount)} / {formatCompactCurrency(current.achievedAmount)}
+                      </Text>
+                      <Progress
+                        percent={Math.min(current.achievementPercent, 100)}
+                        size="small"
+                        showInfo={false}
+                        strokeColor={current.achievementPercent < BELOW_TARGET_THRESHOLD ? "#e34948" : "#0ca30c"}
+                      />
+                    </div>
+                  );
+                },
               },
               {
-                title: "Incentive plan",
+                title: "Incentive",
                 key: "incentivePlan",
+                width: 95,
+                ellipsis: true,
                 render: (_, user) => {
                   const assignment = resolveCurrentIncentivePlan(user.id, userIncentivePlans);
                   if (!assignment) return "-";
@@ -303,8 +460,10 @@ export default function SalesForceManagementPage() {
                 },
               },
               {
-                title: "Commission rules",
+                title: "Commission",
                 key: "commissionRules",
+                width: 95,
+                ellipsis: true,
                 render: (_, user) => {
                   const assignment = resolveCurrentIncentivePlan(user.id, userIncentivePlans);
                   if (!assignment) return "-";
@@ -313,41 +472,21 @@ export default function SalesForceManagementPage() {
                 },
               },
               {
-                title: "Target",
-                key: "target",
-                render: (_, user) => {
-                  const current = resolveCurrentTarget(user.id, targets);
-                  return current ? formatCompactCurrency(current.targetAmount) : "-";
-                },
-              },
-              {
-                title: "Achieved",
-                key: "achieved",
-                render: (_, user) => {
-                  const current = resolveCurrentTarget(user.id, targets);
-                  return current ? formatCompactCurrency(current.achievedAmount) : "-";
-                },
-              },
-              {
-                title: "Achievement %",
-                key: "achievementPercent",
-                width: 140,
+                title: "Performance",
+                key: "performance",
+                width: 110,
                 render: (_, user) => {
                   const current = resolveCurrentTarget(user.id, targets);
                   if (!current) return "-";
-                  return <Progress percent={Math.min(current.achievementPercent, 100)} size="small" format={() => `${current.achievementPercent}%`} />;
+                  if (current.achievementPercent >= 100) return <Tag color="green">Exceeds</Tag>;
+                  if (current.achievementPercent >= BELOW_TARGET_THRESHOLD) return <Tag color="blue">On track</Tag>;
+                  return <Tag color="red">Below target</Tag>;
                 },
-              },
-              { title: "Date of joining", dataIndex: "dateOfJoining", render: (v: string | null) => v ?? "-" },
-              { title: "Smartflo agent", dataIndex: "smartfloAgentNumber", render: (v: string | null) => v ?? "-" },
-              {
-                title: "Reports to",
-                dataIndex: "managerId",
-                render: (managerId: string | null) => users.find((u) => u.id === managerId)?.name ?? "-",
               },
               {
                 title: "",
                 key: "action",
+                width: 55,
                 render: (_, user) =>
                   hasPermission("users.update") ? (
                     <Button type="link" size="small" onClick={() => openEditDrawer(user)}>
@@ -361,7 +500,7 @@ export default function SalesForceManagementPage() {
       )}
 
       {currentTab === "offices" && <OfficesCard zones={zones} onChange={setOffices} />}
-      {currentTab === "permissions" && <PermissionsCard users={users} />}
+      {currentTab === "permissions" && <PermissionsCard users={users} levels={levels} onLevelsChange={setLevels} />}
       {currentTab === "orgChart" && <OrgChartCard users={users} levels={levels} />}
       {currentTab === "levelsAxes" && <LevelsCard onChange={setLevels} />}
       {currentTab === "rolesAccess" && <RolesAccessCard users={users} levels={levels} onLevelsChange={setLevels} />}

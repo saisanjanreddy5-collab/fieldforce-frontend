@@ -48,3 +48,33 @@ body {
   width: 0;
   height: 0;
 }
+
+/* Same thin-scrollbar treatment as .scrollbar-thin, but for AntD Table's
+   own internal horizontal-scroll wrapper, which isn't the element the
+   className prop attaches to - so this has to target the nested
+   .ant-table-content/.ant-table-body descendant instead of styling itself. */
+.thin-scroll-table .ant-table-content,
+.thin-scroll-table .ant-table-body {
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 transparent;
+}
+.thin-scroll-table .ant-table-content::-webkit-scrollbar,
+.thin-scroll-table .ant-table-body::-webkit-scrollbar {
+  height: 6px;
+}
+.thin-scroll-table .ant-table-content::-webkit-scrollbar-track,
+.thin-scroll-table .ant-table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scroll-table .ant-table-content::-webkit-scrollbar-thumb,
+.thin-scroll-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 999px;
+}
+.thin-scroll-table .ant-table-thead > tr > th {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #8c8c8c;
+}
