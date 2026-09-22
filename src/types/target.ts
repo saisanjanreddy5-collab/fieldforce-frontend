@@ -7,6 +7,7 @@ export interface Target {
   periodStart: string;
   periodEnd: string;
   targetAmount: number;
+  unitTarget: string | null;
   achievedAmount: number;
   remainingAmount: number;
   achievementPercent: number;
@@ -21,10 +22,12 @@ export interface CreateTargetPayload {
   periodType: PeriodType;
   periodAnchor: string;
   targetAmount: number;
+  unitTarget?: string;
 }
 
 export interface UpdateTargetPayload {
   periodType?: PeriodType;
   periodAnchor?: string;
   targetAmount?: number;
+  unitTarget?: string | null;
 }

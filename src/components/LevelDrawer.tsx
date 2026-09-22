@@ -4,6 +4,7 @@ import { isAxiosError } from "axios";
 import * as levelApi from "../api/level-api";
 import type { Level, RecordScope } from "../types/level";
 import type { Role } from "../types/auth";
+import { RECORD_SCOPE_OPTIONS } from "../utils/level-format";
 
 interface FormValues {
   name: string;
@@ -22,14 +23,6 @@ const SECURITY_TIER_OPTIONS: { value: Role; label: string }[] = [
   { value: "admin", label: "Administrator tier - full system access" },
   { value: "manager", label: "Manager tier - sees own + everyone below" },
   { value: "agent", label: "Agent tier - sees own records only" },
-];
-
-const RECORD_SCOPE_OPTIONS: { value: RecordScope; label: string }[] = [
-  { value: "own_only", label: "Own records only" },
-  { value: "own_and_below", label: "Own + everyone below" },
-  { value: "own_below_peers_readonly", label: "Own + below + peers read-only" },
-  { value: "whole_region", label: "Whole region" },
-  { value: "everything", label: "Everything" },
 ];
 
 interface LevelDrawerProps {

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Form, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, DatePicker, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
 import { isAxiosError } from "axios";
-import dayjs, { type Dayjs } from "dayjs";
+import type { Dayjs } from "dayjs";
 import * as incentivePlanApi from "../api/incentive-plan-api";
 import * as userIncentivePlanApi from "../api/user-incentive-plan-api";
 import * as commissionRuleApi from "../api/commission-rule-api";
@@ -17,6 +16,9 @@ interface FormValues {
   incentivePlanId: string;
   effectiveStartDate: Dayjs;
   effectiveEndDate?: Dayjs;
+  rate?: string;
+  capPerCycle?: number;
+  paysFromAttainmentPercent?: number;
 }
 
 interface IncentivePlanSectionProps {
@@ -24,9 +26,9 @@ interface IncentivePlanSectionProps {
 }
 
 // Assigns from the shared incentive_plans catalog (Territory & targets tab
-// owns that catalog) rather than letting each person have arbitrary custom
-// terms - a plan's own commission_rules are shown read-only here as
-// reference, since FieldForce has no per-user commission-terms model.
+// owns that catalog) - rate/cap/pays-from are configuration only, same
+// honesty convention as everywhere else marked this way: FieldForce has no
+// payout engine, so nothing computes an actual incentive amount from them.
 export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
   const hasPermission = useHasPermission();
   const [plans, setPlans] = useState<IncentivePlan[]>([]);
@@ -80,6 +82,9 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
         incentivePlanId: values.incentivePlanId,
         effectiveStartDate: values.effectiveStartDate.format("YYYY-MM-DD"),
         effectiveEndDate: values.effectiveEndDate?.format("YYYY-MM-DD"),
+        rate: values.rate,
+        capPerCycle: values.capPerCycle,
+        paysFromAttainmentPercent: values.paysFromAttainmentPercent,
       });
       message.success("Incentive plan assigned");
       form.resetFields();
@@ -95,74 +100,96 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
     }
   };
 
+  const canManage = hasPermission("incentive_plans.view");
+
   return (
-    <div style={{ marginBottom: 16 }}>
-      <Text strong>Incentive plans</Text>
-      <Table<UserIncentivePlan>
-        size="small"
-        rowKey="id"
-        loading={loading}
-        dataSource={assignments}
-        pagination={false}
-        style={{ marginTop: 8, marginBottom: 12 }}
-        locale={{ emptyText: "No incentive plan assigned yet" }}
-        columns={[
-          { title: "Plan", key: "plan", render: (_, a) => planName(a.incentivePlanId) },
-          {
-            title: "Effective",
-            key: "effective",
-            render: (_, a) => `${a.effectiveStartDate}${a.effectiveEndDate ? ` to ${a.effectiveEndDate}` : " onward"}`,
-          },
-          {
-            title: "Commission rules",
-            key: "rules",
-            render: (_, a) => {
-              const rules = rulesByPlan[a.incentivePlanId] ?? [];
-              return rules.length === 0 ? (
-                <Text type="secondary">None</Text>
-              ) : (
-                <Space size={4} wrap>
-                  {rules.map((r) => (
-                    <Tag key={r.id}>{r.name}</Tag>
-                  ))}
-                </Space>
-              );
-            },
-          },
-          {
-            title: "",
-            key: "actions",
-            render: (_, a) =>
-              hasPermission("incentive_plans.view") && (
-                <Popconfirm title="Remove this incentive plan assignment?" onConfirm={() => handleDelete(a.id)}>
-                  <Button type="link" size="small" danger>
-                    Remove
-                  </Button>
-                </Popconfirm>
-              ),
-          },
-        ]}
-      />
-      <Form<FormValues> form={form} layout="inline" onFinish={handleSubmit}>
-        <Form.Item name="incentivePlanId" rules={[{ required: true, message: "Pick a plan" }]}>
-          <Select
-            style={{ width: 220 }}
-            placeholder="Select incentive plan"
-            options={plans.filter((p) => p.isActive).map((p) => ({ value: p.id, label: p.name }))}
+    <div>
+      {canManage && (
+        <Form<FormValues> form={form} layout="vertical" onFinish={handleSubmit}>
+          <Form.Item name="incentivePlanId" label="Incentive plan" rules={[{ required: true, message: "Pick a plan" }]}>
+            <Select
+              placeholder="Select an incentive plan"
+              options={plans.filter((p) => p.isActive).map((p) => ({ value: p.id, label: p.name }))}
+              notFoundContent={<Text type="secondary">No incentive plans configured yet - add one in Territory &amp; targets</Text>}
+            />
+          </Form.Item>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <Form.Item name="rate" label="Rate" tooltip="Free text, e.g. '2.5% of net value' - configuration only, not computed">
+              <Input placeholder="e.g. 2.5% of net value" />
+            </Form.Item>
+            <Form.Item name="capPerCycle" label="Cap per cycle">
+              <InputNumber placeholder="e.g. 75000" prefix="₹" min={0} style={{ width: "100%" }} />
+            </Form.Item>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <Form.Item name="paysFromAttainmentPercent" label="Pays from (attainment %)">
+              <InputNumber placeholder="e.g. 80" min={0} max={1000} suffix="%" style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item name="effectiveStartDate" label="Effective from" rules={[{ required: true, message: "Pick a start date" }]}>
+              <DatePicker style={{ width: "100%" }} />
+            </Form.Item>
+          </div>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={saving}>
+              Assign incentive plan
+            </Button>
+          </Form.Item>
+        </Form>
+      )}
+
+      {assignments.length > 0 && (
+        <>
+          <Text strong style={{ display: "block", marginBottom: 4 }}>
+            Assigned plans
+          </Text>
+          <Table<UserIncentivePlan>
+            size="small"
+            rowKey="id"
+            loading={loading}
+            dataSource={assignments}
+            pagination={false}
+            columns={[
+              { title: "Plan", key: "plan", render: (_, a) => planName(a.incentivePlanId) },
+              { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
+              { title: "Cap/cycle", dataIndex: "capPerCycle", render: (v: number | null) => (v === null ? "-" : `₹${v}`) },
+              { title: "Pays from", dataIndex: "paysFromAttainmentPercent", render: (v: number | null) => (v === null ? "-" : `${v}%`) },
+              {
+                title: "Effective",
+                key: "effective",
+                render: (_, a) => `${a.effectiveStartDate}${a.effectiveEndDate ? ` to ${a.effectiveEndDate}` : " onward"}`,
+              },
+              {
+                title: "Commission rules",
+                key: "rules",
+                render: (_, a) => {
+                  const rules = rulesByPlan[a.incentivePlanId] ?? [];
+                  return rules.length === 0 ? (
+                    <Text type="secondary">None</Text>
+                  ) : (
+                    <Space size={4} wrap>
+                      {rules.map((r) => (
+                        <Tag key={r.id}>{r.name}</Tag>
+                      ))}
+                    </Space>
+                  );
+                },
+              },
+              {
+                title: "",
+                key: "actions",
+                render: (_, a) =>
+                  canManage && (
+                    <Popconfirm title="Remove this incentive plan assignment?" onConfirm={() => handleDelete(a.id)}>
+                      <Button type="link" size="small" danger>
+                        Remove
+                      </Button>
+                    </Popconfirm>
+                  ),
+              },
+            ]}
           />
-        </Form.Item>
-        <Form.Item name="effectiveStartDate" rules={[{ required: true, message: "Pick a start date" }]}>
-          <DatePicker placeholder="Effective from" />
-        </Form.Item>
-        <Form.Item name="effectiveEndDate">
-          <DatePicker placeholder="Effective to (optional)" disabledDate={(d) => d.isBefore(dayjs(), "day")} />
-        </Form.Item>
-        <Form.Item>
-          <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={saving}>
-            Assign
-          </Button>
-        </Form.Item>
-      </Form>
+        </>
+      )}
     </div>
   );
 }

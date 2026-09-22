@@ -4,6 +4,9 @@ export interface UserIncentivePlan {
   incentivePlanId: string;
   effectiveStartDate: string;
   effectiveEndDate: string | null;
+  rate: string | null;
+  capPerCycle: number | null;
+  paysFromAttainmentPercent: number | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -15,4 +18,7 @@ export interface CreateUserIncentivePlanPayload {
   incentivePlanId: string;
   effectiveStartDate: string;
   effectiveEndDate?: string;
+  rate?: string;
+  capPerCycle?: number;
+  paysFromAttainmentPercent?: number;
 }

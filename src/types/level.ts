@@ -22,6 +22,11 @@ export interface Level {
   seesLabelOverride: string | null;
   approvalLabelOverride: string | null;
   canEditLabel: string | null;
+  seeCreditFields: boolean;
+  seeMarginFields: boolean;
+  canExport: boolean;
+  canViewCallRecordings: boolean;
+  canSeeUnmaskedPii: boolean;
   currentHeadcount: number;
   createdAt: string;
 }
@@ -38,6 +43,11 @@ export interface CreateLevelPayload {
   seesLabelOverride?: string;
   approvalLabelOverride?: string;
   canEditLabel?: string;
+  seeCreditFields?: boolean;
+  seeMarginFields?: boolean;
+  canExport?: boolean;
+  canViewCallRecordings?: boolean;
+  canSeeUnmaskedPii?: boolean;
 }
 
 export interface UpdateLevelPayload {
@@ -52,4 +62,9 @@ export interface UpdateLevelPayload {
   seesLabelOverride?: string | null;
   approvalLabelOverride?: string | null;
   canEditLabel?: string | null;
+  seeCreditFields?: boolean;
+  seeMarginFields?: boolean;
+  canExport?: boolean;
+  canViewCallRecordings?: boolean;
+  canSeeUnmaskedPii?: boolean;
 }
