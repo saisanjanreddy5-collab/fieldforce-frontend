@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Empty, Form, Input, InputNumber, Modal, Spin, Tag, Typography, message } from "antd";
+import { RiseOutlined } from "@ant-design/icons";
 import * as opportunityApi from "../../../api/opportunity-api";
 import type { Opportunity } from "../../../types/opportunity";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
@@ -9,6 +10,12 @@ const { Text, Title } = Typography;
 
 interface OpportunitiesTabProps {
   leadId: string;
+  /** Owned by LeadDetail (also needed there for the primary-action calc) -
+   * passed down rather than fetched again here, to avoid a duplicate
+   * request for the same data on every lead selection. */
+  opportunities: Opportunity[];
+  loading: boolean;
+  onChanged: () => void;
 }
 
 interface NewOpportunityFormValues {
@@ -17,24 +24,11 @@ interface NewOpportunityFormValues {
   closeDate?: string;
 }
 
-export function OpportunitiesTab({ leadId }: OpportunitiesTabProps) {
+export function OpportunitiesTab({ leadId, opportunities, loading, onChanged }: OpportunitiesTabProps) {
   const hasPermission = useHasPermission();
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<NewOpportunityFormValues>();
-
-  const load = () => {
-    setLoading(true);
-    opportunityApi
-      .listOpportunitiesForLead(leadId)
-      .then(setOpportunities)
-      .catch(() => message.error("Failed to load opportunities"))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(load, [leadId]);
 
   const handleCreate = async (values: NewOpportunityFormValues) => {
     setSubmitting(true);
@@ -43,7 +37,7 @@ export function OpportunitiesTab({ leadId }: OpportunitiesTabProps) {
       message.success("Opportunity created");
       setModalOpen(false);
       form.resetFields();
-      load();
+      onChanged();
     } catch {
       message.error("Failed to create opportunity");
     } finally {
@@ -57,13 +51,32 @@ export function OpportunitiesTab({ leadId }: OpportunitiesTabProps) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <Title level={5} style={{ margin: 0 }}>
-            Opportunities from this lead
-          </Title>
-          <Text type="secondary">
-            {openCount} open · {formatCompactCurrency(totalValue)} combined pipeline
-          </Text>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 7,
+              background: "#7248b8",
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              fontSize: 14,
+              marginTop: 1,
+            }}
+          >
+            <RiseOutlined />
+          </div>
+          <div>
+            <Title level={5} style={{ margin: 0 }}>
+              Opportunities from this lead
+            </Title>
+            <Text type="secondary">
+              {openCount} open · {formatCompactCurrency(totalValue)} combined pipeline
+            </Text>
+          </div>
         </div>
         {hasPermission("opportunities.create") && (
           <Button type="primary" onClick={() => setModalOpen(true)}>
@@ -102,7 +115,7 @@ export function OpportunitiesTab({ leadId }: OpportunitiesTabProps) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Text strong>{formatCompactCurrency(opp.value)}</Text>
-                <Tag>{opp.stage}</Tag>
+                <Tag color={opp.stage === "won" ? "success" : opp.stage === "lost" ? "error" : "blue"}>{opp.stage}</Tag>
               </div>
             </div>
           ))}

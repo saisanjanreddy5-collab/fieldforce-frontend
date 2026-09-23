@@ -18,19 +18,20 @@ import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY, STAGE_OPTIONS } from "../co
 import { useDraggableScroll } from "../hooks/use-draggable-scroll";
 import { useHasPermission } from "../hooks/use-permission";
 import { ScrollTrack } from "../components/ScrollTrack";
+import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS).map((c) => ({ value: c, label: c }));
 
-const FILTER_DOT = <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#c3c2b7" }} />;
+const FILTER_DOT = <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#9aa2b1" }} />;
 
 type View = "kanban" | "list" | "team-rollup" | "forecast";
 
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ flexShrink: 0 }}>
-      <Text type="secondary" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>
+      <Text style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4, color: "#9aa2b1" }}>
         {label}
       </Text>
       {children}
@@ -136,12 +137,12 @@ export default function OpportunitiesPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>
+          <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Opportunity pipeline
           </Title>
-          <Text type="secondary">Drag a card to move it between stages. Lost reasons are captured on exit.</Text>
+          <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Drag a card to move it between stages. Lost reasons are captured on exit.</Text>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <Segmented
@@ -265,14 +266,21 @@ export default function OpportunitiesPage() {
           { label: "Weighted forecast", value: formatCompactCurrency(stats.weightedForecast), subtitle: "probability adjusted" },
           { label: "Avg deal size", value: formatCompactCurrency(stats.avgDealSize), subtitle: "this view" },
         ].map((stat) => (
-          <div key={stat.label} style={{ flex: 1, minWidth: 160, border: "1px solid #f0f0f0", borderRadius: 8, padding: 12 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {stat.label}
-            </Text>
-            <div style={{ fontSize: 20, fontWeight: 600 }}>{stat.value}</div>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              {stat.subtitle}
-            </Text>
+          <div
+            key={stat.label}
+            style={{
+              flex: 1,
+              minWidth: 160,
+              border: `1px solid ${appTokens.border}`,
+              borderRadius: appTokens.radius,
+              padding: 14,
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: 600, color: appTokens.textTertiary }}>{stat.label}</Text>
+            <div style={{ fontSize: 21, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3 }}>{stat.value}</div>
+            <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
           </div>
         ))}
       </div>

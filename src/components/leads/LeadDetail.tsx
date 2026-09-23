@@ -1,16 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { App, Avatar, Button, DatePicker, Form, Input, Modal, Progress, Select, Tag, Tooltip, Typography } from "antd";
-import { CloudUploadOutlined, EditOutlined, MailOutlined, PhoneOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { App, DatePicker, Form, Input, Modal, Select, Typography, message as staticMessage } from "antd";
 import { isAxiosError } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import type { Lead } from "../../types/lead";
-import { initials, scoreColor } from "../../utils/lead-format";
-import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
-import { useHasPermission } from "../../hooks/use-permission";
+import type { Opportunity } from "../../types/opportunity";
+import type { Activity } from "../../types/activity";
+import type { FofoHandoff } from "../../types/fofo-onboarding";
 import * as microsoftApi from "../../api/microsoft-api";
 import * as smartfloApi from "../../api/smartflo-api";
+import * as opportunityApi from "../../api/opportunity-api";
+import * as activityApi from "../../api/activity-api";
+import * as fofoOnboardingApi from "../../api/fofo-onboarding-api";
+import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
+import { useHasPermission } from "../../hooks/use-permission";
 import { ScrollableTabBar } from "../ScrollableTabBar";
+import { LeadSnapshot } from "./LeadSnapshot";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
@@ -19,17 +24,18 @@ import { ConsentTab } from "./tabs/ConsentTab";
 import { ApprovalsTab } from "./tabs/ApprovalsTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface LeadDetailProps {
   lead: Lead;
+  showOwner: boolean;
   onEdit: () => void;
 }
 
 const DETAIL_TABS = [
   { key: "overview", label: "Overview" },
   { key: "opportunities", label: "Opportunities" },
-  { key: "activity", label: "Activity & calls" },
+  { key: "activity", label: "Activity" },
   { key: "logs", label: "Logs" },
   { key: "consent", label: "Consent" },
   { key: "approvals", label: "Approvals" },
@@ -47,13 +53,11 @@ interface MeetingFormValues {
   durationMinutes: number;
 }
 
-const NOT_CONNECTED_TOOLTIP = "Connect your Microsoft 365 account under Sales force management first";
-
 function errorMessageFrom(err: unknown, fallback: string): string {
   return isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : fallback;
 }
 
-export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
+export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
@@ -66,7 +70,64 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const [calling, setCalling] = useState(false);
   const [emailForm] = Form.useForm<EmailFormValues>();
   const [meetingForm] = Form.useForm<MeetingFormValues>();
-  const contactLine = [lead.contactName, lead.phone, lead.email].filter(Boolean).join(" · ");
+
+  // Fetched once here, not inside OpportunitiesTab - needed for the
+  // computed primary action (an "open opportunity" is one input to it) as
+  // well as the tab content, so lifting it up avoids fetching the same
+  // list twice for one lead selection.
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(true);
+
+  const loadOpportunities = () => {
+    setOpportunitiesLoading(true);
+    opportunityApi
+      .listOpportunitiesForLead(lead.id)
+      .then(setOpportunities)
+      .catch(() => staticMessage.error("Failed to load opportunities"))
+      .finally(() => setOpportunitiesLoading(false));
+  };
+
+  // Fetched once here (not inside ApprovalsTab/DocumentsTab) so switching
+  // between those two tabs doesn't re-fetch the same handoff twice - same
+  // "lift the fetch" pattern already used for opportunities above. Only
+  // fetched for FOFO leads the user is actually permitted to see, since the
+  // backend route itself is gated behind fofo_onboarding.view.
+  const canViewOnboarding = lead.category === "FOFO" && hasPermission("fofo_onboarding.view");
+  const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
+  const [handoffLoading, setHandoffLoading] = useState(canViewOnboarding);
+
+  const loadHandoff = () => {
+    if (!canViewOnboarding) return;
+    setHandoffLoading(true);
+    fofoOnboardingApi
+      .getHandoff(lead.id)
+      .then(setHandoff)
+      .catch(() => staticMessage.error("Failed to load approvals/documents"))
+      .finally(() => setHandoffLoading(false));
+  };
+
+  // Fetched once here so the Activity (scheduled) and Logs (history) tabs
+  // - split from what used to be one merged component - share the same
+  // fetch instead of each requesting the same list separately.
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+
+  const loadActivities = () => {
+    setActivitiesLoading(true);
+    activityApi
+      .listActivitiesForLead(lead.id)
+      .then(setActivities)
+      .catch(() => staticMessage.error("Failed to load activity"))
+      .finally(() => setActivitiesLoading(false));
+  };
+
+  useEffect(() => {
+    setActiveTabKey("overview");
+    loadOpportunities();
+    loadHandoff();
+    loadActivities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id]);
 
   const handleSendEmail = async (values: EmailFormValues) => {
     setSendingEmail(true);
@@ -125,83 +186,49 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
     });
   };
 
+  const canOnboard = lead.category === "FOFO" && hasPermission("fofo_onboarding.view");
+  const hasOpenOpportunity = opportunities.some((o) => o.stage !== "won" && o.stage !== "lost");
+
   return (
     <div>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-        <Avatar size={48} shape="square" style={{ backgroundColor: "#1677ff", flexShrink: 0 }}>
-          {initials(lead.fullName)}
-        </Avatar>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <Title level={4} style={{ margin: 0 }}>
-              {lead.fullName}
-            </Title>
-            {lead.category && <Tag color="blue">{lead.category}</Tag>}
-            <Tag>{lead.status}</Tag>
-            {lead.leadScore !== null && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 80 }}>
-                <Progress
-                  percent={lead.leadScore}
-                  size="small"
-                  showInfo
-                  strokeColor={scoreColor(lead.leadScore)}
-                  style={{ width: 60 }}
-                />
-              </div>
-            )}
-          </div>
-          <Text type="secondary">{contactLine || "-"}</Text>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        <Tooltip title={!lead.phone ? "This lead has no phone number on file" : ""}>
-          <Button icon={<PhoneOutlined />} disabled={!lead.phone} loading={calling} onClick={handleCall}>
-            Call
-          </Button>
-        </Tooltip>
-        <Tooltip title={!microsoftConnected ? NOT_CONNECTED_TOOLTIP : !lead.email ? "This lead has no email address on file" : ""}>
-          <Button icon={<MailOutlined />} disabled={!microsoftConnected || !lead.email} onClick={() => setEmailOpen(true)}>
-            Email
-          </Button>
-        </Tooltip>
-        <Tooltip title="WhatsApp integration is out of scope for now">
-          <Button icon={<WhatsAppOutlined />} disabled>
-            WhatsApp
-          </Button>
-        </Tooltip>
-        <Tooltip title={!microsoftConnected ? NOT_CONNECTED_TOOLTIP : !lead.email ? "This lead has no email address on file" : ""}>
-          <Button icon={<TeamOutlined />} disabled={!microsoftConnected || !lead.email} onClick={() => setMeetingOpen(true)}>
-            Teams meeting
-          </Button>
-        </Tooltip>
-        {hasPermission("leads.update") && (
-          <Button icon={<EditOutlined />} onClick={onEdit}>
-            Edit lead
-          </Button>
-        )}
-        <Tooltip title={lead.category !== "FOFO" ? "Onboarding handoff is only for FOFO-category leads" : ""}>
-          <Button
-            type="primary"
-            icon={<CloudUploadOutlined />}
-            disabled={lead.category !== "FOFO" || !hasPermission("fofo_onboarding.view")}
-            onClick={() => navigate(`/fofo-onboarding/${lead.id}`)}
-          >
-            Onboard
-          </Button>
-        </Tooltip>
-      </div>
+      <LeadSnapshot
+        lead={lead}
+        showOwner={showOwner}
+        availability={{
+          canOnboard,
+          hasOpenOpportunity,
+          canAddActivity: hasPermission("activities.create"),
+          canCall: Boolean(lead.phone),
+          canEditLead: hasPermission("leads.update"),
+        }}
+        calling={calling}
+        microsoftConnected={microsoftConnected}
+        onCall={handleCall}
+        onEmail={() => setEmailOpen(true)}
+        onTeamsMeeting={() => setMeetingOpen(true)}
+        onEdit={onEdit}
+        onOnboard={() => navigate(`/fofo-onboarding/${lead.id}`)}
+        onAddActivity={() => setActiveTabKey("activity")}
+      />
 
       <div style={{ marginTop: 16 }}>
         <ScrollableTabBar items={DETAIL_TABS} activeKey={activeTabKey} onChange={setActiveTabKey} />
         <div style={{ marginTop: 16 }}>
           {activeTabKey === "overview" && <OverviewTab lead={lead} />}
-          {activeTabKey === "opportunities" && <OpportunitiesTab leadId={lead.id} />}
-          {activeTabKey === "activity" && <ActivityTab leadId={lead.id} />}
-          {activeTabKey === "logs" && <LogsTab leadId={lead.id} />}
+          {activeTabKey === "opportunities" && (
+            <OpportunitiesTab leadId={lead.id} opportunities={opportunities} loading={opportunitiesLoading} onChanged={loadOpportunities} />
+          )}
+          {activeTabKey === "activity" && (
+            <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
+          )}
+          {activeTabKey === "logs" && <LogsTab activities={activities} loading={activitiesLoading} />}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
-          {activeTabKey === "approvals" && <ApprovalsTab />}
-          {activeTabKey === "documents" && <DocumentsTab />}
+          {activeTabKey === "approvals" && (
+            <ApprovalsTab lead={lead} canView={canViewOnboarding} loading={handoffLoading} handoff={handoff} onChanged={loadHandoff} />
+          )}
+          {activeTabKey === "documents" && (
+            <DocumentsTab lead={lead} canView={canViewOnboarding} loading={handoffLoading} handoff={handoff} onChanged={loadHandoff} />
+          )}
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import type { Level } from "../types/level";
 import type { StructureAxis } from "../types/structure-axis";
 import { useHasPermission } from "../hooks/use-permission";
 import { formatCompactCurrency } from "../utils/lead-format";
+import { appTokens } from "../utils/design-system";
 import { LevelDrawer } from "./LevelDrawer";
 
 const { Text } = Typography;
@@ -142,14 +143,15 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
                   alignItems: "center",
                   gap: 8,
                   padding: "8px 10px",
-                  border: "1px solid #f0f0f0",
-                  borderRadius: 6,
+                  border: `1px solid ${appTokens.border}`,
+                  borderRadius: appTokens.radiusSm,
                   marginBottom: 6,
                   cursor: canReorder ? "grab" : "default",
+                  background: appTokens.surface,
                 }}
               >
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", minWidth: 0 }}>
-                  {canReorder && <HolderOutlined style={{ marginTop: 4, color: "#c3c2b7" }} />}
+                  {canReorder && <HolderOutlined style={{ marginTop: 4, color: appTokens.textTertiary }} />}
                   <div style={{ minWidth: 0 }}>
                     <Text strong>
                       L{idx + 1} · {level.name}
@@ -195,8 +197,9 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "6px 10px",
-                  border: "1px solid #f0f0f0",
-                  borderRadius: 6,
+                  border: `1px solid ${appTokens.border}`,
+                  borderRadius: appTokens.radiusSm,
+                  background: appTokens.surface,
                 }}
               >
                 <div>

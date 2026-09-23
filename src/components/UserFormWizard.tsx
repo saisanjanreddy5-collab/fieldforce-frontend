@@ -13,21 +13,12 @@ import type { CustomerCategory, DivisionChannel } from "../types/classification"
 import { useHasPermission } from "../hooks/use-permission";
 import { ladderIndex } from "../utils/level-format";
 import { initials } from "../utils/lead-format";
+import { appTokens, avatarGradient } from "../utils/design-system";
 import { TargetsSection } from "./TargetsSection";
 import { IncentivePlanSection } from "./IncentivePlanSection";
 import { UserCommissionSection } from "./UserCommissionSection";
 
 const { Text } = Typography;
-
-// Same hash-based palette SalesForceManagementPage uses for the People
-// table's avatars - duplicated locally rather than exported, same call as
-// this file's other small local copy (SPAN_WARNING_THRESHOLD).
-const AVATAR_COLORS = ["#1677ff", "#722ed1", "#eb2f96", "#0ca30c", "#fa8c16", "#13c2c2", "#eda100", "#2f54eb"];
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 // Same span-warning threshold Org chart uses for "too many direct
 // reports" - surfaced here too, inline in the manager picker, so an admin
@@ -119,7 +110,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ background, border: `1px solid ${color}22`, borderRadius: 8, padding: 14, marginBottom: 16 }}>
+    <div style={{ background, border: `1px solid ${color}22`, borderRadius: appTokens.radius, padding: 16, marginBottom: 16, boxShadow: appTokens.shadowXs }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <div
@@ -191,10 +182,10 @@ function OrgChartPreview({
         justifyContent: "space-between",
         alignItems: "center",
         padding: "6px 10px",
-        border: "1px solid #f0f0f0",
-        borderRadius: 6,
+        border: `1px solid ${appTokens.border}`,
+        borderRadius: appTokens.radiusSm,
         marginBottom: 4,
-        background: "#fff",
+        background: appTokens.surface,
       }}
     >
       <div>
@@ -361,15 +352,16 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
             style={{
               width: 32,
               height: 32,
-              borderRadius: 8,
-              background: "#f0f0f0",
+              borderRadius: appTokens.radiusSm,
+              background: `linear-gradient(135deg, ${appTokens.primary}, #3f6fef)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
+              boxShadow: "0 2px 6px rgba(19,84,224,0.3)",
             }}
           >
-            <PlusOutlined />
+            <PlusOutlined style={{ color: "#fff" }} />
           </div>
           <div>
             <Text strong style={{ fontSize: 16, display: "block" }}>
@@ -409,8 +401,8 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                   icon="@"
                   title="Identity & login"
                   subtitle="Who they are and how they sign in"
-                  color="#1677ff"
-                  background="#f2f7ff"
+                  color={appTokens.primary}
+                  background={appTokens.primarySoft}
                 >
                   {user ? (
                     <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
@@ -482,8 +474,8 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     icon="◆"
                     title="Where they sit"
                     subtitle="Chart preview updates as you pick the manager"
-                    color="#1677ff"
-                    background="#f2f7ff"
+                    color={appTokens.primary}
+                    background={appTokens.primarySoft}
                   >
                     <OrgChartPreview managerId={managerId} users={users} levels={levels} name={nameWatch} designation={designationWatch} />
                   </SectionCard>
@@ -492,8 +484,8 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     icon="⇄"
                     title="Assign a reporting manager"
                     subtitle="Pick from managers above this level"
-                    color="#1677ff"
-                    background="#f2f7ff"
+                    color={appTokens.primary}
+                    background={appTokens.primarySoft}
                     extra={
                       <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setManagerPickerExpanded((v) => !v)}>
                         {managerPickerExpanded ? "Done" : "Change"}
@@ -520,15 +512,15 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                                   justifyContent: "space-between",
                                   alignItems: "center",
                                   padding: "8px 10px",
-                                  border: `1px solid ${selected ? "#1677ff" : "#f0f0f0"}`,
-                                  borderRadius: 6,
+                                  border: `1px solid ${selected ? appTokens.primary : appTokens.border}`,
+                                  borderRadius: appTokens.radiusSm,
                                   marginBottom: 6,
                                   cursor: "pointer",
-                                  background: selected ? "#f0f7ff" : "#fff",
+                                  background: selected ? appTokens.primarySoft : appTokens.surface,
                                 }}
                               >
                                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                  <Avatar size={28} style={{ backgroundColor: avatarColor(u.name), flexShrink: 0, fontSize: 12 }}>
+                                  <Avatar size={28} style={{ background: avatarGradient(u.name), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
                                     {initials(u.name)}
                                   </Avatar>
                                   <div>
@@ -562,7 +554,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                           if (!selectedManager) return <Text type="secondary">No manager selected</Text>;
                           return (
                             <>
-                              <Avatar size={28} style={{ backgroundColor: avatarColor(selectedManager.name), fontSize: 12 }}>
+                              <Avatar size={28} style={{ background: avatarGradient(selectedManager.name), fontSize: 12, fontWeight: 600 }}>
                                 {initials(selectedManager.name)}
                               </Avatar>
                               <div>
@@ -586,7 +578,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     icon="◇"
                     title="Position & manager"
                     subtitle="Drives the org chart and data ownership"
-                    color="#722ed1"
+                    color={appTokens.purple}
                     background="#f8f4fd"
                   >
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
@@ -631,7 +623,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     icon="⌖"
                     title="Geography & office"
                     subtitle="Region, state, territory and where they sit"
-                    color="#0ca30c"
+                    color={appTokens.success}
                     background="#f1faf1"
                   >
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
@@ -715,8 +707,8 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       icon="◷"
                       title="Sales target"
                       subtitle="Leave blank if the person carries no quota"
-                      color="#1677ff"
-                      background="#f2f7ff"
+                      color={appTokens.primary}
+                      background={appTokens.primarySoft}
                       extra={
                         <Text type="secondary" style={{ fontSize: 11 }}>
                           optional
@@ -730,8 +722,8 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       icon="★"
                       title="Incentives"
                       subtitle="Slabs on attainment"
-                      color="#d46b08"
-                      background="#fff7ec"
+                      color={appTokens.warning}
+                      background="#fff8ec"
                       extra={
                         <Text type="secondary" style={{ fontSize: 11 }}>
                           optional
@@ -745,7 +737,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       icon="₹"
                       title="Commissions"
                       subtitle="Recurring share on collections"
-                      color="#0ca30c"
+                      color={appTokens.success}
                       background="#f1faf1"
                       extra={
                         <Text type="secondary" style={{ fontSize: 11 }}>

@@ -1,19 +1,13 @@
-import { useEffect, useState } from "react";
-import { Button, DatePicker, Empty, Form, Input, Modal, Select, Spin, Typography, message } from "antd";
+import { useState } from "react";
+import { Button, DatePicker, Form, Input, Modal, Select, Spin, Typography, message } from "antd";
 import dayjs from "dayjs";
 import * as activityApi from "../../../api/activity-api";
 import type { Activity, ActivityType } from "../../../types/activity";
 import { formatDateTime } from "../../../utils/lead-format";
+import { TYPE_LABEL, TypeBadge } from "../../../utils/activity-shared";
 import { useHasPermission } from "../../../hooks/use-permission";
 
 const { Text, Title } = Typography;
-
-const TYPE_LABEL: Record<ActivityType, string> = {
-  call: "Call",
-  email: "Email",
-  teams_meeting: "Teams Meeting",
-  site_visit: "Site Visit",
-};
 
 interface NewActionFormValues {
   type: ActivityType;
@@ -23,26 +17,25 @@ interface NewActionFormValues {
 
 interface ActivityTabProps {
   leadId: string;
+  activities: Activity[];
+  loading: boolean;
+  onChanged: () => void;
 }
 
-export function ActivityTab({ leadId }: ActivityTabProps) {
+// Scheduled/upcoming actions only - what needs to happen next for this lead.
+// Historical, already-completed interactions live in the separate Logs tab
+// instead, matching the reference's split rather than one merged feed.
+export function ActivityTab({ leadId, activities, loading, onChanged }: ActivityTabProps) {
   const hasPermission = useHasPermission();
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<NewActionFormValues>();
 
-  const load = () => {
-    setLoading(true);
-    activityApi
-      .listActivitiesForLead(leadId)
-      .then(setActivities)
-      .catch(() => message.error("Failed to load activities"))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(load, [leadId]);
+  const upcoming = activities
+    .filter((a) => a.status !== "completed")
+    .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+  const overdueCount = upcoming.filter((a) => a.dueDate && dayjs(a.dueDate).isBefore(dayjs())).length;
+  const next = upcoming[0];
 
   const handleCreate = async (values: NewActionFormValues) => {
     setSubmitting(true);
@@ -55,7 +48,7 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
       message.success("Action added");
       setModalOpen(false);
       form.resetFields();
-      load();
+      onChanged();
     } catch {
       message.error("Failed to add action");
     } finally {
@@ -66,16 +59,13 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
   const markDone = async (activity: Activity) => {
     try {
       await activityApi.updateActivity(activity.id, { status: "completed" });
-      load();
+      onChanged();
     } catch {
       message.error("Failed to update action");
     }
   };
 
-  const scheduled = activities
-    .filter((a) => a.status !== "completed")
-    .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
-  const overdueCount = scheduled.filter((a) => a.dueDate && dayjs(a.dueDate).isBefore(dayjs())).length;
+  if (loading) return <Spin />;
 
   return (
     <div>
@@ -85,7 +75,8 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
             Scheduled actions
           </Title>
           <Text type="secondary">
-            {scheduled.length} planned · {overdueCount} overdue
+            {upcoming.length} planned · {overdueCount} overdue
+            {next ? ` · next is ${TYPE_LABEL[next.type].toLowerCase()} ${formatDateTime(next.dueDate)}` : ""}
           </Text>
         </div>
         {hasPermission("activities.create") && (
@@ -95,13 +86,11 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
         )}
       </div>
 
-      {loading ? (
-        <Spin />
-      ) : scheduled.length === 0 ? (
-        <Empty description="Nothing scheduled" />
+      {upcoming.length === 0 ? (
+        <Text type="secondary">Nothing scheduled - add an action to plan the next follow-up</Text>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {scheduled.map((activity) => {
+          {upcoming.map((activity) => {
             const isOverdue = activity.dueDate ? dayjs(activity.dueDate).isBefore(dayjs()) : false;
             return (
               <div
@@ -114,16 +103,19 @@ export function ActivityTab({ leadId }: ActivityTabProps) {
                   border: isOverdue ? "1px solid #e34948" : "1px solid #f0f0f0",
                   borderRadius: 8,
                   flexWrap: "wrap",
-                  gap: 8,
+                  gap: 10,
                 }}
               >
-                <div>
-                  <Text strong>{activity.subject ?? TYPE_LABEL[activity.type]}</Text>
-                  <div>
-                    <Text type={isOverdue ? "danger" : "secondary"} style={{ fontSize: 12 }}>
-                      {TYPE_LABEL[activity.type]} · {formatDateTime(activity.dueDate)}
-                      {isOverdue ? " · Overdue" : ""}
-                    </Text>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                  <TypeBadge type={activity.type} />
+                  <div style={{ minWidth: 0 }}>
+                    <Text strong>{activity.subject ?? TYPE_LABEL[activity.type]}</Text>
+                    <div>
+                      <Text type={isOverdue ? "danger" : "secondary"} style={{ fontSize: 12 }}>
+                        {TYPE_LABEL[activity.type]} · {formatDateTime(activity.dueDate)}
+                        {isOverdue ? " · Overdue" : ""}
+                      </Text>
+                    </div>
                   </div>
                 </div>
                 {hasPermission("activities.update") && (

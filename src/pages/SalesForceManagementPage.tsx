@@ -33,6 +33,7 @@ import { ApprovalBandsCard } from "../components/ApprovalBandsCard";
 import { TerritoryTargetsCard } from "../components/TerritoryTargetsCard";
 import { TestAccessAsModal } from "../components/TestAccessAsModal";
 import { STATUS_COLORS, STATUS_OPTIONS, UserFormWizard } from "../components/UserFormWizard";
+import { appTokens, avatarGradient } from "../utils/design-system";
 
 const { Title, Text } = Typography;
 
@@ -44,13 +45,6 @@ function resolveCurrentIncentivePlan(userId: string, assignments: UserIncentiveP
 }
 
 const BELOW_TARGET_THRESHOLD = 80;
-const AVATAR_COLORS = ["#1677ff", "#722ed1", "#eb2f96", "#0ca30c", "#fa8c16", "#13c2c2", "#eda100", "#2f54eb"];
-
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 type TabKey =
   | "people"
@@ -230,10 +224,12 @@ export default function SalesForceManagementPage() {
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div>
-            <Title level={3} style={{ margin: 0 }}>
+            <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
               Sales force management
             </Title>
-            <Text type="secondary">Every employee with targets, incentives, designation ladder and access, in one place</Text>
+            <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
+              Every employee with targets, incentives, designation ladder and access, in one place
+            </Text>
           </div>
           <Space wrap>
             {hasPermission("users.view") && (
@@ -263,10 +259,10 @@ export default function SalesForceManagementPage() {
                   onClick={() => setActiveTab(tab.key)}
                   style={{
                     flexShrink: 0,
-                    background: active ? "#fff" : "transparent",
-                    borderColor: active ? "#1677ff" : "#d9d9d9",
-                    color: active ? "#1677ff" : "rgba(0,0,0,0.88)",
-                    fontWeight: active ? 600 : 400,
+                    background: active ? appTokens.primarySoft : "transparent",
+                    borderColor: active ? appTokens.primary : appTokens.border,
+                    color: active ? appTokens.primary : appTokens.textPrimary,
+                    fontWeight: active ? 700 : 500,
                   }}
                 >
                   {tab.label}
@@ -281,36 +277,66 @@ export default function SalesForceManagementPage() {
         <>
           {hasPermission("sales_teams.view") && <SalesTeamsCard onChange={setSalesTeams} />}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fafafa", borderRadius: 8, padding: "10px 14px" }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                People
-              </Text>
-              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3 }}>{users.length}</div>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                on the sales force
-              </Text>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            <div
+              style={{
+                flex: "1 1 160px",
+                minWidth: 160,
+                background: appTokens.surface,
+                border: `1px solid ${appTokens.border}`,
+                borderRadius: appTokens.radius,
+                padding: "12px 16px",
+                boxShadow: appTokens.shadowXs,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary }}>People</Text>
+              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: appTokens.textPrimary }}>{users.length}</div>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>on the sales force</Text>
             </div>
-            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fff7ec", borderRadius: 8, padding: "10px 14px" }}>
-              <Text style={{ fontSize: 11, color: "#ad6800" }}>Below target</Text>
-              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, color: "#d46b08" }}>{belowTargetUserIds.size}</div>
-              <Text style={{ fontSize: 11, color: "#ad6800" }}>under {BELOW_TARGET_THRESHOLD}%</Text>
+            <div
+              style={{
+                flex: "1 1 160px",
+                minWidth: 160,
+                background: "#fff8ec",
+                border: "1px solid #ffe4ae",
+                borderRadius: appTokens.radius,
+                padding: "12px 16px",
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.warning }}>Below target</Text>
+              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: "#b56a00" }}>{belowTargetUserIds.size}</div>
+              <Text style={{ fontSize: 11, color: appTokens.warning }}>under {BELOW_TARGET_THRESHOLD}%</Text>
             </div>
-            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fafafa", borderRadius: 8, padding: "10px 14px" }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                Incentive pool
-              </Text>
-              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3 }}>-</div>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                no payout engine yet
-              </Text>
+            <div
+              style={{
+                flex: "1 1 160px",
+                minWidth: 160,
+                background: appTokens.surface,
+                border: `1px solid ${appTokens.border}`,
+                borderRadius: appTokens.radius,
+                padding: "12px 16px",
+                boxShadow: appTokens.shadowXs,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary }}>Incentive pool</Text>
+              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: appTokens.textPrimary }}>-</div>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>no payout engine yet</Text>
             </div>
-            <div style={{ flex: "1 1 160px", minWidth: 160, background: "#f0fbf0", borderRadius: 8, padding: "10px 14px" }}>
-              <Text style={{ fontSize: 11, color: "#237804" }}>Avg attainment</Text>
-              <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, color: "#237804" }}>
+            <div
+              style={{
+                flex: "1 1 160px",
+                minWidth: 160,
+                background: "#f0faf2",
+                border: "1px solid #c8ecd0",
+                borderRadius: appTokens.radius,
+                padding: "12px 16px",
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.success }}>Avg attainment</Text>
+              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: "#0d7a3d" }}>
                 {avgAttainment === null ? "-" : `${avgAttainment}%`}
               </div>
-              <Text style={{ fontSize: 11, color: "#237804" }}>quota, current period</Text>
+              <Text style={{ fontSize: 11, color: appTokens.success }}>quota, current period</Text>
             </div>
           </div>
 
@@ -362,7 +388,7 @@ export default function SalesForceManagementPage() {
                   const subtitle = [user.designation ?? level?.name ?? user.role, office?.name, user.employeeCode].filter(Boolean).join(" - ");
                   return (
                     <div style={{ display: "flex", gap: 8, alignItems: "center", overflow: "hidden" }}>
-                      <Avatar size={28} style={{ backgroundColor: avatarColor(user.name), flexShrink: 0, fontSize: 12 }}>
+                      <Avatar size={28} style={{ background: avatarGradient(user.name), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
                         {initials(user.name)}
                       </Avatar>
                       <div style={{ minWidth: 0, overflow: "hidden" }}>

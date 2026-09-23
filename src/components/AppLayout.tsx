@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Layout, Menu, Button, Dropdown, Drawer, Grid, Input, Avatar } from "antd";
 import type { MenuProps } from "antd";
-import { LogoutOutlined, MenuOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { LogoutOutlined, MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { NAV_GROUPS } from "./nav-config";
 import { SoftphoneWidget } from "./SoftphoneWidget";
+import { appTokens, avatarGradient } from "../utils/design-system";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -29,15 +30,31 @@ function Logo({ collapsed }: { collapsed: boolean }) {
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: collapsed ? "center" : "flex-start",
+        gap: 10,
+        padding: collapsed ? 0 : "0 18px",
         color: "#fff",
-        fontWeight: 600,
         overflow: "hidden",
         whiteSpace: "nowrap",
-        borderBottom: "1px solid rgba(255,255,255,0.12)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      {collapsed ? "FF" : "FieldForce"}
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: `linear-gradient(135deg, ${appTokens.primary}, #3f6fef)`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(19,84,224,0.4)",
+        }}
+      >
+        <ThunderboltFilled style={{ color: "#fff", fontSize: 14 }} />
+      </div>
+      {!collapsed && <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.2 }}>FieldForce</span>}
     </div>
   );
 }
@@ -85,7 +102,7 @@ export function AppLayout() {
           closable={false}
           onClose={() => setMobileNavOpen(false)}
           open={mobileNavOpen}
-          styles={{ body: { padding: 0, background: "#001529", display: "flex", flexDirection: "column" } }}
+          styles={{ body: { padding: 0, background: appTokens.sidebarBg, display: "flex", flexDirection: "column" } }}
           size={240}
         >
           <Logo collapsed={false} />
@@ -110,13 +127,15 @@ export function AppLayout() {
       <Layout style={{ height: "100vh" }}>
         <Header
           style={{
-            background: "#fff",
-            padding: "0 16px",
+            background: appTokens.surface,
+            padding: "0 20px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            borderBottom: "1px solid #f0f0f0",
+            borderBottom: `1px solid ${appTokens.borderLight}`,
+            boxShadow: "0 1px 3px rgba(16,24,40,0.03)",
             flexShrink: 0,
+            zIndex: 1,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -130,14 +149,15 @@ export function AppLayout() {
                 nothing else to switch between. */}
             <div
               style={{
-                background: "#e6f4ff",
-                color: "#1677ff",
-                fontWeight: 600,
-                fontSize: 13,
+                background: appTokens.primarySoft,
+                color: appTokens.primary,
+                fontWeight: 700,
+                fontSize: 12.5,
                 lineHeight: "20px",
                 padding: "4px 14px",
-                borderRadius: 8,
-                border: "1px solid #91caff",
+                borderRadius: 999,
+                border: `1px solid ${appTokens.primarySoftBorder}`,
+                letterSpacing: 0.3,
               }}
             >
               CRM
@@ -147,21 +167,27 @@ export function AppLayout() {
           {!isMobile && (
             <Input
               disabled
-              prefix={<SearchOutlined />}
+              prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
               placeholder="Search leads, opportunities, contacts"
-              style={{ maxWidth: 360, margin: "0 24px" }}
+              style={{ maxWidth: 380, margin: "0 24px", background: appTokens.surfaceMuted }}
             />
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
             {!isMobile && <SoftphoneWidget />}
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                <Avatar size={32} icon={<UserOutlined />} />
+              <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }}>
+                <Avatar
+                  size={32}
+                  icon={!user?.name && <UserOutlined />}
+                  style={user?.name ? { background: avatarGradient(user.name), fontWeight: 600, fontSize: 13 } : undefined}
+                >
+                  {user?.name ? user.name.trim().charAt(0).toUpperCase() : undefined}
+                </Avatar>
                 {!isMobile && (
                   <div style={{ lineHeight: 1.3, textAlign: "left" }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{user?.name}</div>
-                    <div style={{ fontSize: 11, color: "#898781" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: appTokens.textPrimary }}>{user?.name}</div>
+                    <div style={{ fontSize: 11, color: appTokens.textTertiary }}>
                       {user?.designation ?? (user ? capitalize(user.role) : "")}
                     </div>
                   </div>

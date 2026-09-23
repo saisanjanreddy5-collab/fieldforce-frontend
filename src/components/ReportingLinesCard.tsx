@@ -10,6 +10,7 @@ import type { ScheduledTransfer, TransferType } from "../types/scheduled-transfe
 import type { Delegation } from "../types/delegation";
 import type { TeamMember } from "../types/user";
 import { useHasPermission } from "../hooks/use-permission";
+import { appTokens } from "../utils/design-system";
 
 const { Text } = Typography;
 
@@ -245,7 +246,17 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
           ) : (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
               {transfers.map((t) => (
-                <div key={t.id} style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                <div
+                  key={t.id}
+                  style={{
+                    border: `1px solid ${appTokens.border}`,
+                    borderRadius: appTokens.radius,
+                    padding: 10,
+                    marginBottom: 8,
+                    background: appTokens.surface,
+                    boxShadow: appTokens.shadowXs,
+                  }}
+                >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <Text strong style={{ fontSize: 13 }}>
                       {transferSummary(t)}
@@ -280,7 +291,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
             delegations.map((d) => (
               <div
                 key={d.id}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: "1px solid #f7f7f5" }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: `1px solid ${appTokens.borderLight}` }}
               >
                 <Text style={{ fontSize: 12 }}>
                   {nameOf(d.userId)} → {nameOf(d.delegateId)}

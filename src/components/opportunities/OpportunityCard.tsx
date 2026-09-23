@@ -3,6 +3,7 @@ import { CommentOutlined } from "@ant-design/icons";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency, formatDate, initials } from "../../utils/lead-format";
 import { useHasPermission } from "../../hooks/use-permission";
+import { appTokens, avatarGradient } from "../../utils/design-system";
 import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY } from "./stages";
 
 const { Text } = Typography;
@@ -29,16 +30,18 @@ export function OpportunityCard({ opportunity, onClick, onDragStart }: Opportuni
       }}
       onClick={onClick}
       style={{
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-        padding: 10,
-        background: "#fff",
+        border: `1px solid ${appTokens.border}`,
+        borderRadius: appTokens.radiusSm,
+        padding: 12,
+        background: appTokens.surface,
         cursor: canDrag ? "grab" : "pointer",
         marginBottom: 8,
+        boxShadow: appTokens.shadowXs,
+        transition: "box-shadow 0.12s, transform 0.12s",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
-        <Text strong style={{ fontSize: 13 }}>
+        <Text strong style={{ fontSize: 13, color: appTokens.textPrimary }}>
           {title}
         </Text>
         {opportunity.leadCategory && (
@@ -47,33 +50,25 @@ export function OpportunityCard({ opportunity, onClick, onDragStart }: Opportuni
           </Tag>
         )}
       </div>
-      {location && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {location}
-        </Text>
-      )}
-      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
-        <Text strong style={{ fontSize: 13 }}>
+      {location && <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{location}</Text>}
+      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+        <Text strong style={{ fontSize: 13.5, color: appTokens.textPrimary }}>
           {formatCompactCurrency(opportunity.value)}
         </Text>
         {probability !== null && (
-          <Progress percent={probability} size="small" showInfo={false} style={{ flex: 1, minWidth: 40 }} />
+          <Progress percent={probability} size="small" showInfo={false} strokeColor={appTokens.primary} style={{ flex: 1, minWidth: 40 }} />
         )}
-        {probability !== null && (
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            {probability}%
-          </Text>
-        )}
+        {probability !== null && <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{probability}%</Text>}
       </div>
-      <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Text type="secondary" style={{ fontSize: 11 }}>
+      <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>
           {opportunity.closeDate ? formatDate(opportunity.closeDate) : "No close date"}
         </Text>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <CommentOutlined style={{ fontSize: 11, color: "#c3c2b7" }} />
+          <CommentOutlined style={{ fontSize: 11, color: appTokens.textTertiary }} />
           {opportunity.ownerName && (
             <Tooltip title={opportunity.ownerName}>
-              <Avatar size={20} style={{ backgroundColor: "#1677ff", fontSize: 10 }}>
+              <Avatar size={20} style={{ background: avatarGradient(opportunity.ownerName), fontSize: 10, fontWeight: 600 }}>
                 {initials(opportunity.ownerName)}
               </Avatar>
             </Tooltip>

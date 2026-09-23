@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Card, Tag, Typography } from "antd";
 import type { TeamMember } from "../types/user";
 import type { Level } from "../types/level";
+import { appTokens } from "../utils/design-system";
 
 const { Text } = Typography;
 
@@ -69,7 +70,18 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
           { label: "Span warnings", value: String(stats.spanWarnings), subtitle: `over ${SPAN_WARNING_THRESHOLD} reports` },
           { label: "Dotted lines", value: String(stats.dottedLines), subtitle: "matrix links" },
         ].map((s) => (
-          <div key={s.label} style={{ flex: 1, minWidth: 130, border: "1px solid #f0f0f0", borderRadius: 8, padding: 10 }}>
+          <div
+            key={s.label}
+            style={{
+              flex: 1,
+              minWidth: 130,
+              border: `1px solid ${appTokens.border}`,
+              borderRadius: appTokens.radius,
+              padding: 12,
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+            }}
+          >
             <Text type="secondary" style={{ fontSize: 11 }}>
               {s.label}
             </Text>
@@ -96,11 +108,13 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
                 <div
                   key={person.id}
                   style={{
-                    border: `1px solid ${spanWarning ? "#e34948" : "#f0f0f0"}`,
-                    borderRadius: 8,
+                    border: `1px solid ${spanWarning ? appTokens.danger : appTokens.border}`,
+                    borderRadius: appTokens.radius,
                     padding: 10,
                     minWidth: 200,
                     flex: "1 1 200px",
+                    background: appTokens.surface,
+                    boxShadow: appTokens.shadowXs,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -131,15 +145,15 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
             {level.headcountLimit !== null && level.headcountLimit > level.currentHeadcount && (
               <div
                 style={{
-                  border: "1px dashed #d9d9d9",
-                  borderRadius: 8,
+                  border: `1px dashed ${appTokens.border}`,
+                  borderRadius: appTokens.radius,
                   padding: 10,
                   minWidth: 200,
                   flex: "1 1 200px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#c3c2b7",
+                  color: appTokens.textTertiary,
                 }}
               >
                 <Text type="secondary" style={{ fontSize: 12 }}>

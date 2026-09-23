@@ -1,115 +1,180 @@
-import { useState } from "react";
-import { Alert, Tag, Typography, Upload, message } from "antd";
-import { InboxOutlined } from "@ant-design/icons";
-import type { UploadProps } from "antd";
-import { useAuth } from "../../../context/AuthContext";
-import { formatDate } from "../../../utils/lead-format";
+import { useNavigate } from "react-router-dom";
+import { Button, Empty, Popconfirm, Space, Spin, Tag, Typography, Upload, message } from "antd";
+import { ArrowRightOutlined, DownloadOutlined, InboxOutlined } from "@ant-design/icons";
+import * as fofoOnboardingApi from "../../../api/fofo-onboarding-api";
+import type { FofoHandoff, LeadDocument } from "../../../types/fofo-onboarding";
+import type { Lead } from "../../../types/lead";
+import { useHasPermission } from "../../../hooks/use-permission";
+import { appTokens } from "../../../utils/design-system";
 
-const { Text } = Typography;
-const { Dragger } = Upload;
+const { Text, Title } = Typography;
 
-// Skeleton UI only - there's no file-storage backend yet, so files added
-// here live in local component state and are lost on refresh. Built to the
-// same shape (name/size/uploader/date/status) a real Documents API would
-// return, so swapping in real persistence later is a data-source change,
-// not a redesign.
-type VerificationStatus = "Verified" | "In review" | "Missing sign";
+const DOC_STATUS_COLORS: Record<string, string> = {
+  not_uploaded: "default",
+  in_review: "gold",
+  verified: "green",
+  missing: "red",
+};
+const DOC_STATUS_LABELS: Record<string, string> = {
+  not_uploaded: "Not uploaded",
+  in_review: "In review",
+  verified: "Verified",
+  missing: "Missing",
+};
 
-interface DocumentEntry {
-  id: string;
-  name: string;
-  sizeLabel: string;
-  uploadedBy: string;
-  uploadedAt: string;
-  status: VerificationStatus;
+interface DocumentsTabProps {
+  lead: Lead;
+  canView: boolean;
+  loading: boolean;
+  handoff: FofoHandoff | null;
+  onChanged: () => void;
 }
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-}
+// Real lead_documents data - the same 6 real document types the FOFO
+// onboarding page manages (pan_card, gst_certificate, shop_photos,
+// rent_agreement, cancelled_cheque, consent_form), not an invented gate
+// checklist. Upload/verify/remove reuse the exact same fofo-onboarding-api
+// calls and permissions as the standalone onboarding workflow.
+export function DocumentsTab({ lead, canView, loading, handoff, onChanged }: DocumentsTabProps) {
+  const hasPermission = useHasPermission();
+  const navigate = useNavigate();
+  const canManage = hasPermission("fofo_onboarding.manage");
+  const canUpload = hasPermission("fofo_onboarding.upload_document");
 
-function statusColor(status: VerificationStatus): string {
-  if (status === "Verified") return "success";
-  if (status === "In review") return "processing";
-  return "error";
-}
+  if (lead.category !== "FOFO") {
+    return <Empty description="Documents apply to FOFO franchise leads only" style={{ padding: 40 }} />;
+  }
+  if (!canView) {
+    return <Empty description="You don't have permission to view this lead's documents" style={{ padding: 40 }} />;
+  }
+  if (loading || !handoff) {
+    return (
+      <div style={{ textAlign: "center", padding: 40 }}>
+        <Spin />
+      </div>
+    );
+  }
 
-export function DocumentsTab() {
-  const { user } = useAuth();
-  const [documents, setDocuments] = useState<DocumentEntry[]>([]);
+  const { documents } = handoff;
 
-  const uploadProps: UploadProps = {
-    multiple: true,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      setDocuments((prev) => [
-        {
-          id: `${file.uid}`,
-          name: file.name,
-          sizeLabel: formatSize(file.size),
-          uploadedBy: user?.name ?? "You",
-          uploadedAt: new Date().toISOString(),
-          status: "In review",
-        },
-        ...prev,
-      ]);
-      message.success(`${file.name} added (not persisted - no storage backend yet)`);
-      return false;
-    },
+  const handleUpload = async (docType: string, file: File) => {
+    try {
+      await fofoOnboardingApi.uploadDocument(lead.id, docType, file);
+      message.success("Document uploaded");
+      onChanged();
+    } catch {
+      message.error("Failed to upload document");
+    }
   };
+
+  const handleDownload = async (doc: LeadDocument) => {
+    try {
+      await fofoOnboardingApi.downloadDocument(doc.id, doc.originalFilename ?? doc.label);
+    } catch {
+      message.error("Failed to download document");
+    }
+  };
+
+  const handleVerify = async (doc: LeadDocument) => {
+    try {
+      await fofoOnboardingApi.updateDocumentStatus(doc.id, "verified");
+      onChanged();
+    } catch {
+      message.error("Failed to update document status");
+    }
+  };
+
+  const handleDelete = async (doc: LeadDocument) => {
+    try {
+      await fofoOnboardingApi.deleteDocument(doc.id);
+      onChanged();
+    } catch {
+      message.error("Failed to remove document");
+    }
+  };
+
+  const uploadedCount = documents.filter((d) => d.hasFile).length;
 
   return (
     <div>
-      <Alert
-        type="warning"
-        showIcon
-        style={{ marginBottom: 16 }}
-        title="This is a UI preview - files are not actually stored yet"
-        description="No file-storage backend is connected. Files you add here only exist in this browser tab and disappear on refresh."
-      />
-
-      <Dragger {...uploadProps} style={{ marginBottom: 16 }}>
-        <p className="ant-upload-drag-icon">
-          <InboxOutlined />
-        </p>
-        <p>Drop files or images here, or click to browse</p>
-        <p style={{ fontSize: 12, color: "#898781" }}>
-          PAN, GST, Aadhaar, shop photos, rent agreement — linked to the lead and carried to the customer record
-        </p>
-      </Dragger>
-
-      {documents.length === 0 ? (
-        <Text type="secondary">No documents added yet</Text>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "10px 12px",
-                border: "1px solid #f0f0f0",
-                borderRadius: 8,
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
-              <div>
-                <Text strong>{doc.name}</Text>
-                <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {doc.sizeLabel} · uploaded by {doc.uploadedBy} · {formatDate(doc.uploadedAt)}
-                  </Text>
-                </div>
-              </div>
-              <Tag color={statusColor(doc.status)}>{doc.status}</Tag>
-            </div>
-          ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <Title level={5} style={{ margin: 0 }}>
+            Documents
+          </Title>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {uploadedCount} of {documents.length} uploaded
+          </Text>
         </div>
-      )}
+        <Button size="small" icon={<ArrowRightOutlined />} iconPlacement="end" onClick={() => navigate(`/fofo-onboarding/${lead.id}`)}>
+          Open full onboarding workflow
+        </Button>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {documents.map((doc) => (
+          <div
+            key={doc.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "12px 14px",
+              border: `1px solid ${appTokens.border}`,
+              borderRadius: appTokens.radius,
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <div>
+              <Text strong style={{ fontSize: 13, display: "block" }}>
+                {doc.label}
+              </Text>
+              {doc.hasFile && (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  {doc.originalFilename}
+                </Text>
+              )}
+            </div>
+            <Space size={6}>
+              <Tag color={DOC_STATUS_COLORS[doc.status]} style={{ margin: 0 }}>
+                {DOC_STATUS_LABELS[doc.status]}
+              </Tag>
+              {doc.hasFile && <Button size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(doc)} />}
+              {canManage && doc.hasFile && doc.status !== "verified" && (
+                <Button size="small" onClick={() => handleVerify(doc)}>
+                  Verify
+                </Button>
+              )}
+              {canManage && doc.hasFile && (
+                <Popconfirm title="Remove this document?" onConfirm={() => handleDelete(doc)}>
+                  <Button size="small" danger>
+                    Remove
+                  </Button>
+                </Popconfirm>
+              )}
+              {canUpload && (
+                <Upload
+                  showUploadList={false}
+                  customRequest={(options) => {
+                    const file = options.file as File;
+                    handleUpload(doc.docType, file).then(
+                      () => options.onSuccess?.({}),
+                      (err) => options.onError?.(err as Error)
+                    );
+                  }}
+                >
+                  <Button size="small" icon={<InboxOutlined />}>
+                    {doc.hasFile ? "Replace" : "Upload"}
+                  </Button>
+                </Upload>
+              )}
+            </Space>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

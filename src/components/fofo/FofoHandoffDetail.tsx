@@ -26,15 +26,9 @@ import type { LeadConsent } from "../../types/lead";
 import { useAuth } from "../../context/AuthContext";
 import { useHasPermission } from "../../hooks/use-permission";
 import { formatDate, initials } from "../../utils/lead-format";
+import { appTokens, avatarGradient } from "../../utils/design-system";
 
 const { Text, Title } = Typography;
-
-const AVATAR_COLORS = ["#1677ff", "#722ed1", "#eb2f96", "#0ca30c", "#fa8c16", "#13c2c2", "#eda100", "#2f54eb"];
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 const STEP_LABELS = ["Applicant", "Store information", "Documents & KYC", "Commercials", "Approval & push"];
 
@@ -142,10 +136,12 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>
+          <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             FOFO onboarding handoff
           </Title>
-          <Text type="secondary">CRM collects and validates, then pushes the store to the onboarding app. Status flows back here.</Text>
+          <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
+            CRM collects and validates, then pushes the store to the onboarding app. Status flows back here.
+          </Text>
         </div>
         {canManage && (
           <Button type="primary" loading={pushing} onClick={handlePush}>
@@ -156,10 +152,19 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
 
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 560px", minWidth: 320 }}>
-          <div style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div
+            style={{
+              border: `1px solid ${appTokens.border}`,
+              borderRadius: appTokens.radius,
+              padding: 18,
+              marginBottom: 16,
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div style={{ display: "flex", gap: 10 }}>
-                <Avatar size={40} style={{ backgroundColor: avatarColor(lead.storeName || lead.fullName) }}>
+                <Avatar size={40} style={{ background: avatarGradient(lead.storeName || lead.fullName), fontWeight: 600 }}>
                   {initials(lead.storeName || lead.fullName)}
                 </Avatar>
                 <div>
@@ -198,7 +203,16 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
         </div>
 
         <div style={{ flex: "0 1 320px", minWidth: 280 }}>
-          <div style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div
+            style={{
+              border: `1px solid ${appTokens.border}`,
+              borderRadius: appTokens.radius,
+              padding: 18,
+              marginBottom: 16,
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+            }}
+          >
             <Text strong style={{ display: "block", marginBottom: 12 }}>
               Approval chain
             </Text>
@@ -211,7 +225,7 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
               <div key={step.id} style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <Avatar size={28} style={{ backgroundColor: avatarColor(step.approverName ?? "?"), fontSize: 12 }}>
+                    <Avatar size={28} style={{ background: avatarGradient(step.approverName ?? "?"), fontSize: 12, fontWeight: 600 }}>
                       {step.approverName ? initials(step.approverName) : "?"}
                     </Avatar>
                     <div>
@@ -284,7 +298,15 @@ function HandoffPayloadCard({ lead, documents, consent }: { lead: FofoHandoff["l
   const commercialFilled = commercialFields.filter((v) => v !== null && v !== undefined && v !== "").length;
 
   return (
-    <div style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 16 }}>
+    <div
+      style={{
+        border: `1px solid ${appTokens.border}`,
+        borderRadius: appTokens.radius,
+        padding: 18,
+        background: appTokens.surface,
+        boxShadow: appTokens.shadowXs,
+      }}
+    >
       <Text strong style={{ display: "block", marginBottom: 8 }}>
         Handoff payload
       </Text>

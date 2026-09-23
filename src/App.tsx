@@ -11,10 +11,11 @@ import ComingSoonPage from "./pages/ComingSoonPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { ALL_NAV_LEAVES } from "./components/nav-config";
+import { appTheme } from "./utils/design-system";
 
 function App() {
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: "#1677ff" } }}>
+    <ConfigProvider theme={appTheme}>
       <AntApp>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

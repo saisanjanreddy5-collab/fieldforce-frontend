@@ -5,15 +5,9 @@ import * as fofoApi from "../api/fofo-onboarding-api";
 import type { FofoOnboardingListItem } from "../types/fofo-onboarding";
 import { FofoHandoffDetail } from "../components/fofo/FofoHandoffDetail";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
+import { appTokens, avatarGradient } from "../utils/design-system";
 
 const { Title, Text } = Typography;
-
-const AVATAR_COLORS = ["#1677ff", "#722ed1", "#eb2f96", "#0ca30c", "#fa8c16", "#13c2c2", "#eda100", "#2f54eb"];
-function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 export default function FofoOnboardingPage() {
   const { leadId } = useParams<{ leadId?: string }>();
@@ -61,39 +55,53 @@ function FofoOnboardingList() {
 
   return (
     <div>
-      <Title level={3} style={{ margin: 0 }}>
+      <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
         FOFO onboarding
       </Title>
-      <Text type="secondary">Franchise store applications walked from applicant to onboarding-app push</Text>
+      <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Franchise store applications walked from applicant to onboarding-app push</Text>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "16px 0" }}>
-        <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fafafa", borderRadius: 8, padding: "10px 14px" }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            Handoffs
-          </Text>
-          <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3 }}>{items.length}</div>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            FOFO leads in your scope
-          </Text>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "18px 0" }}>
+        <div
+          style={{
+            flex: "1 1 160px",
+            minWidth: 160,
+            background: appTokens.surface,
+            border: `1px solid ${appTokens.border}`,
+            borderRadius: appTokens.radius,
+            padding: "12px 16px",
+            boxShadow: appTokens.shadowXs,
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary }}>Handoffs</Text>
+          <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: appTokens.textPrimary }}>{items.length}</div>
+          <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>FOFO leads in your scope</Text>
         </div>
-        <div style={{ flex: "1 1 160px", minWidth: 160, background: "#f0fbf0", borderRadius: 8, padding: "10px 14px" }}>
-          <Text style={{ fontSize: 11, color: "#237804" }}>Pushed</Text>
-          <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, color: "#237804" }}>{pushedCount}</div>
-          <Text style={{ fontSize: 11, color: "#237804" }}>reached the onboarding app</Text>
+        <div style={{ flex: "1 1 160px", minWidth: 160, background: "#f0faf2", border: "1px solid #c8ecd0", borderRadius: appTokens.radius, padding: "12px 16px" }}>
+          <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.success }}>Pushed</Text>
+          <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: "#0d7a3d" }}>{pushedCount}</div>
+          <Text style={{ fontSize: 11, color: appTokens.success }}>reached the onboarding app</Text>
         </div>
-        <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fff7ec", borderRadius: 8, padding: "10px 14px" }}>
-          <Text style={{ fontSize: 11, color: "#ad6800" }}>Not pushed</Text>
-          <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3, color: "#d46b08" }}>{notPushedCount}</div>
-          <Text style={{ fontSize: 11, color: "#ad6800" }}>still in the handoff</Text>
+        <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fff8ec", border: "1px solid #ffe4ae", borderRadius: appTokens.radius, padding: "12px 16px" }}>
+          <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.warning }}>Not pushed</Text>
+          <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: "#b56a00" }}>{notPushedCount}</div>
+          <Text style={{ fontSize: 11, color: appTokens.warning }}>still in the handoff</Text>
         </div>
-        <div style={{ flex: "1 1 160px", minWidth: 160, background: "#fafafa", borderRadius: 8, padding: "10px 14px" }}>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            Expected value
-          </Text>
-          <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.3 }}>{formatCompactCurrency(totalExpectedValue || null)}</div>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            across all handoffs
-          </Text>
+        <div
+          style={{
+            flex: "1 1 160px",
+            minWidth: 160,
+            background: appTokens.surface,
+            border: `1px solid ${appTokens.border}`,
+            borderRadius: appTokens.radius,
+            padding: "12px 16px",
+            boxShadow: appTokens.shadowXs,
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary }}>Expected value</Text>
+          <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: appTokens.textPrimary }}>
+            {formatCompactCurrency(totalExpectedValue || null)}
+          </div>
+          <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>across all handoffs</Text>
         </div>
       </div>
 
@@ -134,7 +142,7 @@ function FofoOnboardingList() {
             width: 220,
             render: (_, r) => (
               <div style={{ display: "flex", gap: 8, alignItems: "center", overflow: "hidden" }}>
-                <Avatar size={28} style={{ backgroundColor: avatarColor(r.storeName || r.fullName), flexShrink: 0, fontSize: 12 }}>
+                <Avatar size={28} style={{ background: avatarGradient(r.storeName || r.fullName), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
                   {initials(r.storeName || r.fullName)}
                 </Avatar>
                 <div style={{ minWidth: 0, overflow: "hidden" }}>

@@ -1,6 +1,8 @@
 import { Card, Empty, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import type { Activity, ActivityType } from "../types/activity";
+import { TypeBadge } from "../utils/activity-shared";
+import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
 
@@ -24,8 +26,8 @@ export function MyDayList({ activities, loading }: MyDayListProps) {
     .sort((a, b) => dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf());
 
   return (
-    <Card loading={loading}>
-      <Title level={5} style={{ marginTop: 0 }}>
+    <Card loading={loading} style={{ boxShadow: appTokens.shadowXs }}>
+      <Title level={5} style={{ marginTop: 0, color: appTokens.textPrimary }}>
         My day
       </Title>
       {dueItems.length === 0 ? (
@@ -40,19 +42,22 @@ export function MyDayList({ activities, loading }: MyDayListProps) {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
+                  alignItems: "center",
                   gap: 8,
                   flexWrap: "wrap",
                   paddingBottom: 12,
-                  borderBottom: "1px solid #f0f0f0",
+                  borderBottom: `1px solid ${appTokens.borderLight}`,
                 }}
               >
-                <div>
-                  <Text strong>{item.subject ?? TYPE_LABEL[item.type]}</Text>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <TypeBadge type={item.type} />
                   <div>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {TYPE_LABEL[item.type]}
+                    <Text strong style={{ color: appTokens.textPrimary }}>
+                      {item.subject ?? TYPE_LABEL[item.type]}
                     </Text>
+                    <div>
+                      <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{TYPE_LABEL[item.type]}</Text>
+                    </div>
                   </div>
                 </div>
                 <Tag color={isOverdue ? "error" : "processing"}>
