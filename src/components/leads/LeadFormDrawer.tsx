@@ -270,7 +270,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Select allowClear options={["Hot", "Warm", "Cold"].map((value) => ({ value, label: value }))} />
                   </Form.Item>
                   <Form.Item name="category" label="Category" rules={[{ required: true, message: "Required" }]}>
-                    <Select options={["FOFO", "Stockist", "B2B", "COCO", "Lifestyle"].map((value) => ({ value, label: value }))} />
+                    <Select
+                      options={["FOFO", "Stockist", "B2B", "COCO", "Lifestyle", "Institutes", "PCD", "Ethical"].map((value) => ({
+                        value,
+                        label: value,
+                      }))}
+                    />
                   </Form.Item>
                   <Form.Item name="leadScore" label="Lead Score (%)">
                     <InputNumber min={0} max={100} style={{ width: "100%" }} />
