@@ -1,14 +1,28 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
-import type { CreateLeadPayload, Lead, LeadConsent, LeadListFilters } from "../types/lead";
+import type { CreateLeadPayload, Lead, LeadConsent, LeadListFilters, LeadListResult } from "../types/lead";
 
-export async function listLeads(filters: LeadListFilters): Promise<Lead[]> {
-  const response = await apiClient.get<ApiSuccess<Lead[]>>("/leads", { params: filters });
+export async function listLeads(filters: LeadListFilters): Promise<LeadListResult> {
+  const response = await apiClient.get<ApiSuccess<LeadListResult>>("/leads", { params: filters });
   return response.data.data;
 }
 
 export async function listTerritories(): Promise<string[]> {
   const response = await apiClient.get<ApiSuccess<string[]>>("/leads/territories");
+  return response.data.data;
+}
+
+export interface LeadQuickFilterCounts {
+  all: number;
+  myLeads: number;
+  unassigned: number;
+  overdue: number;
+  fofo: number;
+  highScore: number;
+}
+
+export async function getQuickFilterCounts(): Promise<LeadQuickFilterCounts> {
+  const response = await apiClient.get<ApiSuccess<LeadQuickFilterCounts>>("/leads/quick-filter-counts");
   return response.data.data;
 }
 

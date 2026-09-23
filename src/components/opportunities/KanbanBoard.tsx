@@ -3,6 +3,7 @@ import { Button, Typography } from "antd";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency } from "../../utils/lead-format";
 import { useHasPermission } from "../../hooks/use-permission";
+import { appTokens } from "../../utils/design-system";
 import { OpportunityCard } from "./OpportunityCard";
 import { STAGES } from "./stages";
 
@@ -41,24 +42,35 @@ export function KanbanBoard({ opportunities, loading, onCardClick, onAddToStage,
               onMoveStage(e.dataTransfer.getData("text/plain"), column.key);
             }}
             style={{
-              width: 260,
+              width: 268,
               flexShrink: 0,
-              background: isDragTarget ? "#e6f4ff" : "#fafafa",
-              borderRadius: 8,
-              padding: 8,
-              border: isDragTarget ? "1px dashed #1677ff" : "1px solid transparent",
+              background: isDragTarget ? appTokens.primarySoft : appTokens.surfaceMuted,
+              borderRadius: appTokens.radius,
+              padding: 10,
+              border: isDragTarget ? `1px dashed ${appTokens.primary}` : "1px solid transparent",
+              transition: "background 0.12s, border-color 0.12s",
             }}
           >
-            <div style={{ padding: "4px 4px 8px" }}>
+            <div style={{ padding: "4px 6px 10px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <Text strong style={{ fontSize: 13 }}>
+                <Text strong style={{ fontSize: 13, color: appTokens.textPrimary }}>
                   {column.label}
                 </Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: appTokens.textSecondary,
+                    background: appTokens.surface,
+                    borderRadius: 999,
+                    padding: "1px 7px",
+                    border: `1px solid ${appTokens.border}`,
+                  }}
+                >
                   {column.items.length}
-                </Text>
+                </span>
               </div>
-              <Text type="secondary" style={{ fontSize: 11 }}>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>
                 {formatCompactCurrency(columnValue)} · {column.subtitle}
               </Text>
             </div>

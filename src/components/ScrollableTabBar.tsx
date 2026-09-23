@@ -1,9 +1,14 @@
 import { useDraggableScroll } from "../hooks/use-draggable-scroll";
+import { appTokens } from "../utils/design-system";
 import { ScrollTrack } from "./ScrollTrack";
 
 export interface ScrollableTabItem {
   key: string;
   label: string;
+  /** Shown as a small muted badge next to the label - e.g. "Preview" for
+   * tabs backed by mock data, so a user scanning the tab row knows before
+   * clicking that a section isn't live functionality. */
+  badge?: string;
 }
 
 interface ScrollableTabBarProps {
@@ -25,7 +30,7 @@ export function ScrollableTabBar({ items, activeKey, onChange }: ScrollableTabBa
       <div
         ref={scroll.scrollRef}
         className="scrollbar-hidden"
-        style={{ display: "flex", gap: 24, overflowX: "auto", borderBottom: "1px solid #f0f0f0" }}
+        style={{ display: "flex", gap: 26, overflowX: "auto", borderBottom: `1px solid ${appTokens.border}` }}
       >
         {items.map((item) => {
           const selected = item.key === activeKey;
@@ -35,18 +40,36 @@ export function ScrollableTabBar({ items, activeKey, onChange }: ScrollableTabBa
               onClick={() => onChange(item.key)}
               style={{
                 flexShrink: 0,
-                padding: "10px 2px",
-                fontSize: 14,
-                fontWeight: selected ? 500 : 400,
+                padding: "11px 2px",
+                fontSize: 13.5,
+                fontFamily: appTokens.font,
+                fontWeight: selected ? 600 : 500,
                 border: "none",
-                borderBottom: selected ? "2px solid #1677ff" : "2px solid transparent",
+                borderBottom: selected ? `2px solid ${appTokens.primary}` : "2px solid transparent",
                 background: "transparent",
-                color: selected ? "#1677ff" : "rgba(0,0,0,0.65)",
+                color: selected ? appTokens.primary : appTokens.textSecondary,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
+                transition: "color 0.12s, border-color 0.12s",
               }}
             >
               {item.label}
+              {item.badge && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 10,
+                    fontWeight: 400,
+                    color: "#ad6800",
+                    background: "#fff7ec",
+                    border: "1px solid #ffe7ba",
+                    borderRadius: 999,
+                    padding: "0 6px",
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
             </button>
           );
         })}

@@ -6,6 +6,7 @@ import * as salesTeamApi from "../api/sales-team-api";
 import type { Office } from "../types/office";
 import type { State, Zone } from "../types/sales-team";
 import { useHasPermission } from "../hooks/use-permission";
+import { appTokens } from "../utils/design-system";
 import { OfficeDrawer } from "./OfficeDrawer";
 
 const { Text, Title } = Typography;
@@ -140,10 +141,19 @@ export function OfficesCard({ zones, onChange }: OfficesCardProps) {
             const state = states.find((s) => s.id === office.stateId);
             const addressPreview = [office.address, office.addressLine2, office.city].filter(Boolean).join(", ");
             return (
-              <div key={office.id} style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 12 }}>
+              <div
+                key={office.id}
+                style={{
+                  border: `1px solid ${appTokens.border}`,
+                  borderRadius: appTokens.radius,
+                  padding: 14,
+                  background: appTokens.surface,
+                  boxShadow: appTokens.shadowXs,
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-start", minWidth: 0 }}>
-                    <ShopOutlined style={{ fontSize: 18, color: "#1677ff", marginTop: 2 }} />
+                    <ShopOutlined style={{ fontSize: 18, color: appTokens.primary, marginTop: 2 }} />
                     <div style={{ minWidth: 0 }}>
                       <Text strong style={{ display: "block" }}>
                         {office.name}
@@ -208,20 +218,20 @@ export function OfficesCard({ zones, onChange }: OfficesCardProps) {
               role="button"
               onClick={openCreate}
               style={{
-                border: "1px dashed #d9d9d9",
-                borderRadius: 8,
+                border: `1px dashed ${appTokens.border}`,
+                borderRadius: appTokens.radius,
                 padding: 12,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                color: "#1677ff",
+                color: appTokens.primary,
                 minHeight: 120,
               }}
             >
               <PlusOutlined style={{ fontSize: 18 }} />
-              <Title level={5} style={{ margin: "4px 0 0", color: "#1677ff" }}>
+              <Title level={5} style={{ margin: "4px 0 0", color: appTokens.primary }}>
                 Create an office
               </Title>
               <Text type="secondary" style={{ fontSize: 12, textAlign: "center" }}>

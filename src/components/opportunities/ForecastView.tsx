@@ -2,6 +2,7 @@ import { Card, Progress, Typography } from "antd";
 import dayjs from "dayjs";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency } from "../../utils/lead-format";
+import { appTokens } from "../../utils/design-system";
 import { STAGES, STAGE_DEFAULT_PROBABILITY } from "./stages";
 
 const { Title, Text } = Typography;
@@ -49,7 +50,11 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
 
   return (
     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <Card title="Weighted forecast by stage" style={{ flex: 2, minWidth: 320 }} styles={{ body: { paddingTop: 8 } }}>
+      <Card
+        title="Weighted forecast by stage"
+        style={{ flex: 2, minWidth: 320, boxShadow: appTokens.shadowXs }}
+        styles={{ body: { paddingTop: 8 } }}
+      >
         <Text type="secondary" style={{ fontSize: 12 }}>
           Stage probability × open value
         </Text>
@@ -69,7 +74,7 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
         </div>
       </Card>
 
-      <Card title="Commit vs best case" style={{ flex: 1, minWidth: 260 }}>
+      <Card title="Commit vs best case" style={{ flex: 1, minWidth: 260, boxShadow: appTokens.shadowXs }}>
         <div style={{ marginBottom: 16 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>
             Commit
@@ -79,7 +84,7 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
               Agreement stage and above
             </Text>
           </div>
-          <Title level={4} style={{ margin: 0, color: "#0ca30c" }}>
+          <Title level={4} style={{ margin: 0, color: appTokens.success }}>
             {formatCompactCurrency(commit)}
           </Title>
         </div>
@@ -98,7 +103,7 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
         </div>
       </Card>
 
-      <Card title="Close month" style={{ flex: 1, minWidth: 260 }}>
+      <Card title="Close month" style={{ flex: 1, minWidth: 260, boxShadow: appTokens.shadowXs }}>
         {months.length === 0 ? (
           <Text type="secondary">No opportunities have an expected close date yet</Text>
         ) : (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Col, Row, Typography, message } from "antd";
+import { AimOutlined, RiseOutlined, TeamOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useAuth } from "../context/AuthContext";
 import * as dashboardApi from "../api/dashboard-api";
 import type { OverviewStats, PipelineStageStat } from "../types/dashboard";
@@ -8,8 +9,9 @@ import { StatCard } from "../components/StatCard";
 import { PipelineByStageChart } from "../components/PipelineByStageChart";
 import { MyDayList } from "../components/MyDayList";
 import { formatCompactNumber, formatCurrency, formatPercent } from "../utils/format";
+import { appTokens } from "../utils/design-system";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 function timeOfDayGreeting(): string {
   const hour = new Date().getHours();
@@ -43,25 +45,46 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Title level={3} style={{ marginTop: 0 }}>
+      <Title level={3} style={{ marginTop: 0, marginBottom: 2, letterSpacing: -0.3, color: appTokens.textPrimary }}>
         Good {timeOfDayGreeting()}, {user?.name}
       </Title>
+      <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Here's what's happening across your pipeline today</Text>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Open leads" value={overview ? formatCompactNumber(overview.totalLeads) : "-"} loading={loading} />
+          <StatCard
+            label="Open leads"
+            value={overview ? formatCompactNumber(overview.totalLeads) : "-"}
+            loading={loading}
+            icon={<AimOutlined />}
+            iconColor={appTokens.primary}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Pipeline value" value={overview ? formatCurrency(overview.pipelineValue) : "-"} loading={loading} />
+          <StatCard
+            label="Pipeline value"
+            value={overview ? formatCurrency(overview.pipelineValue) : "-"}
+            loading={loading}
+            icon={<RiseOutlined />}
+            iconColor={appTokens.purple}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Conversion (30d)" value={overview ? formatPercent(overview.conversionRate30d) : "-"} loading={loading} />
+          <StatCard
+            label="Conversion (30d)"
+            value={overview ? formatPercent(overview.conversionRate30d) : "-"}
+            loading={loading}
+            icon={<TrophyOutlined />}
+            iconColor={appTokens.success}
+          />
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <StatCard
             label="Active team members"
             value={overview ? formatCompactNumber(overview.activeTeamMembersCount) : "-"}
             loading={loading}
+            icon={<TeamOutlined />}
+            iconColor={appTokens.warning}
           />
         </Col>
       </Row>

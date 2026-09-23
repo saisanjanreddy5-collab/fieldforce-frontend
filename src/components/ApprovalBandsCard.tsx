@@ -6,6 +6,7 @@ import type { ApprovalBand, ApprovalRequestType } from "../types/approval-band";
 import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
 import { formatCompactCurrency } from "../utils/lead-format";
+import { appTokens } from "../utils/design-system";
 import { ApprovalBandDrawer } from "./ApprovalBandDrawer";
 
 const { Text } = Typography;
@@ -110,7 +111,16 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
         {REQUEST_TYPE_OPTIONS.map((opt) => {
           const rows = byType.get(opt.value) ?? [];
           return (
-            <div key={opt.value} style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 10 }}>
+            <div
+              key={opt.value}
+              style={{
+                border: `1px solid ${appTokens.border}`,
+                borderRadius: appTokens.radius,
+                padding: 12,
+                background: appTokens.surface,
+                boxShadow: appTokens.shadowXs,
+              }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <Text strong style={{ fontSize: 13 }}>
                   {opt.label}
@@ -135,7 +145,7 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
                       justifyContent: "space-between",
                       alignItems: "flex-start",
                       padding: "6px 0",
-                      borderTop: "1px solid #f7f7f5",
+                      borderTop: `1px solid ${appTokens.borderLight}`,
                     }}
                   >
                     <div>

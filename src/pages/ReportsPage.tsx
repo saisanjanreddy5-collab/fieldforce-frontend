@@ -26,6 +26,7 @@ import type {
 import { useHasPermission } from "../hooks/use-permission";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { exportToXlsx } from "../utils/export-xlsx";
+import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
 
@@ -225,10 +226,10 @@ export default function ReportsPage() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>
+          <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Reports
           </Title>
-          <Text type="secondary">Group, drill down and save as a shared view for the team.</Text>
+          <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Group, drill down and save as a shared view for the team.</Text>
         </div>
         <Space>
           {canSaveView && <Button onClick={() => setSavedViewOpen(true)}>Save view</Button>}
@@ -249,10 +250,10 @@ export default function ReportsPage() {
               onClick={() => setTab(t.key)}
               style={{
                 flexShrink: 0,
-                background: active ? "#fff" : "transparent",
-                borderColor: active ? "#1677ff" : "#d9d9d9",
-                color: active ? "#1677ff" : "rgba(0,0,0,0.88)",
-                fontWeight: active ? 600 : 400,
+                background: active ? appTokens.primarySoft : "transparent",
+                borderColor: active ? appTokens.primary : appTokens.border,
+                color: active ? appTokens.primary : appTokens.textPrimary,
+                fontWeight: active ? 700 : 500,
               }}
             >
               {t.label}
@@ -261,7 +262,15 @@ export default function ReportsPage() {
         })}
       </div>
 
-      <div style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 16 }}>
+      <div
+        style={{
+          border: `1px solid ${appTokens.border}`,
+          borderRadius: appTokens.radius,
+          padding: 18,
+          background: appTokens.surface,
+          boxShadow: appTokens.shadowXs,
+        }}
+      >
         {tab === "salesperson" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>

@@ -11,6 +11,7 @@ import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
 import { MODULE_LABELS, modulesOf, verbOf } from "../utils/permission-format";
 import { RECORD_SCOPE_OPTIONS, ladderIndex, seesLabel } from "../utils/level-format";
+import { appTokens } from "../utils/design-system";
 
 const { Text } = Typography;
 
@@ -77,9 +78,9 @@ function Cell({ state, onClick }: { state: CellState; onClick?: () => void }) {
   if (state === "na") return <MinusOutlined style={{ color: "#d9d9d9" }} />;
   const icon =
     state === "granted" || state === "extra-grant" ? (
-      <CheckOutlined style={{ color: state === "extra-grant" ? "#722ed1" : "#0ca30c" }} />
+      <CheckOutlined style={{ color: state === "extra-grant" ? appTokens.purple : appTokens.success }} />
     ) : state === "revoked" ? (
-      <CloseOutlined style={{ color: "#e34948" }} />
+      <CloseOutlined style={{ color: appTokens.danger }} />
     ) : (
       <MinusOutlined style={{ color: "#bfbfbf" }} />
     );
@@ -162,7 +163,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
     return ladder.length === 0 ? null : Math.min(...ladder);
   }, [levels]);
 
-  const TIER_COLORS: Record<string, string> = { admin: "#722ed1", manager: "#1677ff", agent: "#0ca30c" };
+  const TIER_COLORS: Record<string, string> = { admin: appTokens.purple, manager: appTokens.primary, agent: appTokens.success };
 
   const toggleRolePermission = async (permission: string, currentlyGranted: boolean) => {
     if (!selectedLevel) return;
@@ -264,7 +265,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
   ];
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, boxShadow: appTokens.shadowXs }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Text strong>Permissions</Text>
@@ -353,7 +354,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                     borderRadius: 6,
                     cursor: "pointer",
                     marginBottom: 4,
-                    background: selectedLevelId === l.id ? "#e6f4ff" : "transparent",
+                    background: selectedLevelId === l.id ? appTokens.primarySoft : "transparent",
                   }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: selectedLevelId === l.id ? 600 : 400, display: "block" }}>{l.name}</Text>
@@ -376,7 +377,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                       borderRadius: 6,
                       cursor: "pointer",
                       marginBottom: 2,
-                      background: selectedUserId === u.id ? "#e6f4ff" : "transparent",
+                      background: selectedUserId === u.id ? appTokens.primarySoft : "transparent",
                     }}
                   >
                     <Text strong style={{ fontSize: 13, display: "block" }}>
@@ -437,7 +438,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                         padding: "4px 8px",
                         borderRadius: 6,
                         cursor: canManageRoles ? "pointer" : "default",
-                        background: selectedLevel.recordScope === opt.value ? "#e6f4ff" : "transparent",
+                        background: selectedLevel.recordScope === opt.value ? appTokens.primarySoft : "transparent",
                       }}
                     >
                       <input type="radio" readOnly checked={selectedLevel.recordScope === opt.value} />
@@ -532,9 +533,9 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
 
               <div style={{ marginTop: 8 }}>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                  <CheckOutlined style={{ color: "#0ca30c" }} /> From role &nbsp; <MinusOutlined /> Not allowed &nbsp;
-                  <PlusOutlined style={{ color: "#722ed1" }} /> Extra grant &nbsp;
-                  <CloseOutlined style={{ color: "#e34948" }} /> Revoked
+                  <CheckOutlined style={{ color: appTokens.success }} /> From role &nbsp; <MinusOutlined /> Not allowed &nbsp;
+                  <PlusOutlined style={{ color: appTokens.purple }} /> Extra grant &nbsp;
+                  <CloseOutlined style={{ color: appTokens.danger }} /> Revoked
                 </Text>
               </div>
 
@@ -559,7 +560,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                               gap: 8,
                               padding: "4px 8px",
                               borderRadius: 6,
-                              background: level?.recordScope === opt.value ? "#e6f4ff" : "transparent",
+                              background: level?.recordScope === opt.value ? appTokens.primarySoft : "transparent",
                             }}
                           >
                             <input type="radio" disabled readOnly checked={level?.recordScope === opt.value} />
@@ -631,7 +632,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                         alignItems: "center",
                         justifyContent: "center",
                         background: o.grantType === "grant" ? "#f0e6fa" : "#fde3e2",
-                        color: o.grantType === "grant" ? "#722ed1" : "#e34948",
+                        color: o.grantType === "grant" ? appTokens.purple : appTokens.danger,
                       }}
                     >
                       {o.grantType === "grant" ? <PlusOutlined style={{ fontSize: 11 }} /> : <CloseOutlined style={{ fontSize: 11 }} />}

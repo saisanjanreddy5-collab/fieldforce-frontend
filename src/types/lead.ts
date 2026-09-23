@@ -95,8 +95,18 @@ export interface LeadListFilters {
   status?: string;
   ownerId?: string;
   search?: string;
+  category?: string;
+  overdueOnly?: boolean;
+  highScoreOnly?: boolean;
+  consentPending?: boolean;
+  unassignedOnly?: boolean;
   page?: number;
   limit?: number;
+}
+
+export interface LeadListResult {
+  leads: Lead[];
+  total: number;
 }
 
 export interface CreateLeadPayload {

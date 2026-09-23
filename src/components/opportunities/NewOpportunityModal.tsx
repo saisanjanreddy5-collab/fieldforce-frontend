@@ -32,7 +32,7 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
     if (!open) return;
     leadApi
       .listLeads({ limit: 100 })
-      .then(setLeads)
+      .then((result) => setLeads(result.leads))
       .catch(() => message.error("Failed to load leads"));
     form.setFieldsValue({ leadId: defaultLeadId });
   }, [open, defaultLeadId, form, message]);
