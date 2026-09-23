@@ -39,4 +39,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   B2B: "geekblue",
   COCO: "green",
   Lifestyle: "gold",
+  Institutes: "cyan",
+  PCD: "volcano",
+  Ethical: "magenta",
 };

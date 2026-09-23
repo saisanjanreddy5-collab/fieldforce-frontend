@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { App, Avatar, Button, DatePicker, Form, Input, Modal, Progress, Select, Tag, Tooltip, Typography } from "antd";
 import { CloudUploadOutlined, EditOutlined, MailOutlined, PhoneOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
@@ -54,6 +55,7 @@ function errorMessageFrom(err: unknown, fallback: string): string {
 
 export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   const hasPermission = useHasPermission();
   const { connected: microsoftConnected } = useMicrosoftConnection();
   const [activeTabKey, setActiveTabKey] = useState("overview");
@@ -178,11 +180,12 @@ export function LeadDetail({ lead, onEdit }: LeadDetailProps) {
             Edit lead
           </Button>
         )}
-        <Tooltip title="Onboarding workflow preview - not wired to a real pipeline yet">
+        <Tooltip title={lead.category !== "FOFO" ? "Onboarding handoff is only for FOFO-category leads" : ""}>
           <Button
             type="primary"
             icon={<CloudUploadOutlined />}
-            onClick={() => message.info("Onboarding isn't wired up yet - this opens the Approvals tab preview")}
+            disabled={lead.category !== "FOFO" || !hasPermission("fofo_onboarding.view")}
+            onClick={() => navigate(`/fofo-onboarding/${lead.id}`)}
           >
             Onboard
           </Button>

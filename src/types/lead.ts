@@ -1,5 +1,6 @@
 export interface Lead {
   id: string;
+  leadNumber: number | null;
   fullName: string;
   contactName: string | null;
   profession: string | null;
@@ -55,6 +56,20 @@ export interface Lead {
   panNumber: string | null;
   drugLicenceNumber: string | null;
   fssaiNumber: string | null;
+  entityType: string | null;
+  aadhaarNumber: string | null;
+  nearestCocoStore: string | null;
+  signageStatus: string | null;
+  securityDeposit: number | null;
+  openingStock: number | null;
+  marginSlab: string | null;
+  creditLimitRequested: number | null;
+  creditCategory: string | null;
+  paymentTerms: string | null;
+  targetGoLive: string | null;
+  pushStatus: string;
+  onboardingAppId: string | null;
+  pushedAt: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -134,6 +149,17 @@ export interface CreateLeadPayload {
   panNumber?: string;
   drugLicenceNumber?: string;
   fssaiNumber?: string;
+  entityType?: string;
+  aadhaarNumber?: string;
+  nearestCocoStore?: string;
+  signageStatus?: string;
+  securityDeposit?: number;
+  openingStock?: number;
+  marginSlab?: string;
+  creditLimitRequested?: number;
+  creditCategory?: string;
+  paymentTerms?: string;
+  targetGoLive?: string;
   consent?: {
     captured?: boolean;
     method?: string;

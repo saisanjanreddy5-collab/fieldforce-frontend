@@ -39,7 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: "/", label: "Dashboard", icon: <DashboardOutlined />, built: true },
       { path: "/leads", label: "Leads", icon: <AimOutlined />, built: true },
       { path: "/opportunities", label: "Opportunities", icon: <TableOutlined />, built: true },
-      { path: "/fofo-onboarding", label: "FOFO onboarding", icon: <ExportOutlined /> },
+      { path: "/fofo-onboarding", label: "FOFO onboarding", icon: <ExportOutlined />, built: true },
     ],
   },
   {
@@ -67,7 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
     groupLabel: "Govern",
     items: [
       { path: "/approvals", label: "Approvals", icon: <CheckCircleOutlined /> },
-      { path: "/reports", label: "Reports", icon: <FileTextOutlined /> },
+      { path: "/reports", label: "Reports", icon: <FileTextOutlined />, built: true },
       { path: "/audit-consent", label: "Audit & consent", icon: <SafetyCertificateOutlined /> },
       { path: "/settings", label: "Settings", icon: <SettingOutlined /> },
       { path: "/dev-handoff", label: "Dev handoff", icon: <CodeOutlined /> },
