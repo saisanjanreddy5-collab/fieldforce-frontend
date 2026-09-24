@@ -17,7 +17,7 @@ export function useMicrosoftConnection() {
   useEffect(refresh, [refresh]);
 
   const connect = useCallback(async () => {
-    const authUrl = await microsoftApi.getConnectUrl();
+    const authUrl = await microsoftApi.getConnectUrl(window.location.pathname);
     window.location.href = authUrl;
   }, []);
 

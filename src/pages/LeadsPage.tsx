@@ -183,7 +183,21 @@ export default function LeadsPage() {
   const showOwner = user?.role !== "agent";
 
   return (
-    <div ref={containerRef} style={{ fontFamily: appTokens.font }}>
+    <div
+      ref={containerRef}
+      style={{
+        fontFamily: appTokens.font,
+        // Fills the page content area's real height instead of guessing at
+        // it with a vh value - the split-view card below sizes itself off
+        // this with flex:1 rather than a fixed 75vh, which is what caused
+        // two scrollbars: 75vh plus the header/toolbar above it often added
+        // up to more than the actual viewport, so the outer page scrolled
+        // *and* the detail pane scrolled internally. Left unset on mobile,
+        // which is a normal single-column page that's meant to scroll as a
+        // whole, not a fixed-height split view.
+        ...(isMobile ? {} : { height: "100%", display: "flex", flexDirection: "column" }),
+      }}
+    >
       {!showDetailOnMobile && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
           <div>
@@ -293,7 +307,8 @@ export default function LeadsPage() {
             borderRadius: appTokens.radius,
             background: appTokens.surface,
             boxShadow: appTokens.shadowXs,
-            height: "75vh",
+            flex: 1,
+            minHeight: 0,
             overflow: "hidden",
           }}
         >

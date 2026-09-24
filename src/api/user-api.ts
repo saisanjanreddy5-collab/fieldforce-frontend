@@ -16,3 +16,11 @@ export async function updateUser(id: string, payload: UpdateUserPayload): Promis
   const response = await apiClient.patch<ApiSuccess<TeamMember>>(`/users/${id}`, payload);
   return response.data.data;
 }
+
+export interface UpdateOwnProfilePayload {
+  smartfloAgentNumber: string;
+}
+
+export async function updateOwnProfile(payload: UpdateOwnProfilePayload): Promise<void> {
+  await apiClient.patch<ApiSuccess<TeamMember>>("/users/me", payload);
+}

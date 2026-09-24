@@ -14,6 +14,7 @@ import * as activityApi from "../../api/activity-api";
 import * as fofoOnboardingApi from "../../api/fofo-onboarding-api";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import { useHasPermission } from "../../hooks/use-permission";
+import { useAuth } from "../../context/AuthContext";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { LeadSnapshot } from "./LeadSnapshot";
 import { OverviewTab } from "./tabs/OverviewTab";
@@ -61,6 +62,7 @@ export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
+  const { user } = useAuth();
   const { connected: microsoftConnected } = useMicrosoftConnection();
   const [activeTabKey, setActiveTabKey] = useState("overview");
   const [emailOpen, setEmailOpen] = useState(false);
@@ -168,9 +170,13 @@ export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
   };
 
   const handleCall = () => {
+    if (!user?.smartfloAgentNumber) {
+      message.error("Set your calling number from your profile (top right) first");
+      return;
+    }
     Modal.confirm({
       title: `Call ${lead.fullName}?`,
-      content: `This will ring your own registered phone first, then connect you to ${lead.phone}.`,
+      content: `Calling from ${user.smartfloAgentNumber} to ${lead.phone}. Your phone rings first - answer it to connect.`,
       okText: "Call now",
       onOk: async () => {
         setCalling(true);

@@ -20,7 +20,6 @@ import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { resolveCurrentTarget } from "../utils/target-format";
 import dayjs from "dayjs";
 import { useHasPermission } from "../hooks/use-permission";
-import { MicrosoftConnectionCard } from "../components/MicrosoftConnectionCard";
 import { SalesTeamsCard } from "../components/SalesTeamsCard";
 import { OfficesCard } from "../components/OfficesCard";
 import { LevelsCard } from "../components/LevelsCard";
@@ -104,9 +103,26 @@ export default function SalesForceManagementPage() {
       .catch(() => undefined);
   };
 
-  useEffect(load, []);
-  useEffect(loadTargets, []);
-  useEffect(loadIncentiveAssignments, []);
+  // Each fetch here is gated behind the same permission that already
+  // decides whether its corresponding tab/card even renders (People ->
+  // users.view, Territory & targets -> targets.view, Incentive plans ->
+  // incentive_plans.view). Firing them unconditionally for someone like a
+  // plain Agent - who has none of these permissions, since this page has
+  // no route-level guard and is reachable from the sidebar by anyone -
+  // meant every visit threw 403s and an unexplained "Failed to load team
+  // members" toast for content that was never going to be shown anyway.
+  useEffect(() => {
+    if (hasPermission("users.view")) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (hasPermission("targets.view")) loadTargets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (hasPermission("incentive_plans.view")) loadIncentiveAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     salesTeamApi.listZones().then(setZones).catch(() => undefined);
   }, []);
@@ -244,8 +260,6 @@ export default function SalesForceManagementPage() {
             )}
           </Space>
         </div>
-
-        <MicrosoftConnectionCard />
 
         {visibleTabs.length > 0 && (
           <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
