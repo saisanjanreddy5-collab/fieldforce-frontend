@@ -41,7 +41,7 @@ export const PRIMARY_ACTION_LABEL: Record<PrimaryActionKind, string> = {
 export const PRIMARY_ACTION_REASON: Record<PrimaryActionKind, string> = {
   onboard: "This FOFO lead is ready to start onboarding",
   addActivity: "There's an open opportunity - keep it moving with a follow-up",
-  call: "No activity logged yet - a call is the fastest way to qualify this lead",
+  call: "No activity logged yet - call to qualify this lead",
   editLead: "Add missing details to unlock the next step",
   none: "",
 };

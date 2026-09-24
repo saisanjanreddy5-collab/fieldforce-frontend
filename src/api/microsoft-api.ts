@@ -7,8 +7,13 @@ export async function getStatus(): Promise<MicrosoftConnectionStatus> {
   return response.data.data;
 }
 
-export async function getConnectUrl(): Promise<string> {
-  const response = await apiClient.get<ApiSuccess<{ authUrl: string }>>("/integrations/microsoft/connect");
+// returnTo is the page to land back on once Microsoft's OAuth round-trip
+// completes - without it, the backend has no way to know which module the
+// person was in when they clicked Connect.
+export async function getConnectUrl(returnTo: string): Promise<string> {
+  const response = await apiClient.get<ApiSuccess<{ authUrl: string }>>("/integrations/microsoft/connect", {
+    params: { returnTo },
+  });
   return response.data.data.authUrl;
 }
 

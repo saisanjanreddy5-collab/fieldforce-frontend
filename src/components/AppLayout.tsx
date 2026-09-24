@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Layout, Menu, Button, Dropdown, Drawer, Grid, Input, Avatar } from "antd";
+import { useEffect, useState } from "react";
+import { Layout, Menu, Button, Drawer, Grid, Input, Avatar, message } from "antd";
 import type { MenuProps } from "antd";
-import { LogoutOutlined, MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
+import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { NAV_GROUPS } from "./nav-config";
 import { SoftphoneWidget } from "./SoftphoneWidget";
+import { ProfileDrawer } from "./ProfileDrawer";
 import { appTokens, avatarGradient } from "../utils/design-system";
 
 const { Header, Sider, Content } = Layout;
@@ -66,15 +67,30 @@ function capitalize(value: string): string {
 export function AppLayout() {
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const userMenuItems: MenuProps["items"] = [
-    { key: "logout", icon: <LogoutOutlined />, label: "Log out", onClick: logout },
-  ];
+  // The Microsoft OAuth round-trip lands back here (the app root) regardless
+  // of which page Connect was opened from, since AppLayout is mounted for
+  // every authenticated route - so this is the one place that can reliably
+  // catch the outcome and react to it, whatever page the user started on.
+  useEffect(() => {
+    const outcome = searchParams.get("microsoft");
+    if (outcome === "connected") {
+      message.success("Microsoft 365 connected");
+      setProfileOpen(true);
+      setSearchParams({}, { replace: true });
+    } else if (outcome === "error") {
+      message.error(searchParams.get("reason") ?? "Failed to connect Microsoft 365");
+      setProfileOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const renderNavMenu = (inlineCollapsed: boolean) => (
     <Menu
@@ -175,31 +191,33 @@ export function AppLayout() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
             {!isMobile && <SoftphoneWidget />}
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }}>
-                <Avatar
-                  size={32}
-                  icon={!user?.name && <UserOutlined />}
-                  style={user?.name ? { background: avatarGradient(user.name), fontWeight: 600, fontSize: 13 } : undefined}
-                >
-                  {user?.name ? user.name.trim().charAt(0).toUpperCase() : undefined}
-                </Avatar>
-                {!isMobile && (
-                  <div style={{ lineHeight: 1.3, textAlign: "left" }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: appTokens.textPrimary }}>{user?.name}</div>
-                    <div style={{ fontSize: 11, color: appTokens.textTertiary }}>
-                      {user?.designation ?? (user ? capitalize(user.role) : "")}
-                    </div>
+            <div
+              onClick={() => setProfileOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }}
+            >
+              <Avatar
+                size={32}
+                icon={!user?.name && <UserOutlined />}
+                style={user?.name ? { background: avatarGradient(user.name), fontWeight: 600, fontSize: 13 } : undefined}
+              >
+                {user?.name ? user.name.trim().charAt(0).toUpperCase() : undefined}
+              </Avatar>
+              {!isMobile && (
+                <div style={{ lineHeight: 1.3, textAlign: "left" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: appTokens.textPrimary }}>{user?.name}</div>
+                  <div style={{ fontSize: 11, color: appTokens.textTertiary }}>
+                    {user?.designation ?? (user ? capitalize(user.role) : "")}
                   </div>
-                )}
-              </div>
-            </Dropdown>
+                </div>
+              )}
+            </div>
           </div>
         </Header>
         <Content style={{ margin: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
           <Outlet />
         </Content>
       </Layout>
+      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
     </Layout>
   );
 }

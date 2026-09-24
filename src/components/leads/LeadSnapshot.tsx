@@ -74,7 +74,7 @@ export function LeadSnapshot({
   secondaryButtons.push(
     <Tooltip
       key="email"
-      title={!microsoftConnected ? "Connect your Microsoft 365 account under Sales force management first" : !lead.email ? "This lead has no email address on file" : ""}
+      title={!microsoftConnected ? "Connect your Microsoft 365 account from your profile (top right) first" : !lead.email ? "This lead has no email address on file" : ""}
     >
       <Button icon={<MailOutlined />} disabled={!microsoftConnected || !lead.email} onClick={onEmail}>
         Email
@@ -84,7 +84,7 @@ export function LeadSnapshot({
   secondaryButtons.push(
     <Tooltip
       key="teams"
-      title={!microsoftConnected ? "Connect your Microsoft 365 account under Sales force management first" : !lead.email ? "This lead has no email address on file" : ""}
+      title={!microsoftConnected ? "Connect your Microsoft 365 account from your profile (top right) first" : !lead.email ? "This lead has no email address on file" : ""}
     >
       <Button icon={<TeamOutlined />} disabled={!microsoftConnected || !lead.email} onClick={onTeamsMeeting}>
         Teams
@@ -177,35 +177,52 @@ export function LeadSnapshot({
             justifyContent: "space-between",
             gap: 16,
             marginTop: 18,
-            padding: "14px 18px",
+            padding: "12px 16px",
             borderRadius: appTokens.radiusLg,
             background: `linear-gradient(135deg, ${appTokens.primary} 0%, #3f6fef 100%)`,
             boxShadow: "0 8px 20px rgba(19,84,224,0.22)",
-            flexWrap: "wrap",
+            // Never wrap to a second row, however long the reasoning text
+            // gets - a dropped button beneath the text is what made this
+            // banner balloon in height. The reasoning line truncates with
+            // an ellipsis instead, so the banner always stays one compact
+            // row regardless of container width or text length.
+            flexWrap: "nowrap",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
             <div
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
+                width: 34,
+                height: 34,
+                borderRadius: 9,
                 background: "rgba(255,255,255,0.18)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "#fff",
-                fontSize: 17,
+                fontSize: 15,
                 flexShrink: 0,
               }}
             >
               {PRIMARY_ICON[primaryAction]}
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <Text style={{ fontSize: 10.5, fontWeight: 700, display: "block", color: "rgba(255,255,255,0.75)", letterSpacing: 0.6 }}>
                 RECOMMENDED NEXT STEP
               </Text>
-              <Text strong style={{ fontSize: 14, color: "#fff", display: "block", lineHeight: 1.3 }}>
+              <Text
+                strong
+                style={{
+                  fontSize: 14,
+                  color: "#fff",
+                  display: "block",
+                  lineHeight: 1.3,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={PRIMARY_ACTION_REASON[primaryAction]}
+              >
                 {PRIMARY_ACTION_REASON[primaryAction]}
               </Text>
             </div>
