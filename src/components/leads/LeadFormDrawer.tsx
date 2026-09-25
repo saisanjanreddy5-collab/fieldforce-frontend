@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import * as leadApi from "../../api/lead-api";
 import type { CreateLeadPayload, Lead } from "../../types/lead";
 import { LEAD_CATEGORY_VALUES, LEAD_STATUS_VALUES } from "../../utils/lead-constants";
+import { errorMessageFrom } from "../../utils/api-error";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
 import { ConsentTab } from "./tabs/ConsentTab";
 
@@ -249,8 +250,8 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         message.success(isEdit ? "Lead updated" : "Lead created");
         onSaved(saved, false);
       }
-    } catch {
-      message.error("Failed to save lead");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to save lead"));
     } finally {
       setSubmitting(null);
     }
