@@ -20,6 +20,7 @@ import { LeadSnapshot } from "./LeadSnapshot";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
+import { WhatsAppTab } from "./tabs/WhatsAppTab";
 import { LogsTab } from "./tabs/LogsTab";
 import { ConsentTab } from "./tabs/ConsentTab";
 import { ApprovalsTab } from "./tabs/ApprovalsTab";
@@ -37,6 +38,7 @@ const DETAIL_TABS = [
   { key: "overview", label: "Overview" },
   { key: "opportunities", label: "Opportunities" },
   { key: "activity", label: "Activity" },
+  { key: "whatsapp", label: "WhatsApp" },
   { key: "logs", label: "Logs" },
   { key: "consent", label: "Consent" },
   { key: "approvals", label: "Approvals" },
@@ -223,6 +225,7 @@ export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
           )}
+          {activeTabKey === "whatsapp" && <WhatsAppTab leadId={lead.id} />}
           {activeTabKey === "logs" && <LogsTab activities={activities} loading={activitiesLoading} />}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
           {activeTabKey === "approvals" && (
