@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { App, DatePicker, Form, Input, Modal, Select, Typography, message as staticMessage } from "antd";
-import { isAxiosError } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import type { Lead } from "../../types/lead";
 import type { Opportunity } from "../../types/opportunity";
@@ -15,6 +14,7 @@ import * as fofoOnboardingApi from "../../api/fofo-onboarding-api";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import { useHasPermission } from "../../hooks/use-permission";
 import { useAuth } from "../../context/AuthContext";
+import { errorMessageFrom } from "../../utils/api-error";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { LeadSnapshot } from "./LeadSnapshot";
 import { OverviewTab } from "./tabs/OverviewTab";
@@ -52,10 +52,6 @@ interface MeetingFormValues {
   subject: string;
   startTime: Dayjs;
   durationMinutes: number;
-}
-
-function errorMessageFrom(err: unknown, fallback: string): string {
-  return isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : fallback;
 }
 
 export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
