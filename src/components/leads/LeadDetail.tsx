@@ -213,6 +213,7 @@ export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
         onEdit={onEdit}
         onOnboard={() => navigate(`/fofo-onboarding/${lead.id}`)}
         onAddActivity={() => setActiveTabKey("activity")}
+        onWhatsApp={() => setActiveTabKey("whatsapp")}
       />
 
       <div style={{ marginTop: 16 }}>

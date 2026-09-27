@@ -35,6 +35,7 @@ interface LeadSnapshotProps {
   onEdit: () => void;
   onOnboard: () => void;
   onAddActivity: () => void;
+  onWhatsApp: () => void;
 }
 
 // The top-of-detail identity/value/status/owner strip, plus a *computed*
@@ -54,6 +55,7 @@ export function LeadSnapshot({
   onEdit,
   onOnboard,
   onAddActivity,
+  onWhatsApp,
 }: LeadSnapshotProps) {
   const primaryAction = getLeadPrimaryAction(availability);
   const contactLine = [lead.contactName, lead.phone, lead.email].filter(Boolean).join(" · ");
@@ -92,8 +94,8 @@ export function LeadSnapshot({
     </Tooltip>
   );
   secondaryButtons.push(
-    <Tooltip key="whatsapp" title="WhatsApp is not connected yet">
-      <Button icon={<WhatsAppOutlined />} disabled>
+    <Tooltip key="whatsapp" title={!lead.phone ? "This lead has no phone number on file" : ""}>
+      <Button icon={<WhatsAppOutlined />} disabled={!lead.phone} onClick={onWhatsApp}>
         WhatsApp
       </Button>
     </Tooltip>
