@@ -2,6 +2,7 @@ import { Avatar, Tag, Typography } from "antd";
 import type { Lead } from "../../types/lead";
 import { formatCompactCurrency, initials, scoreColor } from "../../utils/lead-format";
 import { avatarGradient, appTokens } from "../../utils/design-system";
+import { LEAD_STATUS_COLORS } from "../../utils/lead-constants";
 
 const { Text } = Typography;
 
@@ -102,9 +103,9 @@ export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
               fontWeight: 600,
               lineHeight: "16px",
               padding: "0 6px",
-              background: isOverdue ? "#fdecea" : appTokens.surfaceMuted,
-              color: isOverdue ? appTokens.danger : appTokens.textSecondary,
-              border: `1px solid ${isOverdue ? "#f7cfcc" : appTokens.borderLight}`,
+              background: isOverdue ? "#fdecea" : `${LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary}17`,
+              color: isOverdue ? appTokens.danger : LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary,
+              border: isOverdue ? "1px solid #f7cfcc" : "none",
             }}
           >
             {lead.status}

@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import * as incentivePlanApi from "../api/incentive-plan-api";
 import type { IncentivePlan } from "../types/incentive-plan";
 import { useHasPermission } from "../hooks/use-permission";
+import { appTokens } from "../utils/design-system";
 import { IncentivePlanDrawer } from "./IncentivePlanDrawer";
 
 const { Text } = Typography;
@@ -60,7 +61,7 @@ export function IncentivePlansCard() {
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div>
           <Text strong>Incentive plans</Text>

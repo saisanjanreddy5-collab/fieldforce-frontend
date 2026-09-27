@@ -51,6 +51,15 @@ const DOC_STATUS_COLORS: Record<string, string> = {
   verified: "green",
   missing: "red",
 };
+// Hex equivalents of the Tag colors above, for the document row's left
+// accent stripe - Tag's own preset color names aren't usable as a plain
+// CSS background value.
+const DOC_STATUS_ACCENT: Record<string, string> = {
+  not_uploaded: appTokens.textTertiary,
+  in_review: appTokens.warning,
+  verified: appTokens.success,
+  missing: appTokens.danger,
+};
 const DOC_STATUS_LABELS: Record<string, string> = {
   not_uploaded: "Not uploaded",
   in_review: "In review",
@@ -154,7 +163,7 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
         <div style={{ flex: "1 1 560px", minWidth: 320 }}>
           <div
             style={{
-              border: `1px solid ${appTokens.border}`,
+              border: `1px solid ${appTokens.borderLight}`,
               borderRadius: appTokens.radius,
               padding: 18,
               marginBottom: 16,
@@ -205,7 +214,7 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
         <div style={{ flex: "0 1 320px", minWidth: 280 }}>
           <div
             style={{
-              border: `1px solid ${appTokens.border}`,
+              border: `1px solid ${appTokens.borderLight}`,
               borderRadius: appTokens.radius,
               padding: 18,
               marginBottom: 16,
@@ -300,7 +309,7 @@ function HandoffPayloadCard({ lead, documents, consent }: { lead: FofoHandoff["l
   return (
     <div
       style={{
-        border: `1px solid ${appTokens.border}`,
+        border: `1px solid ${appTokens.borderLight}`,
         borderRadius: appTokens.radius,
         padding: 18,
         background: appTokens.surface,
@@ -556,7 +565,7 @@ function DocumentsStep({
   };
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {documents.map((doc) => (
         <div
           key={doc.id}
@@ -564,8 +573,10 @@ function DocumentsStep({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "10px 0",
-            borderBottom: "1px solid #f5f5f5",
+            padding: "10px 14px",
+            background: appTokens.surfaceMuted,
+            borderRadius: appTokens.radiusSm,
+            borderLeft: `3px solid ${DOC_STATUS_ACCENT[doc.status] ?? appTokens.textTertiary}`,
           }}
         >
           <div>

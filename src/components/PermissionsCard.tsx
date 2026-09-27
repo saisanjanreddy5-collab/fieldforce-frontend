@@ -265,7 +265,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
   ];
 
   return (
-    <Card size="small" style={{ marginBottom: 16, boxShadow: appTokens.shadowXs }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Text strong>Permissions</Text>
@@ -621,7 +621,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                 </Text>
               ) : (
                 overrides.map((o) => (
-                  <div key={o.id} style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: "1px solid #f0f0f0" }}>
+                  <div key={o.id} style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: `1px solid ${appTokens.borderLight}` }}>
                     <div
                       style={{
                         width: 22,

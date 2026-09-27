@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, DatePicker, Empty, Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { CheckOutlined, LogoutOutlined, PlusOutlined, SwapOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import * as userApi from "../api/user-api";
@@ -175,7 +175,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }}>
       <Text strong>Reporting lines</Text>
       <div>
         <Text type="secondary" style={{ fontSize: 12 }}>
@@ -245,30 +245,57 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
             <Empty description="No transfers yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
           ) : (
             <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              {transfers.map((t) => (
-                <div
-                  key={t.id}
-                  style={{
-                    border: `1px solid ${appTokens.border}`,
-                    borderRadius: appTokens.radius,
-                    padding: 10,
-                    marginBottom: 8,
-                    background: appTokens.surface,
-                    boxShadow: appTokens.shadowXs,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <Text strong style={{ fontSize: 13 }}>
-                      {transferSummary(t)}
-                    </Text>
-                    <Tag color={t.status === "completed" ? "green" : "blue"}>{dayjs(t.effectiveDate).format("DD MMM YYYY")}</Tag>
+              {transfers.map((t) => {
+                const completed = t.status === "completed";
+                const badgeColor = completed ? appTokens.success : t.transferType === "exit" ? appTokens.warning : appTokens.primary;
+                const BadgeIcon = completed ? CheckOutlined : t.transferType === "exit" ? LogoutOutlined : SwapOutlined;
+                return (
+                  <div
+                    key={t.id}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      border: `1px solid ${appTokens.border}`,
+                      borderRadius: appTokens.radius,
+                      padding: 10,
+                      marginBottom: 8,
+                      background: appTokens.surface,
+                      boxShadow: appTokens.shadowSm,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: `${badgeColor}17`,
+                        color: badgeColor,
+                        fontSize: 11,
+                      }}
+                    >
+                      <BadgeIcon />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <Text strong style={{ fontSize: 13 }}>
+                          {transferSummary(t)}
+                        </Text>
+                        <Tag style={{ color: badgeColor, background: `${badgeColor}14`, border: "none", flexShrink: 0 }}>
+                          {dayjs(t.effectiveDate).format("DD MMM YYYY")}
+                        </Tag>
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {completed ? "Completed. " : ""}
+                        {transferNote(t)}
+                      </Text>
+                    </div>
                   </div>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {t.status === "completed" ? "Completed. " : ""}
-                    {transferNote(t)}
-                  </Text>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -288,27 +315,35 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
           {loadingDelegations ? null : delegations.length === 0 ? (
             <Empty description="No delegations set" image={Empty.PRESENTED_IMAGE_SIMPLE} />
           ) : (
-            delegations.map((d) => (
-              <div
-                key={d.id}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: `1px solid ${appTokens.borderLight}` }}
-              >
-                <Text style={{ fontSize: 12 }}>
-                  {nameOf(d.userId)} → {nameOf(d.delegateId)}
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {" "}
-                    ({d.startDate} to {d.endDate})
+            delegations.map((d) => {
+              const today = dayjs().format("YYYY-MM-DD");
+              const status = today < d.startDate ? "Scheduled" : today > d.endDate ? "Ended" : "Active";
+              const statusColor = status === "Active" ? appTokens.success : status === "Scheduled" ? appTokens.primary : appTokens.textTertiary;
+              return (
+                <div
+                  key={d.id}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: `1px solid ${appTokens.borderLight}` }}
+                >
+                  <Text style={{ fontSize: 12 }}>
+                    {nameOf(d.userId)} → {nameOf(d.delegateId)}
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {" "}
+                      ({d.startDate} to {d.endDate})
+                    </Text>
                   </Text>
-                </Text>
-                {canCreateDelegation && (
-                  <Popconfirm title="Remove this delegation?" onConfirm={() => handleDeleteDelegation(d.id)}>
-                    <Button type="link" size="small" danger>
-                      Remove
-                    </Button>
-                  </Popconfirm>
-                )}
-              </div>
-            ))
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Tag style={{ color: statusColor, background: `${statusColor}14`, border: "none" }}>{status}</Tag>
+                    {canCreateDelegation && (
+                      <Popconfirm title="Remove this delegation?" onConfirm={() => handleDeleteDelegation(d.id)}>
+                        <Button type="link" size="small" danger>
+                          Remove
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

@@ -13,6 +13,7 @@ import { initials, scoreColor } from "../../utils/lead-format";
 import { formatCompactCurrency } from "../../utils/lead-format";
 import { getLeadPrimaryAction, PRIMARY_ACTION_LABEL, PRIMARY_ACTION_REASON, type LeadActionAvailability } from "../../utils/lead-primary-action";
 import { avatarGradient, appTokens } from "../../utils/design-system";
+import { LEAD_STATUS_COLORS } from "../../utils/lead-constants";
 
 const { Title, Text } = Typography;
 
@@ -156,9 +157,9 @@ export function LeadSnapshot({
             fontSize: 12.5,
             fontWeight: 600,
             padding: "4px 10px",
-            background: appTokens.surfaceMuted,
-            color: appTokens.textSecondary,
-            border: `1px solid ${appTokens.borderLight}`,
+            background: `${LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary}17`,
+            color: LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary,
+            border: "none",
           }}
         >
           {lead.status}

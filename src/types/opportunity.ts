@@ -24,6 +24,7 @@ export interface Opportunity {
   leadSalesTeamId?: string | null;
   ownerId?: string | null;
   ownerName?: string | null;
+  activityCount?: number;
 }
 
 export interface ListOpportunitiesFilters {

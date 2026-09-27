@@ -48,4 +48,5 @@ export interface FofoOnboardingListItem {
   pushStatus: string;
   expectedValue: number | null;
   ownerName: string | null;
+  createdAt: string;
 }

@@ -11,7 +11,7 @@ import type { Office } from "../types/office";
 import type { Level } from "../types/level";
 import type { CustomerCategory, DivisionChannel } from "../types/classification";
 import { useHasPermission } from "../hooks/use-permission";
-import { ladderIndex } from "../utils/level-format";
+import { ladderIndex, SPAN_WARNING_THRESHOLD } from "../utils/level-format";
 import { initials } from "../utils/lead-format";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { TargetsSection } from "./TargetsSection";
@@ -19,11 +19,6 @@ import { IncentivePlanSection } from "./IncentivePlanSection";
 import { UserCommissionSection } from "./UserCommissionSection";
 
 const { Text } = Typography;
-
-// Same span-warning threshold Org chart uses for "too many direct
-// reports" - surfaced here too, inline in the manager picker, so an admin
-// sees the same warning before they create the overload rather than after.
-const SPAN_WARNING_THRESHOLD = 8;
 
 // Kept for the People table's role chip - accounts still get one of these 3
 // real tiers, just derived from the selected Level now rather than picked

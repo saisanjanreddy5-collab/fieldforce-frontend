@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Button, Empty, Segmented, Select, Typography } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { App, Button, Segmented, Select, Typography } from "antd";
+import {
+  AppstoreOutlined,
+  BarChartOutlined,
+  FunnelPlotOutlined,
+  LineChartOutlined,
+  PlusOutlined,
+  TableOutlined,
+  TagsOutlined,
+  TeamOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
 import * as opportunityApi from "../api/opportunity-api";
 import * as userApi from "../api/user-api";
 import * as leadApi from "../api/lead-api";
@@ -15,9 +25,7 @@ import { ForecastView } from "../components/opportunities/ForecastView";
 import { NewOpportunityModal } from "../components/opportunities/NewOpportunityModal";
 import { EditOpportunityDrawer } from "../components/opportunities/EditOpportunityDrawer";
 import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY, STAGE_OPTIONS } from "../components/opportunities/stages";
-import { useDraggableScroll } from "../hooks/use-draggable-scroll";
 import { useHasPermission } from "../hooks/use-permission";
-import { ScrollTrack } from "../components/ScrollTrack";
 import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
@@ -31,7 +39,7 @@ type View = "kanban" | "list" | "team-rollup" | "forecast";
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ flexShrink: 0 }}>
-      <Text style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4, color: "#9aa2b1" }}>
+      <Text style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 4, color: appTokens.textTertiary }}>
         {label}
       </Text>
       {children}
@@ -80,7 +88,6 @@ export default function OpportunitiesPage() {
   }, []);
 
   const managerOptions = useMemo(() => users.filter((u) => u.role === "manager" || u.role === "admin"), [users]);
-  const filterScroll = useDraggableScroll([zones, territories, salesTeams, users]);
 
   const filtered = useMemo(() => {
     return opportunities.filter((o) => {
@@ -149,13 +156,12 @@ export default function OpportunitiesPage() {
             value={view}
             onChange={(v) => setView(v as View)}
             options={[
-              { label: "Kanban", value: "kanban" },
-              { label: "List", value: "list" },
-              { label: "Team rollup", value: "team-rollup" },
-              { label: "Forecast", value: "forecast" },
+              { label: "Kanban", value: "kanban", icon: <AppstoreOutlined /> },
+              { label: "List", value: "list", icon: <TableOutlined /> },
+              { label: "Team rollup", value: "team-rollup", icon: <TeamOutlined /> },
+              { label: "Forecast", value: "forecast", icon: <BarChartOutlined /> },
             ]}
           />
-          <Button onClick={() => setView("forecast")}>Forecast</Button>
           {hasPermission("opportunities.create") && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { setNewModalStage(undefined); setNewModalOpen(true); }}>
               New opportunity
@@ -165,7 +171,7 @@ export default function OpportunitiesPage() {
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <div ref={filterScroll.scrollRef} className="scrollbar-hidden" style={{ display: "flex", gap: 12, overflowX: "auto", alignItems: "flex-end", paddingBottom: 2 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <FilterField label="Region">
             <Select
               allowClear
@@ -233,54 +239,68 @@ export default function OpportunitiesPage() {
               options={STAGE_OPTIONS}
             />
           </FilterField>
+          <FilterField label="Category">
+            <Select
+              allowClear
+              prefix={FILTER_DOT}
+              placeholder="All categories"
+              style={{ width: 160 }}
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={CATEGORY_OPTIONS}
+            />
+          </FilterField>
+          {hasActiveFilters && (
+            <Button onClick={clearFilters} style={{ flexShrink: 0 }}>
+              Clear
+            </Button>
+          )}
         </div>
-        <ScrollTrack
-          track={filterScroll.track}
-          dragging={filterScroll.dragging}
-          trackRef={filterScroll.trackRef}
-          onTrackClick={filterScroll.handleTrackClick}
-          onThumbPointerDown={filterScroll.handleThumbPointerDown}
-          onThumbPointerMove={filterScroll.handleThumbPointerMove}
-          onThumbPointerUp={filterScroll.handleThumbPointerUp}
-        />
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-end" }}>
-        <FilterField label="Category">
-          <Select
-            allowClear
-            prefix={FILTER_DOT}
-            placeholder="All categories"
-            style={{ width: 160 }}
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={CATEGORY_OPTIONS}
-          />
-        </FilterField>
-        {hasActiveFilters && <Button onClick={clearFilters}>Clear</Button>}
       </div>
 
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
         {[
-          { label: "Open opportunities", value: String(stats.openCount), subtitle: "in view" },
-          { label: "Pipeline value", value: formatCompactCurrency(stats.pipelineValue), subtitle: "unweighted" },
-          { label: "Weighted forecast", value: formatCompactCurrency(stats.weightedForecast), subtitle: "probability adjusted" },
-          { label: "Avg deal size", value: formatCompactCurrency(stats.avgDealSize), subtitle: "this view" },
+          { label: "Open opportunities", value: String(stats.openCount), subtitle: "in view", icon: <FunnelPlotOutlined />, color: appTokens.primary },
+          { label: "Pipeline value", value: formatCompactCurrency(stats.pipelineValue), subtitle: "unweighted", icon: <WalletOutlined />, color: appTokens.purple },
+          { label: "Weighted forecast", value: formatCompactCurrency(stats.weightedForecast), subtitle: "probability adjusted", icon: <LineChartOutlined />, color: appTokens.success },
+          { label: "Avg deal size", value: formatCompactCurrency(stats.avgDealSize), subtitle: "this view", icon: <TagsOutlined />, color: appTokens.warning },
         ].map((stat) => (
           <div
             key={stat.label}
             style={{
               flex: 1,
-              minWidth: 160,
-              border: `1px solid ${appTokens.border}`,
+              minWidth: 180,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 12,
+              border: `1px solid ${appTokens.borderLight}`,
               borderRadius: appTokens.radius,
               padding: 14,
               background: appTokens.surface,
               boxShadow: appTokens.shadowXs,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: 600, color: appTokens.textTertiary }}>{stat.label}</Text>
-            <div style={{ fontSize: 21, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3 }}>{stat.value}</div>
-            <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: appTokens.radiusSm,
+                background: `${stat.color}17`,
+                color: stat.color,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 16,
+                flexShrink: 0,
+              }}
+            >
+              {stat.icon}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
+              <div style={{ fontSize: 21, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3 }}>{stat.value}</div>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
+            </div>
           </div>
         ))}
       </div>
@@ -301,10 +321,28 @@ export default function OpportunitiesPage() {
         <OpportunityListView opportunities={filtered} loading={loading} onEdit={setEditingOpportunity} />
       )}
       {view === "team-rollup" && (
-        <Empty
-          description="Team rollup needs quota/target data, which hasn't been set up yet"
-          style={{ marginTop: 48 }}
-        />
+        <div style={{ textAlign: "center", padding: "56px 24px" }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: appTokens.primarySoft,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+            }}
+          >
+            <TeamOutlined style={{ fontSize: 24, color: appTokens.primary }} />
+          </div>
+          <Text strong style={{ fontSize: 15, display: "block", color: appTokens.textPrimary }}>
+            Team rollup isn't set up yet
+          </Text>
+          <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>
+            This needs quota/target data per salesperson, which hasn't been configured
+          </Text>
+        </div>
       )}
       {view === "forecast" && <ForecastView opportunities={filtered} />}
 

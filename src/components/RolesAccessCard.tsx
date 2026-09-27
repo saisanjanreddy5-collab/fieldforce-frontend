@@ -9,6 +9,7 @@ import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
 import { MODULE_LABELS, modulesOf } from "../utils/permission-format";
 import { approvesUpToLabel, headcountLabel, peersLabel, seesLabel } from "../utils/level-format";
+import { appTokens } from "../utils/design-system";
 import { LevelDrawer } from "./LevelDrawer";
 
 const { Text } = Typography;
@@ -70,7 +71,7 @@ export function RolesAccessCard({ users, levels, onLevelsChange }: RolesAccessCa
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
         <div>
           <Text strong>Roles & access</Text>
