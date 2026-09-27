@@ -83,3 +83,19 @@ body {
 .lead-row:hover {
   background: #f7f8fa;
 }
+
+/* WhatsApp tab: a small entrance animation for each message bubble, so a
+   just-sent or just-arrived message doesn't just pop into place. */
+@keyframes message-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.message-fade-in {
+  animation: message-fade-in 0.18s ease-out;
+}
