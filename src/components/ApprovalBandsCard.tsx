@@ -94,7 +94,7 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
         <div>
           <Text strong>Approval bands</Text>
@@ -137,50 +137,53 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
                   No bands configured
                 </Text>
               ) : (
-                rows.map((band) => (
-                  <div
-                    key={band.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      padding: "6px 0",
-                      borderTop: `1px solid ${appTokens.borderLight}`,
-                    }}
-                  >
-                    <div>
-                      <Text style={{ fontSize: 12 }}>{band.bandName}</Text>
-                      <div>
-                        <Text type="secondary" style={{ fontSize: 11 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {rows.map((band, idx) => {
+                    const accent = idx === 0 ? appTokens.primary : idx === rows.length - 1 ? appTokens.danger : appTokens.purple;
+                    return (
+                      <div
+                        key={band.id}
+                        style={{
+                          flex: "1 1 150px",
+                          minWidth: 150,
+                          border: `1px solid ${appTokens.border}`,
+                          borderTop: `3px solid ${accent}`,
+                          borderRadius: appTokens.radiusSm,
+                          padding: "8px 10px",
+                          background: appTokens.surfaceMuted,
+                        }}
+                      >
+                        <Text strong style={{ fontSize: 12.5, color: accent, display: "block" }}>
                           {formatCompactCurrency(band.rangeFrom)} - {band.rangeTo !== null ? formatCompactCurrency(band.rangeTo) : "no limit"}
                         </Text>
-                      </div>
-                      <div>
-                        <Text type="secondary" style={{ fontSize: 11 }}>
+                        <Text style={{ fontSize: 11.5, color: appTokens.textPrimary, display: "block" }}>{band.bandName}</Text>
+                        <Text style={{ fontSize: 11, color: appTokens.textTertiary, display: "block" }}>
                           {levelNameOf(band.approverLevelId) ?? "No approver set"}
                           {band.countersignedByLevelId ? ` + ${levelNameOf(band.countersignedByLevelId)}` : ""}
-                          {band.slaHours !== null ? ` · SLA ${band.slaHours}h` : ""}
                         </Text>
-                      </div>
-                    </div>
-                    {(canUpdate || canDelete) && (
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                        {canUpdate && (
-                          <Button type="link" size="small" onClick={() => openEdit(band)}>
-                            Edit
-                          </Button>
+                        {band.slaHours !== null && (
+                          <Text style={{ fontSize: 10.5, color: appTokens.textTertiary }}>SLA {band.slaHours}h</Text>
                         )}
-                        {canDelete && (
-                          <Popconfirm title="Delete this approval band?" onConfirm={() => handleDelete(band.id)}>
-                            <Button type="link" size="small" danger>
-                              Delete
-                            </Button>
-                          </Popconfirm>
+                        {(canUpdate || canDelete) && (
+                          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                            {canUpdate && (
+                              <Button type="link" size="small" style={{ padding: 0, height: "auto", fontSize: 11 }} onClick={() => openEdit(band)}>
+                                Edit
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Popconfirm title="Delete this approval band?" onConfirm={() => handleDelete(band.id)}>
+                                <Button type="link" size="small" danger style={{ padding: 0, height: "auto", fontSize: 11 }}>
+                                  Delete
+                                </Button>
+                              </Popconfirm>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               )}
             </div>
           );

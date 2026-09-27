@@ -1,6 +1,12 @@
 import type { Level, RecordScope } from "../types/level";
 import { formatCompactCurrency } from "./lead-format";
 
+// A direct-report count above this is flagged as a stretched manager -
+// shared by the Create/Edit user drawer's inline manager-picker warning,
+// Org chart's span-warning cards/stat, and Territory & targets' Span
+// column, so the definition of "too many reports" can't drift between them.
+export const SPAN_WARNING_THRESHOLD = 8;
+
 export const RECORD_SCOPE_OPTIONS: { value: RecordScope; label: string; description: string }[] = [
   { value: "own_only", label: "Own records only", description: "No team visibility" },
   { value: "own_and_below", label: "Own + everyone below", description: "Default - follows the reporting tree" },

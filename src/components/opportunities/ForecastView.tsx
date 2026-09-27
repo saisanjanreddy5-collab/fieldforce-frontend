@@ -68,7 +68,7 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
                 </Text>
                 <Text strong>{formatCompactCurrency(stage.weighted)}</Text>
               </div>
-              <Progress percent={(stage.weighted / maxWeighted) * 100} showInfo={false} size="small" />
+              <Progress percent={(stage.weighted / maxWeighted) * 100} showInfo={false} size="small" strokeColor={stage.color} />
             </div>
           ))}
         </div>

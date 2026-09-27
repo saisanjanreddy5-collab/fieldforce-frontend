@@ -13,8 +13,12 @@ export const appTokens = {
   primarySoft: "#eef3ff",
   primarySoftBorder: "#d6e2ff",
   textPrimary: "rgba(15,23,42,0.92)",
-  textSecondary: "#697386",
-  textTertiary: "#9aa2b1",
+  // Deepened from the original #697386/#9aa2b1 - those measured roughly
+  // 4.1:1 and 2.4:1 contrast against white, and the tertiary tone in
+  // particular was below the accepted 4.5:1 readability floor for normal
+  // text. Everything reading from this shared token gets fixed at once.
+  textSecondary: "#4b5565",
+  textTertiary: "#6b7280",
   border: "#e5e7eb",
   borderLight: "#eef0f3",
   surface: "#ffffff",

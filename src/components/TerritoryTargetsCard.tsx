@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, DatePicker, Form, Modal, Progress, Select, Table, Typography, message } from "antd";
+import { Button, Card, DatePicker, Form, Modal, Progress, Select, Table, Tag, Typography, message } from "antd";
 import { SwapOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import dayjs from "dayjs";
@@ -13,6 +13,8 @@ import type { DivisionChannel } from "../types/classification";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { resolveCurrentTarget } from "../utils/target-format";
 import { useHasPermission } from "../hooks/use-permission";
+import { appTokens } from "../utils/design-system";
+import { SPAN_WARNING_THRESHOLD } from "../utils/level-format";
 
 const { Text } = Typography;
 
@@ -115,7 +117,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
         <div>
           <Text strong>Territory & targets</Text>
@@ -142,21 +144,36 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
           { title: "Name", key: "name", render: (_, row) => row.user.name },
           { title: "Territory", key: "territory", render: (_, row) => row.user.territory ?? "-" },
           { title: "Division / channel", key: "division", render: (_, row) => divisionChannelLabel(row.user.divisionChannelId) },
-          { title: "Quota", key: "quota", render: (_, row) => (row.target ? formatCompactCurrency(row.target.targetAmount) : "-") },
-          { title: "Achieved", key: "achieved", render: (_, row) => (row.target ? formatCompactCurrency(row.target.achievedAmount) : "-") },
           {
-            title: "Achievement %",
-            key: "achievementPercent",
-            width: 140,
-            render: (_, row) =>
-              row.target ? (
-                <Progress percent={Math.min(row.target.achievementPercent, 100)} size="small" format={() => `${row.target!.achievementPercent}%`} />
-              ) : (
-                "-"
-              ),
+            title: "Quota vs achieved",
+            key: "quotaVsAchieved",
+            width: 170,
+            render: (_, row) => {
+              if (!row.target) return "-";
+              const tierColor =
+                row.target.achievementPercent >= 100 ? appTokens.success : row.target.achievementPercent >= 80 ? appTokens.primary : appTokens.danger;
+              return (
+                <div>
+                  <Text strong style={{ fontSize: 13, color: tierColor }}>
+                    {formatCompactCurrency(row.target.achievedAmount)}
+                    <Text style={{ fontSize: 12, fontWeight: 400, color: appTokens.textTertiary }}> / {formatCompactCurrency(row.target.targetAmount)}</Text>
+                  </Text>
+                  <Progress percent={Math.min(row.target.achievementPercent, 100)} size="small" showInfo={false} strokeColor={tierColor} trailColor={appTokens.surfaceSunken} />
+                </div>
+              );
+            },
           },
           { title: "Accounts", key: "accounts", render: (_, row) => row.accounts },
-          { title: "Span", key: "span", render: (_, row) => row.span },
+          {
+            title: "Span",
+            key: "span",
+            render: (_, row) =>
+              row.span > SPAN_WARNING_THRESHOLD ? (
+                <Tag style={{ color: appTokens.danger, background: `${appTokens.danger}14`, border: "none", fontWeight: 600 }}>{row.span} ⚠</Tag>
+              ) : (
+                <Text style={{ color: appTokens.textTertiary }}>{row.span || "-"}</Text>
+              ),
+          },
         ]}
         scroll={{ x: "max-content" }}
       />

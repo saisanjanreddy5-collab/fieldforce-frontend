@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Button, Input, Progress, Space, Table, Tag, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import {
+  ApartmentOutlined,
+  AuditOutlined,
+  BankOutlined,
+  BranchesOutlined,
+  IdcardOutlined,
+  OrderedListOutlined,
+  PlusOutlined,
+  SafetyCertificateOutlined,
+  EnvironmentOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
+import type { ReactNode } from "react";
 import * as userApi from "../api/user-api";
 import * as salesTeamApi from "../api/sales-team-api";
 import * as officeApi from "../api/office-api";
@@ -220,16 +232,16 @@ export default function SalesForceManagementPage() {
   // so it sits there. Microsoft connection is a personal integration
   // setting, not an org-structure concept, so it stays outside the tabs
   // entirely rather than being forced into one.
-  const TABS: { key: TabKey; label: string; visible: boolean }[] = [
-    { key: "people", label: "People", visible: hasPermission("users.view") },
-    { key: "offices", label: "Offices", visible: hasPermission("offices.view") },
-    { key: "permissions", label: "Permissions", visible: hasPermission("role_permissions.view") },
-    { key: "orgChart", label: "Org chart", visible: hasPermission("users.view") },
-    { key: "levelsAxes", label: "Levels & axes", visible: hasPermission("levels.view") },
-    { key: "rolesAccess", label: "Roles & access", visible: hasPermission("role_permissions.view") },
-    { key: "reportingLines", label: "Reporting lines", visible: hasPermission("manager_change_log.view") },
-    { key: "approvalBands", label: "Approval bands", visible: hasPermission("approval_bands.view") },
-    { key: "territoryTargets", label: "Territory & targets", visible: hasPermission("targets.view") },
+  const TABS: { key: TabKey; label: string; icon: ReactNode; visible: boolean }[] = [
+    { key: "people", label: "People", icon: <TeamOutlined />, visible: hasPermission("users.view") },
+    { key: "offices", label: "Offices", icon: <BankOutlined />, visible: hasPermission("offices.view") },
+    { key: "permissions", label: "Permissions", icon: <SafetyCertificateOutlined />, visible: hasPermission("role_permissions.view") },
+    { key: "orgChart", label: "Org chart", icon: <ApartmentOutlined />, visible: hasPermission("users.view") },
+    { key: "levelsAxes", label: "Levels & axes", icon: <OrderedListOutlined />, visible: hasPermission("levels.view") },
+    { key: "rolesAccess", label: "Roles & access", icon: <IdcardOutlined />, visible: hasPermission("role_permissions.view") },
+    { key: "reportingLines", label: "Reporting lines", icon: <BranchesOutlined />, visible: hasPermission("manager_change_log.view") },
+    { key: "approvalBands", label: "Approval bands", icon: <AuditOutlined />, visible: hasPermission("approval_bands.view") },
+    { key: "territoryTargets", label: "Territory & targets", icon: <EnvironmentOutlined />, visible: hasPermission("targets.view") },
   ];
   const visibleTabs = TABS.filter((t) => t.visible);
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
@@ -262,7 +274,7 @@ export default function SalesForceManagementPage() {
         </div>
 
         {visibleTabs.length > 0 && (
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {visibleTabs.map((tab) => {
               const active = currentTab === tab.key;
               return (
@@ -270,13 +282,15 @@ export default function SalesForceManagementPage() {
                   key={tab.key}
                   size="small"
                   shape="round"
+                  icon={tab.icon}
                   onClick={() => setActiveTab(tab.key)}
                   style={{
                     flexShrink: 0,
-                    background: active ? appTokens.primarySoft : "transparent",
+                    background: appTokens.surface,
+                    borderWidth: active ? 1.5 : 1,
                     borderColor: active ? appTokens.primary : appTokens.border,
-                    color: active ? appTokens.primary : appTokens.textPrimary,
-                    fontWeight: active ? 700 : 500,
+                    color: active ? appTokens.primary : appTokens.textSecondary,
+                    fontWeight: active ? 600 : 500,
                   }}
                 >
                   {tab.label}
@@ -291,67 +305,40 @@ export default function SalesForceManagementPage() {
         <>
           {hasPermission("sales_teams.view") && <SalesTeamsCard onChange={setSalesTeams} />}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-            <div
-              style={{
-                flex: "1 1 160px",
-                minWidth: 160,
-                background: appTokens.surface,
-                border: `1px solid ${appTokens.border}`,
-                borderRadius: appTokens.radius,
-                padding: "12px 16px",
-                boxShadow: appTokens.shadowXs,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary }}>People</Text>
-              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: appTokens.textPrimary }}>{users.length}</div>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>on the sales force</Text>
-            </div>
-            <div
-              style={{
-                flex: "1 1 160px",
-                minWidth: 160,
-                background: "#fff8ec",
-                border: "1px solid #ffe4ae",
-                borderRadius: appTokens.radius,
-                padding: "12px 16px",
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.warning }}>Below target</Text>
-              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: "#b56a00" }}>{belowTargetUserIds.size}</div>
-              <Text style={{ fontSize: 11, color: appTokens.warning }}>under {BELOW_TARGET_THRESHOLD}%</Text>
-            </div>
-            <div
-              style={{
-                flex: "1 1 160px",
-                minWidth: 160,
-                background: appTokens.surface,
-                border: `1px solid ${appTokens.border}`,
-                borderRadius: appTokens.radius,
-                padding: "12px 16px",
-                boxShadow: appTokens.shadowXs,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary }}>Incentive pool</Text>
-              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: appTokens.textPrimary }}>-</div>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>no payout engine yet</Text>
-            </div>
-            <div
-              style={{
-                flex: "1 1 160px",
-                minWidth: 160,
-                background: "#f0faf2",
-                border: "1px solid #c8ecd0",
-                borderRadius: appTokens.radius,
-                padding: "12px 16px",
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.success }}>Avg attainment</Text>
-              <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.3, color: "#0d7a3d" }}>
-                {avgAttainment === null ? "-" : `${avgAttainment}%`}
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", margin: "4px 0 16px" }}>
+            {[
+              { label: "People", value: String(users.length), subtitle: "on the sales force", color: appTokens.textPrimary },
+              {
+                label: "Below target",
+                value: String(belowTargetUserIds.size),
+                subtitle: `under ${BELOW_TARGET_THRESHOLD}%`,
+                color: belowTargetUserIds.size > 0 ? appTokens.danger : appTokens.textPrimary,
+              },
+              { label: "Incentive pool", value: "-", subtitle: "no payout engine yet", color: appTokens.textPrimary },
+              {
+                label: "Avg attainment",
+                value: avgAttainment === null ? "-" : `${avgAttainment}%`,
+                subtitle: "quota, current period",
+                color: avgAttainment !== null && avgAttainment >= BELOW_TARGET_THRESHOLD ? appTokens.success : appTokens.textPrimary,
+              },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                style={{
+                  flex: "1 1 180px",
+                  minWidth: 180,
+                  border: `1px solid ${appTokens.border}`,
+                  borderRadius: appTokens.radius,
+                  padding: "14px 16px",
+                  background: appTokens.surface,
+                  boxShadow: appTokens.shadowSm,
+                }}
+              >
+                <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
+                <div style={{ fontSize: 26, fontWeight: 700, color: stat.color, letterSpacing: -0.4, lineHeight: 1.25 }}>{stat.value}</div>
+                <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
               </div>
-              <Text style={{ fontSize: 11, color: appTokens.success }}>quota, current period</Text>
-            </div>
+            ))}
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
@@ -391,6 +378,7 @@ export default function SalesForceManagementPage() {
             loading={loading}
             dataSource={filteredUsers}
             pagination={false}
+            onRow={() => ({ className: "table-row-hover" })}
             columns={[
               {
                 title: "Employee",
@@ -469,20 +457,28 @@ export default function SalesForceManagementPage() {
               {
                 title: "Target vs achieved",
                 key: "targetVsAchieved",
-                width: 140,
+                width: 150,
                 render: (_, user) => {
                   const current = resolveCurrentTarget(user.id, targets);
                   if (!current) return "-";
+                  const tierColor =
+                    current.achievementPercent >= 100
+                      ? appTokens.success
+                      : current.achievementPercent >= BELOW_TARGET_THRESHOLD
+                        ? appTokens.primary
+                        : appTokens.danger;
                   return (
                     <div>
-                      <Text style={{ fontSize: 12 }}>
-                        {formatCompactCurrency(current.targetAmount)} / {formatCompactCurrency(current.achievedAmount)}
+                      <Text strong style={{ fontSize: 13, color: tierColor }}>
+                        {formatCompactCurrency(current.achievedAmount)}
+                        <Text style={{ fontSize: 12, fontWeight: 400, color: appTokens.textTertiary }}> / {formatCompactCurrency(current.targetAmount)}</Text>
                       </Text>
                       <Progress
                         percent={Math.min(current.achievementPercent, 100)}
                         size="small"
                         showInfo={false}
-                        strokeColor={current.achievementPercent < BELOW_TARGET_THRESHOLD ? "#e34948" : "#0ca30c"}
+                        strokeColor={tierColor}
+                        trailColor={appTokens.surfaceSunken}
                       />
                     </div>
                   );
@@ -518,9 +514,10 @@ export default function SalesForceManagementPage() {
                 render: (_, user) => {
                   const current = resolveCurrentTarget(user.id, targets);
                   if (!current) return "-";
-                  if (current.achievementPercent >= 100) return <Tag color="green">Exceeds</Tag>;
-                  if (current.achievementPercent >= BELOW_TARGET_THRESHOLD) return <Tag color="blue">On track</Tag>;
-                  return <Tag color="red">Below target</Tag>;
+                  const tierColor =
+                    current.achievementPercent >= 100 ? appTokens.success : current.achievementPercent >= BELOW_TARGET_THRESHOLD ? appTokens.primary : appTokens.danger;
+                  const tierLabel = current.achievementPercent >= 100 ? "Exceeds" : current.achievementPercent >= BELOW_TARGET_THRESHOLD ? "On track" : "Below target";
+                  return <Tag style={{ color: tierColor, background: `${tierColor}14`, border: "none", fontWeight: 600 }}>{tierLabel}</Tag>;
                 },
               },
               {

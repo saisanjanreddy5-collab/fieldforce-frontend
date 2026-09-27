@@ -76,12 +76,22 @@ body {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  color: #8c8c8c;
+  /* Matches appTokens.textTertiary - #8c8c8c here read ~3.35:1 against white,
+     the same below-floor dimness the design-system.ts token fix corrected
+     everywhere else; this rule predates that fix and was never updated. */
+  color: #6b7280;
 }
 
 /* Leads workspace: dense list row hover state. */
 .lead-row:hover {
   background: #f7f8fa;
+}
+
+/* Generic AntD Table row hover treatment - used by any list view table
+   across the app (Opportunities, FOFO onboarding, ...) instead of each
+   module duplicating the same rule under its own name. */
+.table-row-hover:hover > td {
+  background: #f7f8fa !important;
 }
 
 /* WhatsApp tab: a small entrance animation for each message bubble, so a
@@ -98,4 +108,15 @@ body {
 }
 .message-fade-in {
   animation: message-fade-in 0.18s ease-out;
+}
+
+/* Opportunities Kanban: a real hover lift on cards, so the board reads as
+   draggable/interactive rather than a flat list of boxes. */
+.opportunity-card:hover {
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.12) !important;
+  transform: translateY(-1px);
+  border-color: #d6dce6 !important;
+}
+.opportunity-card:active {
+  cursor: grabbing;
 }

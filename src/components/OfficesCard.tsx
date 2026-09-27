@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, Card, Input, Select, Space, Tag, Typography, message } from "antd";
-import { EnvironmentOutlined, PlusOutlined, ShopOutlined } from "@ant-design/icons";
+import { BankOutlined, EnvironmentOutlined, PlusOutlined, ShopOutlined, StarFilled } from "@ant-design/icons";
 import * as officeApi from "../api/office-api";
 import * as salesTeamApi from "../api/sales-team-api";
 import type { Office } from "../types/office";
@@ -27,6 +27,12 @@ export const OFFICE_TYPE_LABELS: Record<string, string> = {
   head_office: "Head office",
   regional_office: "Regional office",
   branch: "Branch",
+};
+
+const OFFICE_TYPE_ICON: Record<string, { icon: ReactNode; color: string }> = {
+  head_office: { icon: <StarFilled />, color: appTokens.purple },
+  regional_office: { icon: <BankOutlined />, color: appTokens.primary },
+  branch: { icon: <ShopOutlined />, color: appTokens.success },
 };
 
 interface OfficesCardProps {
@@ -112,7 +118,7 @@ export function OfficesCard({ zones, onChange }: OfficesCardProps) {
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
         <Text strong>Offices</Text>
         {hasPermission("offices.create") && (
@@ -140,6 +146,7 @@ export function OfficesCard({ zones, onChange }: OfficesCardProps) {
             const region = zones.find((z) => z.id === office.zoneId)?.name ?? office.region;
             const state = states.find((s) => s.id === office.stateId);
             const addressPreview = [office.address, office.addressLine2, office.city].filter(Boolean).join(", ");
+            const typeStyle = (office.type && OFFICE_TYPE_ICON[office.type]) ?? { icon: <ShopOutlined />, color: appTokens.primary };
             return (
               <div
                 key={office.id}
@@ -148,12 +155,27 @@ export function OfficesCard({ zones, onChange }: OfficesCardProps) {
                   borderRadius: appTokens.radius,
                   padding: 14,
                   background: appTokens.surface,
-                  boxShadow: appTokens.shadowXs,
+                  boxShadow: appTokens.shadowSm,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-start", minWidth: 0 }}>
-                    <ShopOutlined style={{ fontSize: 18, color: appTokens.primary, marginTop: 2 }} />
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: appTokens.radiusSm,
+                        background: `${typeStyle.color}17`,
+                        color: typeStyle.color,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 13,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {typeStyle.icon}
+                    </div>
                     <div style={{ minWidth: 0 }}>
                       <Text strong style={{ display: "block" }}>
                         {office.name}
@@ -166,7 +188,11 @@ export function OfficesCard({ zones, onChange }: OfficesCardProps) {
                       )}
                     </div>
                   </div>
-                  {office.type && <Tag>{OFFICE_TYPE_LABELS[office.type] ?? office.type}</Tag>}
+                  {office.type && (
+                    <Tag style={{ color: typeStyle.color, background: `${typeStyle.color}14`, border: "none", flexShrink: 0 }}>
+                      {OFFICE_TYPE_LABELS[office.type] ?? office.type}
+                    </Tag>
+                  )}
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10, fontSize: 12 }}>

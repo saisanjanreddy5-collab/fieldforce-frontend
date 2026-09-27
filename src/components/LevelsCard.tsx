@@ -108,7 +108,7 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
   };
 
   return (
-    <Card size="small" style={{ marginBottom: 16 }} loading={loading}>
+    <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <div style={{ flex: "2 1 320px", minWidth: 280 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
