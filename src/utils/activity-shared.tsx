@@ -1,11 +1,13 @@
-import { MailOutlined, PhoneOutlined, ShopOutlined, TeamOutlined } from "@ant-design/icons";
+import { MailOutlined, PhoneOutlined, PushpinOutlined, ShopOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
 import type { ActivityType } from "../types/activity";
 
 export const TYPE_LABEL: Record<ActivityType, string> = {
   call: "Call",
   email: "Email",
-  teams_meeting: "Teams Meeting",
-  site_visit: "Site Visit",
+  teams_meeting: "Meeting",
+  site_visit: "Site visit",
+  whatsapp: "WhatsApp",
+  internal: "Internal",
 };
 
 export const TYPE_DOT_COLOR: Record<ActivityType, string> = {
@@ -13,6 +15,8 @@ export const TYPE_DOT_COLOR: Record<ActivityType, string> = {
   email: "#2a78d6",
   teams_meeting: "#4a3aa7",
   site_visit: "#eda100",
+  whatsapp: "#1fa855",
+  internal: "#6b7280",
 };
 
 export const TYPE_ICON: Record<ActivityType, React.ReactNode> = {
@@ -20,9 +24,11 @@ export const TYPE_ICON: Record<ActivityType, React.ReactNode> = {
   email: <MailOutlined style={{ color: TYPE_DOT_COLOR.email }} />,
   teams_meeting: <TeamOutlined style={{ color: TYPE_DOT_COLOR.teams_meeting }} />,
   site_visit: <ShopOutlined style={{ color: TYPE_DOT_COLOR.site_visit }} />,
+  whatsapp: <WhatsAppOutlined style={{ color: TYPE_DOT_COLOR.whatsapp }} />,
+  internal: <PushpinOutlined style={{ color: TYPE_DOT_COLOR.internal }} />,
 };
 
-export const ALL_ACTIVITY_TYPES: ActivityType[] = ["email", "call", "teams_meeting", "site_visit"];
+export const ALL_ACTIVITY_TYPES: ActivityType[] = ["email", "call", "teams_meeting", "site_visit", "whatsapp", "internal"];
 
 /** Small colored circle badge for an activity's type - shared between the
  * Activity (scheduled) and Logs (history) tabs so both use the same visual

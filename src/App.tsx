@@ -7,6 +7,9 @@ import OpportunitiesPage from "./pages/OpportunitiesPage";
 import SalesForceManagementPage from "./pages/SalesForceManagementPage";
 import FofoOnboardingPage from "./pages/FofoOnboardingPage";
 import ReportsPage from "./pages/ReportsPage";
+import LeavePage from "./pages/LeavePage";
+import ExpensesPage from "./pages/ExpensesPage";
+import ActivityCalendarPage from "./pages/ActivityCalendarPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -28,6 +31,9 @@ function App() {
               <Route path="/fofo-onboarding" element={<FofoOnboardingPage />} />
               <Route path="/fofo-onboarding/:leadId" element={<FofoOnboardingPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/leave" element={<LeavePage />} />
+              <Route path="/expenses" element={<ExpensesPage />} />
+              <Route path="/activity-calendar" element={<ActivityCalendarPage />} />
               {ALL_NAV_LEAVES.filter((item) => !item.built).map((item) => (
                 <Route key={item.path} path={item.path} element={<ComingSoonPage title={item.label} />} />
               ))}
