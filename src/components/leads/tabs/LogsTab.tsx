@@ -168,7 +168,7 @@ export function LogsTab({ activities, loading }: LogsTabProps) {
     [activities]
   );
   const typeCounts = useMemo(() => {
-    const counts: Record<ActivityType, number> = { email: 0, call: 0, teams_meeting: 0, site_visit: 0 };
+    const counts: Record<ActivityType, number> = { email: 0, call: 0, teams_meeting: 0, site_visit: 0, whatsapp: 0, internal: 0 };
     for (const activity of completed) counts[activity.type] += 1;
     return counts;
   }, [completed]);
