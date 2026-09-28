@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button, Tag, Typography, message } from "antd";
 import dayjs from "dayjs";
 import type { Activity } from "../../types/activity";
@@ -5,6 +6,9 @@ import { TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shar
 import { appTokens } from "../../utils/design-system";
 import { errorMessageFrom } from "../../utils/api-error";
 import * as smartfloApi from "../../api/smartflo-api";
+import * as activityApi from "../../api/activity-api";
+import { EmailComposeDrawer } from "./EmailComposeDrawer";
+import { SiteVisitModal } from "./SiteVisitModal";
 
 const { Text } = Typography;
 
@@ -29,15 +33,18 @@ const ACTION_LABEL: Record<Activity["type"], string | null> = {
 interface ActivityRowProps {
   activity: Activity;
   isLast?: boolean;
+  onChanged?: () => void;
 }
 
-// Call and Join-Teams are wired to the real endpoints this codebase already
-// has (Smartflo click-to-call, and the joinUrl a real Teams meeting was
-// created with). Open mail / Directions / WhatsApp render the same as the
-// reference but are honest about not opening their real surface yet - that
-// lands with the compose drawer / site-visit modal in the next phase,
-// instead of faking a working button today.
-export function ActivityRow({ activity, isLast }: ActivityRowProps) {
+// Call, Open-mail, Directions and Join-Teams are wired to the real
+// endpoints/surfaces this codebase already has (Smartflo click-to-call, the
+// real email-compose drawer, the real site-visit modal, and the joinUrl a
+// real Teams meeting was created with). WhatsApp still renders the same as
+// the reference but is honest about not opening its real surface yet,
+// instead of faking one.
+export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
+  const [emailDrawerOpen, setEmailDrawerOpen] = useState(false);
+  const [siteVisitModalOpen, setSiteVisitModalOpen] = useState(false);
   const isCompleted = activity.status === "completed";
   const isOverdue = !isCompleted && activity.dueDate !== null && dayjs(activity.dueDate).isBefore(dayjs());
   const statusLabel = isCompleted ? "Done" : isOverdue ? "Overdue" : "Pending";
@@ -48,6 +55,20 @@ export function ActivityRow({ activity, isLast }: ActivityRowProps) {
   const location = typeof activity.details.location === "string" ? activity.details.location : null;
   const joinUrl = typeof activity.details.joinUrl === "string" ? activity.details.joinUrl : null;
 
+  // Both Call and Send-email create their own fresh completed log activity
+  // server-side (initiateCallForLead / sendMailForLead), separate from this
+  // row's own scheduled activity - so this row's status is closed out
+  // explicitly here too, otherwise a "Call" you just made would still sit
+  // here as Overdue next to a brand-new "Done" log entry for the same call.
+  const markThisDone = async () => {
+    try {
+      await activityApi.updateActivity(activity.id, { status: "completed" });
+    } catch {
+      // Best-effort - the underlying action already succeeded either way.
+    }
+    onChanged?.();
+  };
+
   const handleAction = async () => {
     if (activity.type === "call") {
       if (!activity.leadId) {
@@ -57,9 +78,18 @@ export function ActivityRow({ activity, isLast }: ActivityRowProps) {
       try {
         await smartfloApi.callLead(activity.leadId);
         message.success("Calling now");
+        await markThisDone();
       } catch (err) {
         message.error(errorMessageFrom(err, "Failed to place the call"));
       }
+      return;
+    }
+    if (activity.type === "email") {
+      if (!activity.leadId) {
+        message.error("This activity isn't linked to a lead");
+        return;
+      }
+      setEmailDrawerOpen(true);
       return;
     }
     if (activity.type === "teams_meeting") {
@@ -68,6 +98,14 @@ export function ActivityRow({ activity, isLast }: ActivityRowProps) {
       } else {
         message.info("No Teams link on this meeting yet");
       }
+      return;
+    }
+    if (activity.type === "site_visit") {
+      if (!activity.leadId) {
+        message.error("This activity isn't linked to a lead");
+        return;
+      }
+      setSiteVisitModalOpen(true);
       return;
     }
     message.info(`${ACTION_LABEL[activity.type]} opens in the next phase of the Activity calendar`);
@@ -126,18 +164,60 @@ export function ActivityRow({ activity, isLast }: ActivityRowProps) {
       </div>
 
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ textAlign: "right", lineHeight: 1.25 }}>
+        <div style={{ width: 104, flexShrink: 0 }}>
+          {actionLabel && (
+            <Button
+              size="small"
+              icon={TYPE_ICON[activity.type]}
+              style={{
+                width: "100%",
+                height: 26,
+                fontSize: 12,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: TYPE_DOT_COLOR[activity.type],
+                background: `${TYPE_DOT_COLOR[activity.type]}17`,
+                border: "none",
+                boxShadow: "none",
+              }}
+              onClick={handleAction}
+            >
+              {actionLabel}
+            </Button>
+          )}
+        </div>
+        <div style={{ width: 58, flexShrink: 0, textAlign: "right", lineHeight: 1.25 }}>
           <Text strong style={{ fontSize: 11, color: statusColor, display: "block" }}>
             {statusLabel}
           </Text>
           <Text style={{ fontSize: 10.5, color: appTokens.textTertiary }}>{location ?? DEFAULT_SUBLABEL[activity.type]}</Text>
         </div>
-        {actionLabel && (
-          <Button size="small" style={{ height: 24, fontSize: 12, paddingInline: 8 }} onClick={handleAction}>
-            {actionLabel}
-          </Button>
-        )}
       </div>
+
+      {activity.leadId && (
+        <EmailComposeDrawer
+          open={emailDrawerOpen}
+          onClose={() => setEmailDrawerOpen(false)}
+          leadId={activity.leadId}
+          activityDueDate={activity.dueDate}
+          onSent={async () => {
+            setEmailDrawerOpen(false);
+            await markThisDone();
+          }}
+        />
+      )}
+
+      {activity.leadId && (
+        <SiteVisitModal
+          open={siteVisitModalOpen}
+          onClose={() => setSiteVisitModalOpen(false)}
+          leadId={activity.leadId}
+          dueDate={activity.dueDate}
+          purpose={description}
+        />
+      )}
     </div>
   );
 }

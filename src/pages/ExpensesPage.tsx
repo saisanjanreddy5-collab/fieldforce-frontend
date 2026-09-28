@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Button, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import * as expenseApi from "../api/expense-api";
-import type { ExpenseClaim, ExpenseClaimStatus, ExpenseType } from "../types/expense";
+import type { ExpenseClaim, ExpenseClaimStatus, ExpenseType, ExpenseTypeKey } from "../types/expense";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { appTokens, avatarGradient } from "../utils/design-system";
@@ -36,6 +37,30 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [newClaimOpen, setNewClaimOpen] = useState(false);
+  const [prefillTypeKey, setPrefillTypeKey] = useState<ExpenseTypeKey | undefined>();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Opens pre-filled when arriving from a cross-module handoff (the Activity
+  // calendar's site-visit "Log fuel expense" button). The param is captured
+  // into its own state and cleared from the URL right away - clearing it
+  // immediately from searchParams too (rather than keeping prefillTypeKey
+  // read live off the URL) means a page refresh afterward doesn't reopen
+  // the modal, while the modal still gets a stable value to prefill from.
+  useEffect(() => {
+    const param = searchParams.get("newClaim") as ExpenseTypeKey | null;
+    if (!param) return;
+    setPrefillTypeKey(param);
+    setNewClaimOpen(true);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("newClaim");
+        return next;
+      },
+      { replace: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = () => {
     setLoading(true);
@@ -393,6 +418,7 @@ export default function ExpensesPage() {
         }}
         types={types}
         managerName={user?.managerName ?? null}
+        initialTypeKey={prefillTypeKey}
       />
     </div>
   );
