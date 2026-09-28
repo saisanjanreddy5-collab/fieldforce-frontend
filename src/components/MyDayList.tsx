@@ -1,17 +1,10 @@
 import { Card, Empty, Tag, Typography } from "antd";
 import dayjs from "dayjs";
-import type { Activity, ActivityType } from "../types/activity";
-import { TypeBadge } from "../utils/activity-shared";
+import type { Activity } from "../types/activity";
+import { TYPE_LABEL, TypeBadge } from "../utils/activity-shared";
 import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
-
-const TYPE_LABEL: Record<ActivityType, string> = {
-  call: "Call",
-  email: "Email",
-  teams_meeting: "Teams Meeting",
-  site_visit: "Site Visit",
-};
 
 interface MyDayListProps {
   activities: Activity[];
