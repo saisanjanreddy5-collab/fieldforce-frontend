@@ -54,9 +54,9 @@ export const NAV_GROUPS: NavGroup[] = [
     groupLabel: "Team",
     items: [
       { path: "/team/dashboard", label: "Dashboard", icon: <AppstoreOutlined /> },
-      { path: "/activity-calendar", label: "Activity calendar", icon: <CalendarOutlined /> },
-      { path: "/expenses", label: "Expenses", icon: <WalletOutlined /> },
-      { path: "/leave", label: "Leave", icon: <ClockCircleOutlined /> },
+      { path: "/activity-calendar", label: "Activity calendar", icon: <CalendarOutlined />, built: true },
+      { path: "/expenses", label: "Expenses", icon: <WalletOutlined />, built: true },
+      { path: "/leave", label: "Leave", icon: <ClockCircleOutlined />, built: true },
     ],
   },
   {

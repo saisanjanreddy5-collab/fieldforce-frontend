@@ -27,6 +27,19 @@ export function formatCompactCurrency(value: number | null): string {
   }).format(value);
 }
 
+// The full, comma-grouped figure (₹4,284) rather than the compact one
+// (₹4.3K) - used for a single row's exact amount, where compact notation
+// reads as imprecise. Compact stays for aggregates (stat cards, totals)
+// where the precise figure would be too long to scan at a glance.
+export function formatCurrency(value: number | null): string {
+  if (value === null) return "-";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function formatDateTime(value: string | null): string {
   if (!value) return "-";
   return new Date(value).toLocaleString("en-IN", {

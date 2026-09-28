@@ -1,4 +1,4 @@
-export type ActivityType = "call" | "email" | "teams_meeting" | "site_visit";
+export type ActivityType = "call" | "email" | "teams_meeting" | "site_visit" | "whatsapp" | "internal";
 
 export interface Activity {
   id: string;

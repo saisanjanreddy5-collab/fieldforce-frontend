@@ -142,8 +142,10 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
               options={[
                 { value: "call", label: "Call" },
                 { value: "email", label: "Email" },
-                { value: "teams_meeting", label: "Teams Meeting" },
-                { value: "site_visit", label: "Site Visit" },
+                { value: "teams_meeting", label: "Meeting" },
+                { value: "site_visit", label: "Site visit" },
+                { value: "whatsapp", label: "WhatsApp" },
+                { value: "internal", label: "Internal" },
               ]}
             />
           </Form.Item>
