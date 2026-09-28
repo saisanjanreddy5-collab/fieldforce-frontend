@@ -30,9 +30,10 @@ interface NewExpenseClaimModalProps {
   onSubmitted: () => void;
   types: ExpenseType[];
   managerName: string | null;
+  initialTypeKey?: ExpenseTypeKey;
 }
 
-export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, managerName }: NewExpenseClaimModalProps) {
+export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, managerName, initialTypeKey }: NewExpenseClaimModalProps) {
   const [typeKey, setTypeKey] = useState<ExpenseTypeKey>("travel");
   const [title, setTitle] = useState("");
   const [expenseDate, setExpenseDate] = useState<Dayjs | null>(dayjs());
@@ -45,7 +46,7 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
 
   useEffect(() => {
     if (!open) return;
-    setTypeKey("travel");
+    setTypeKey(initialTypeKey ?? "travel");
     setTitle("");
     setExpenseDate(dayjs());
     setAmount("");

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Input, Modal, Select, Typography, message } from "antd";
+import { Button, DatePicker, Input, InputNumber, Modal, Select, Typography, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import * as activityApi from "../../api/activity-api";
 import * as leadApi from "../../api/lead-api";
+import * as microsoftApi from "../../api/microsoft-api";
+import { useAuth } from "../../context/AuthContext";
 import type { ActivityType } from "../../types/activity";
 import type { Lead } from "../../types/lead";
+import type { MicrosoftConnectionStatus } from "../../types/microsoft";
 import { ALL_ACTIVITY_TYPES, TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shared";
 import { appTokens } from "../../utils/design-system";
 import { errorMessageFrom } from "../../utils/api-error";
@@ -25,12 +28,15 @@ interface NewActivityModalProps {
 // borrow, unlike the per-lead Activity tab this reuses createActivityForLead
 // from.
 export function NewActivityModal({ open, onClose, onCreated, assignedToId, assignedToName }: NewActivityModalProps) {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [leadSearch, setLeadSearch] = useState("");
   const [leadId, setLeadId] = useState<string | undefined>();
   const [type, setType] = useState<ActivityType>("call");
   const [subject, setSubject] = useState("");
   const [dueDate, setDueDate] = useState<Dayjs | null>(dayjs().add(1, "hour").minute(0));
+  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [msStatus, setMsStatus] = useState<MicrosoftConnectionStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -40,7 +46,9 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
     setType("call");
     setSubject("");
     setDueDate(dayjs().add(1, "hour").minute(0));
+    setDurationMinutes(30);
     leadApi.listLeads({}).then((r) => setLeads(r.leads)).catch(() => undefined);
+    microsoftApi.getStatus().then(setMsStatus).catch(() => undefined);
   }, [open]);
 
   useEffect(() => {
@@ -55,19 +63,40 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadSearch]);
 
-  const canSubmit = leadId !== undefined && subject.trim().length > 0 && dueDate !== null;
+  const selectedLead = leads.find((l) => l.id === leadId);
+  const isMeeting = type === "teams_meeting";
+  // A real Teams meeting is created through the requesting user's own
+  // Microsoft 365 account (createTeamsMeetingForLead has no "assignedTo"
+  // override - Graph has no concept of creating a meeting "as" someone
+  // else), and Graph needs the lead's email to invite them. Both are real
+  // requirements, not arbitrary form validation, so both block submit.
+  const canSubmit =
+    leadId !== undefined &&
+    subject.trim().length > 0 &&
+    dueDate !== null &&
+    (!isMeeting || (msStatus?.connected && selectedLead?.email));
 
   const handleSubmit = async () => {
     if (!leadId || !dueDate) return;
     setSubmitting(true);
     try {
-      await activityApi.createActivityForLead(leadId, {
-        type,
-        subject: subject.trim(),
-        dueDate: dueDate.toISOString(),
-        assignedTo: assignedToId,
-      });
-      message.success("Activity scheduled");
+      if (isMeeting) {
+        await microsoftApi.createTeamsMeeting(
+          leadId,
+          subject.trim(),
+          dueDate.toISOString(),
+          dueDate.add(durationMinutes, "minute").toISOString()
+        );
+        message.success("Teams meeting scheduled");
+      } else {
+        await activityApi.createActivityForLead(leadId, {
+          type,
+          subject: subject.trim(),
+          dueDate: dueDate.toISOString(),
+          assignedTo: assignedToId,
+        });
+        message.success("Activity scheduled");
+      }
       onCreated();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to schedule the activity"));
@@ -144,12 +173,48 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
         <Input style={{ marginTop: 4 }} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Proposal review with RSM" />
       </div>
 
-      <div>
-        <Text style={{ fontSize: 12.5, fontWeight: 500, marginTop: 12, display: "block" }}>
-          When <span style={{ color: appTokens.danger }}>*</span>
-        </Text>
-        <DatePicker showTime style={{ width: "100%", marginTop: 4 }} value={dueDate} onChange={setDueDate} format="D MMM YYYY, h:mm A" />
+      <div style={{ display: "grid", gridTemplateColumns: isMeeting ? "1fr 120px" : "1fr", gap: 12 }}>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500, marginTop: 12, display: "block" }}>
+            When <span style={{ color: appTokens.danger }}>*</span>
+          </Text>
+          <DatePicker showTime style={{ width: "100%", marginTop: 4 }} value={dueDate} onChange={setDueDate} format="D MMM YYYY, h:mm A" />
+        </div>
+        {isMeeting && (
+          <div>
+            <Text style={{ fontSize: 12.5, fontWeight: 500, marginTop: 12, display: "block" }}>Duration</Text>
+            <InputNumber
+              style={{ width: "100%", marginTop: 4 }}
+              min={15}
+              step={15}
+              value={durationMinutes}
+              onChange={(v) => setDurationMinutes(v ?? 30)}
+              suffix="min"
+            />
+          </div>
+        )}
       </div>
+
+      {isMeeting && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: "8px 12px",
+            borderRadius: appTokens.radiusSm,
+            background: appTokens.surfaceMuted,
+            fontSize: 11.5,
+            color: appTokens.textSecondary,
+          }}
+        >
+          {!msStatus?.connected
+            ? "Connect your Microsoft 365 account (Settings) to create a real Teams meeting."
+            : selectedLead && !selectedLead.email
+              ? "This lead has no email on file - Teams meetings need one to send the invite."
+              : `Creates a real Microsoft Teams meeting and calendar invite under your own Microsoft 365 account${
+                  assignedToId !== user?.id ? " - not the calendar you're viewing" : ""
+                }.`}
+        </div>
+      )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
         <Button onClick={onClose}>Cancel</Button>

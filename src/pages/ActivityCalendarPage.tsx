@@ -258,6 +258,7 @@ export default function ActivityCalendarPage() {
               date={anchorDate}
               activities={activitiesByDay.get(dateKey(anchorDate)) ?? []}
               dayTag={view?.dayTags[dateKey(anchorDate)]}
+              onChanged={loadView}
             />
           )}
 
@@ -291,6 +292,7 @@ export default function ActivityCalendarPage() {
               date={detailDate}
               activities={activitiesByDay.get(dateKey(detailDate)) ?? []}
               dayTag={view?.dayTags[dateKey(detailDate)]}
+              onChanged={loadView}
             />
           )}
         </div>

@@ -16,9 +16,10 @@ interface DayTimelineProps {
   date: Dayjs;
   activities: Activity[];
   dayTag: CalendarDayTag | undefined;
+  onChanged?: () => void;
 }
 
-export function DayTimeline({ userName, zoneName, officeName, date, activities, dayTag }: DayTimelineProps) {
+export function DayTimeline({ userName, zoneName, officeName, date, activities, dayTag, onChanged }: DayTimelineProps) {
   const doneCount = activities.filter((a) => a.status === "completed").length;
   const location = [zoneName, officeName].filter(Boolean).join(" · ");
 
@@ -78,7 +79,7 @@ export function DayTimeline({ userName, zoneName, officeName, date, activities, 
           <Text style={{ color: appTokens.textTertiary, fontSize: 13 }}>Nothing scheduled for this day</Text>
         ) : (
           activities.map((activity, idx) => (
-            <ActivityRow key={activity.id} activity={activity} isLast={idx === activities.length - 1} />
+            <ActivityRow key={activity.id} activity={activity} isLast={idx === activities.length - 1} onChanged={onChanged} />
           ))
         )}
       </div>
