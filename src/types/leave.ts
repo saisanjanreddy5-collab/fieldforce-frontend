@@ -73,3 +73,15 @@ export interface LeaveContext {
   peers: LeaveContextPerson[];
   directReports: LeaveContextPerson[];
 }
+
+export interface UpdateLeaveTypePayload {
+  annualDays?: number | null;
+  accrualPerMonth?: number | null;
+  carryForwardCap?: number | null;
+  maxConsecutiveDays?: number | null;
+  noticeDays?: number | null;
+  medicalNoteAfterDays?: number | null;
+  expiresAfterDays?: number | null;
+  requiresSecondApprover?: boolean;
+  policyNote?: string;
+}

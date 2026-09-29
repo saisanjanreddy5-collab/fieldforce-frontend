@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Tag, Typography, message } from "antd";
+import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import type { Activity } from "../../types/activity";
 import { TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shared";
@@ -36,13 +37,15 @@ interface ActivityRowProps {
   onChanged?: () => void;
 }
 
-// Call, Open-mail, Directions and Join-Teams are wired to the real
+// Call, Open-mail, Directions, WhatsApp and Join-Teams are all wired to real
 // endpoints/surfaces this codebase already has (Smartflo click-to-call, the
-// real email-compose drawer, the real site-visit modal, and the joinUrl a
-// real Teams meeting was created with). WhatsApp still renders the same as
-// the reference but is honest about not opening its real surface yet,
-// instead of faking one.
+// real email-compose drawer, the real site-visit modal, the Leads page's
+// own real WhatsApp tab, and the joinUrl a real Teams meeting was created
+// with). WhatsApp deliberately reuses that existing tab (with its real send
+// box and live-polled incoming messages) instead of building a second
+// composer here - a duplicate one would drift from the real one over time.
 export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
+  const navigate = useNavigate();
   const [emailDrawerOpen, setEmailDrawerOpen] = useState(false);
   const [siteVisitModalOpen, setSiteVisitModalOpen] = useState(false);
   const isCompleted = activity.status === "completed";
@@ -106,6 +109,14 @@ export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
         return;
       }
       setSiteVisitModalOpen(true);
+      return;
+    }
+    if (activity.type === "whatsapp") {
+      if (!activity.leadId) {
+        message.error("This activity isn't linked to a lead");
+        return;
+      }
+      navigate(`/leads?leadId=${activity.leadId}&tab=whatsapp`);
       return;
     }
     message.info(`${ACTION_LABEL[activity.type]} opens in the next phase of the Activity calendar`);

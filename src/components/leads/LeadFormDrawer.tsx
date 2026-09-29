@@ -16,7 +16,8 @@ import {
 import dayjs from "dayjs";
 import * as leadApi from "../../api/lead-api";
 import type { CreateLeadPayload, Lead } from "../../types/lead";
-import { LEAD_CATEGORY_VALUES, LEAD_STATUS_VALUES } from "../../utils/lead-constants";
+import { usePipelineStages } from "../../hooks/use-pipeline-stages";
+import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { errorMessageFrom } from "../../utils/api-error";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
 import { ConsentTab } from "./tabs/ConsentTab";
@@ -108,6 +109,8 @@ const CAPTURE_CHANNEL_OPTIONS = [
 const emptyValues: FormValues = { fullName: "" };
 
 export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerProps) {
+  const { stages } = usePipelineStages();
+  const { categories } = useLeadCategories();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const isEdit = lead !== null;
@@ -353,13 +356,16 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                       <Select options={YES_NO} allowClear />
                     </Form.Item>
                     <Form.Item name="status" label="Status">
-                      <Select allowClear options={LEAD_STATUS_VALUES.map((value) => ({ value, label: value }))} />
+                      <Select
+                        allowClear
+                        options={stages.filter((s) => s.isActive).map((s) => ({ value: s.key, label: s.label }))}
+                      />
                     </Form.Item>
                     <Form.Item name="prospectStatus" label="Prospect Status">
                       <Select allowClear options={["Hot", "Warm", "Cold"].map((value) => ({ value, label: value }))} />
                     </Form.Item>
                     <Form.Item name="category" label="Category" rules={[{ required: true, message: "Required" }]}>
-                      <Select options={LEAD_CATEGORY_VALUES.map((value) => ({ value, label: value }))} />
+                      <Select options={categories.filter((c) => c.isActive).map((c) => ({ value: c.key, label: c.label }))} />
                     </Form.Item>
                     <Form.Item name="leadScore" label="Lead Score (%)">
                       <InputNumber min={0} max={100} style={{ width: "100%" }} />

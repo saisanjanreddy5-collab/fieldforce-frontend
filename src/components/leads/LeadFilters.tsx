@@ -1,6 +1,7 @@
 import { Badge, Button, Popover, Select, Space, Switch, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
-import { LEAD_CATEGORY_VALUES, LEAD_STATUS_VALUES } from "../../utils/lead-constants";
+import { usePipelineStages } from "../../hooks/use-pipeline-stages";
+import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { appTokens } from "../../utils/design-system";
 
 const { Text } = Typography;
@@ -22,6 +23,8 @@ const activeCount = (value: AdvancedFilters) => Object.values(value).filter((v) 
 // disabled). Only real, server-side-filterable fields are offered - Region/
 // Territory/Salesperson are gone entirely (Decision 3), not just hidden.
 export function LeadFilters({ value, onChange }: LeadFiltersProps) {
+  const { stages } = usePipelineStages();
+  const { categories } = useLeadCategories();
   const count = activeCount(value);
 
   const content = (
@@ -38,7 +41,7 @@ export function LeadFilters({ value, onChange }: LeadFiltersProps) {
             placeholder="All categories"
             value={value.category}
             onChange={(category) => onChange({ ...value, category })}
-            options={LEAD_CATEGORY_VALUES.map((c) => ({ value: c, label: c }))}
+            options={categories.filter((c) => c.isActive).map((c) => ({ value: c.key, label: c.label }))}
           />
         </div>
         <div>
@@ -49,7 +52,7 @@ export function LeadFilters({ value, onChange }: LeadFiltersProps) {
             placeholder="All stages"
             value={value.status}
             onChange={(status) => onChange({ ...value, status })}
-            options={LEAD_STATUS_VALUES.map((s) => ({ value: s, label: s }))}
+            options={stages.filter((s) => s.isActive).map((s) => ({ value: s.key, label: s.label }))}
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 0" }}>

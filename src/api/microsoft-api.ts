@@ -25,6 +25,23 @@ export async function sendLeadEmail(leadId: string, subject: string, body: strin
   await apiClient.post(`/leads/${leadId}/microsoft/email`, { subject, body });
 }
 
+export interface UserMicrosoftConnection {
+  id: string;
+  name: string;
+  designation: string | null;
+  connected: boolean;
+  email: string | null;
+}
+
+export async function listUsersStatus(): Promise<UserMicrosoftConnection[]> {
+  const response = await apiClient.get<ApiSuccess<UserMicrosoftConnection[]>>("/integrations/microsoft/users");
+  return response.data.data;
+}
+
+export async function disconnectUser(userId: string): Promise<void> {
+  await apiClient.delete(`/integrations/microsoft/users/${userId}`);
+}
+
 export async function createTeamsMeeting(
   leadId: string,
   subject: string,

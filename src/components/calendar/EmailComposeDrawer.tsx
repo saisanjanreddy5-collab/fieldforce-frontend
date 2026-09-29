@@ -3,11 +3,15 @@ import { Button, Drawer, Input, Typography, message } from "antd";
 import { MailOutlined } from "@ant-design/icons";
 import * as leadApi from "../../api/lead-api";
 import * as microsoftApi from "../../api/microsoft-api";
+import * as messageTemplateApi from "../../api/message-template-api";
 import type { Lead } from "../../types/lead";
 import type { MicrosoftConnectionStatus } from "../../types/microsoft";
-import { EMAIL_TEMPLATES } from "../../utils/email-templates";
+import type { MessageTemplate } from "../../types/message-template";
+import { applyTemplateTokens, templateTokens } from "../../utils/email-templates";
 import { appTokens } from "../../utils/design-system";
 import { errorMessageFrom } from "../../utils/api-error";
+
+const BLANK_TEMPLATE_KEY = "blank";
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
@@ -27,8 +31,9 @@ interface EmailComposeDrawerProps {
 export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onSent }: EmailComposeDrawerProps) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [msStatus, setMsStatus] = useState<MicrosoftConnectionStatus | null>(null);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [templateKey, setTemplateKey] = useState("blank");
+  const [templateKey, setTemplateKey] = useState(BLANK_TEMPLATE_KEY);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -36,13 +41,14 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    setTemplateKey("blank");
+    setTemplateKey(BLANK_TEMPLATE_KEY);
     setSubject("");
     setBody("");
-    Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus()])
-      .then(([leadResult, statusResult]) => {
+    Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus(), messageTemplateApi.listMessageTemplates("email")])
+      .then(([leadResult, statusResult, templatesResult]) => {
         setLead(leadResult);
         setMsStatus(statusResult);
+        setTemplates(templatesResult.filter((t) => t.status === "active"));
       })
       .catch(() => message.error("Failed to load lead details"))
       .finally(() => setLoading(false));
@@ -50,12 +56,12 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
 
   const applyTemplate = (key: string) => {
     setTemplateKey(key);
-    if (!lead) return;
-    const template = EMAIL_TEMPLATES.find((t) => t.key === key);
+    if (!lead || key === BLANK_TEMPLATE_KEY) return;
+    const template = templates.find((t) => t.key === key);
     if (!template) return;
-    const { subject: s, body: b } = template.build(lead, activityDueDate);
-    setSubject(s);
-    setBody(b);
+    const tokens = templateTokens(lead, activityDueDate);
+    setSubject(template.subject ? applyTemplateTokens(template.subject, tokens) : "");
+    setBody(applyTemplateTokens(template.body, tokens));
   };
 
   const canSend = Boolean(msStatus?.connected) && Boolean(lead?.email) && subject.trim().length > 0 && body.trim().length > 0;
@@ -127,7 +133,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
         !loading && (
           <>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-              {EMAIL_TEMPLATES.map((t) => {
+              {[{ key: BLANK_TEMPLATE_KEY, name: "Blank email" }, ...templates].map((t) => {
                 const active = templateKey === t.key;
                 return (
                   <button
@@ -146,7 +152,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                       cursor: "pointer",
                     }}
                   >
-                    {t.label}
+                    {t.name}
                   </button>
                 );
               })}

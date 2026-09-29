@@ -69,7 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: "/approvals", label: "Approvals", icon: <CheckCircleOutlined /> },
       { path: "/reports", label: "Reports", icon: <FileTextOutlined />, built: true },
       { path: "/audit-consent", label: "Audit & consent", icon: <SafetyCertificateOutlined /> },
-      { path: "/settings", label: "Settings", icon: <SettingOutlined /> },
+      { path: "/settings", label: "Settings", icon: <SettingOutlined />, built: true },
       { path: "/dev-handoff", label: "Dev handoff", icon: <CodeOutlined /> },
     ],
   },
