@@ -10,7 +10,11 @@ import ReportsPage from "./pages/ReportsPage";
 import LeavePage from "./pages/LeavePage";
 import ExpensesPage from "./pages/ExpensesPage";
 import ActivityCalendarPage from "./pages/ActivityCalendarPage";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import AuditConsentPage from "./pages/AuditConsentPage";
+import TeamDashboardPage from "./pages/TeamDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
+import QrCapturePage from "./pages/QrCapturePage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -19,10 +23,11 @@ import { appTheme } from "./utils/design-system";
 
 function App() {
   return (
-    <ConfigProvider theme={appTheme}>
+    <ConfigProvider theme={appTheme} getPopupContainer={() => document.body}>
       <AntApp>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/f/:code" element={<QrCapturePage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/" element={<DashboardPage />} />
@@ -35,6 +40,9 @@ function App() {
               <Route path="/leave" element={<LeavePage />} />
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/activity-calendar" element={<ActivityCalendarPage />} />
+              <Route path="/approvals" element={<ApprovalsPage />} />
+              <Route path="/audit-consent" element={<AuditConsentPage />} />
+              <Route path="/team/dashboard" element={<TeamDashboardPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               {ALL_NAV_LEAVES.filter((item) => !item.built).map((item) => (
                 <Route key={item.path} path={item.path} element={<ComingSoonPage title={item.label} />} />

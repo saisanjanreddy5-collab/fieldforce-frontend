@@ -16,10 +16,7 @@ import { appTokens } from "../../utils/design-system";
 
 const { Text, Title } = Typography;
 
-const KIND_ROWS: LeaveRequestKind[][] = [
-  ["casual", "sick", "earned", "comp_off"],
-  ["half_day", "wfh"],
-];
+const KINDS: LeaveRequestKind[] = ["casual", "sick", "earned", "comp_off", "half_day", "wfh"];
 
 const KIND_ICON: Record<LeaveRequestKind, ReactNode> = {
   casual: <ClockCircleOutlined />,
@@ -122,7 +119,19 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
       open={open}
       onCancel={onClose}
       width={520}
-      footer={null}
+      style={{ top: 24 }}
+      styles={{ body: { maxHeight: "calc(100vh - 220px)", overflowY: "auto", paddingRight: 4 } }}
+      footer={
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>Updates the moment it's approved</Text>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="primary" loading={submitting} disabled={!canSubmit} onClick={handleSubmit}>
+              Submit request
+            </Button>
+          </div>
+        </div>
+      }
       title={
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
@@ -149,38 +158,36 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
         </div>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, marginBottom: 16 }}>
-        {KIND_ROWS.map((row, idx) => (
-          <div key={idx} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {row.map((k) => {
-              const active = kind === k;
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setKind(k)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "6px 12px",
-                    fontSize: 13,
-                    fontFamily: appTokens.font,
-                    fontWeight: active ? 600 : 500,
-                    borderRadius: 999,
-                    border: `1px solid ${active ? appTokens.primary : appTokens.border}`,
-                    background: appTokens.surface,
-                    color: active ? appTokens.primary : appTokens.textPrimary,
-                    cursor: "pointer",
-                  }}
-                >
-                  {KIND_ICON[k]}
-                  {KIND_LABEL[k]}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 8, marginBottom: 16 }}>
+        {KINDS.map((k) => {
+          const active = kind === k;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKind(k)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: "6px 10px",
+                fontSize: 12.5,
+                fontFamily: appTokens.font,
+                fontWeight: active ? 600 : 500,
+                borderRadius: 999,
+                border: `1px solid ${active ? appTokens.primary : appTokens.border}`,
+                background: appTokens.surface,
+                color: active ? appTokens.primary : appTokens.textPrimary,
+                cursor: "pointer",
+                minWidth: 0,
+              }}
+            >
+              {KIND_ICON[k]}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{KIND_LABEL[k]}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -250,16 +257,6 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
             </>
           )
         )}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-        <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>Team availability updates the moment it is approved</Text>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" loading={submitting} disabled={!canSubmit} onClick={handleSubmit}>
-            Submit request
-          </Button>
-        </div>
       </div>
     </Modal>
   );

@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  DatePicker,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-  Table,
-  Typography,
-  message,
-} from "antd";
+import { Button, DatePicker, Input, Modal, Popconfirm, Select, Space, Spin, Typography, message } from "antd";
+import { BarChartOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as reportApi from "../api/report-api";
 import * as salesTeamApi from "../api/sales-team-api";
@@ -41,6 +31,123 @@ const REPORT_TABS: { key: ReportKey; label: string }[] = [
 ];
 
 const money = (v: number | null) => (v === null ? "-" : formatCompactCurrency(v));
+
+interface ReportColumn<T> {
+  key: string;
+  label: string;
+  align?: "left" | "right";
+  flex?: number;
+  render: (row: T) => React.ReactNode;
+}
+
+function ReportTable<T>({
+  columns,
+  rows,
+  rowKey,
+  totalRow,
+  emptyText,
+  loading,
+}: {
+  columns: ReportColumn<T>[];
+  rows: T[];
+  rowKey: (row: T) => string;
+  totalRow?: React.ReactNode[];
+  emptyText: string;
+  loading: boolean;
+}) {
+  return (
+    <div style={{ border: `1px solid ${appTokens.border}`, borderRadius: appTokens.radius, overflow: "hidden" }}>
+      <div style={{ display: "flex", padding: "10px 18px", background: appTokens.surfaceMuted, borderBottom: `1px solid ${appTokens.borderLight}` }}>
+        {columns.map((c) => (
+          <div
+            key={c.key}
+            style={{
+              flex: c.flex ?? 1,
+              textAlign: c.align ?? "left",
+              fontSize: 10.5,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              color: appTokens.textTertiary,
+              textTransform: "uppercase",
+            }}
+          >
+            {c.label}
+          </div>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <Spin />
+        </div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: "40px 18px", textAlign: "center" }}>
+          <BarChartOutlined style={{ fontSize: 22, color: appTokens.textTertiary }} />
+          <div style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>{emptyText}</Text>
+          </div>
+        </div>
+      ) : (
+        rows.map((row, idx) => (
+          <div
+            key={rowKey(row)}
+            style={{
+              display: "flex",
+              padding: "13px 18px",
+              borderBottom: idx === rows.length - 1 && !totalRow ? "none" : `1px solid ${appTokens.borderLight}`,
+              transition: "background 0.1s",
+            }}
+          >
+            {columns.map((c) => (
+              <div key={c.key} style={{ flex: c.flex ?? 1, textAlign: c.align ?? "left", fontSize: 13.5, color: appTokens.textPrimary }}>
+                {c.render(row)}
+              </div>
+            ))}
+          </div>
+        ))
+      )}
+
+      {totalRow && rows.length > 0 && (
+        <div style={{ display: "flex", padding: "13px 18px", background: appTokens.surfaceMuted, borderTop: `1.5px solid ${appTokens.border}` }}>
+          {columns.map((c, i) => (
+            <div key={c.key} style={{ flex: c.flex ?? 1, textAlign: c.align ?? "left", fontSize: 13.5, fontWeight: 700, color: appTokens.textPrimary }}>
+              {totalRow[i]}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReportCard({ title, sub, right, children }: { title: string; sub: React.ReactNode; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div style={{ border: `1px solid ${appTokens.border}`, borderRadius: appTokens.radius, background: appTokens.surface, boxShadow: appTokens.shadowSm }}>
+      <div
+        style={{
+          padding: "14px 18px",
+          borderBottom: `1px solid ${appTokens.borderLight}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <div>
+          <Text strong style={{ fontSize: 14 }}>
+            {title}
+          </Text>
+          <div>
+            <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>{sub}</Text>
+          </div>
+        </div>
+        {right}
+      </div>
+      <div style={{ padding: 18 }}>{children}</div>
+    </div>
+  );
+}
 
 export default function ReportsPage() {
   const hasPermission = useHasPermission();
@@ -222,9 +329,14 @@ export default function ReportsPage() {
     );
   }
 
+  const salespersonTotals = salesperson.reduce(
+    (acc, r) => ({ leads: acc.leads + r.leads, converted: acc.converted + r.converted, revenue: acc.revenue + r.revenue }),
+    { leads: 0, converted: 0, revenue: 0 }
+  );
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Reports
@@ -239,210 +351,163 @@ export default function ReportsPage() {
         </Space>
       </div>
 
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", margin: "16px 0" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
         {REPORT_TABS.map((t) => {
           const active = tab === t.key;
           return (
-            <Button
+            <button
               key={t.key}
-              size="small"
-              shape="round"
+              type="button"
               onClick={() => setTab(t.key)}
               style={{
-                flexShrink: 0,
-                background: active ? appTokens.primarySoft : "transparent",
-                borderColor: active ? appTokens.primary : appTokens.border,
+                padding: "5px 12px",
+                fontSize: 12.5,
+                fontFamily: appTokens.font,
+                fontWeight: active ? 600 : 500,
+                borderRadius: 999,
+                border: `1px solid ${active ? appTokens.primary : appTokens.border}`,
+                background: active ? appTokens.primarySoft : appTokens.surface,
                 color: active ? appTokens.primary : appTokens.textPrimary,
-                fontWeight: active ? 700 : 500,
+                cursor: "pointer",
               }}
             >
               {t.label}
-            </Button>
+            </button>
           );
         })}
       </div>
 
-      <div
-        style={{
-          border: `1px solid ${appTokens.border}`,
-          borderRadius: appTokens.radius,
-          padding: 18,
-          background: appTokens.surface,
-          boxShadow: appTokens.shadowXs,
-        }}
-      >
-        {tab === "salesperson" && (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-              <div>
-                <Text strong style={{ display: "block" }}>
-                  Performance by salesperson
-                </Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {caption}
-                </Text>
-              </div>
-              <Space>
-                <DatePicker picker="month" placeholder="All time" value={month} onChange={setMonth} allowClear />
-                <Select
-                  placeholder="All regions"
-                  allowClear
-                  style={{ width: 160 }}
-                  value={zoneId}
-                  onChange={setZoneId}
-                  options={zones.map((z) => ({ value: z.id, label: z.name }))}
-                />
-              </Space>
-            </div>
-            <Table<SalespersonPerformanceRow>
-              className="thin-scroll-table"
-              size="small"
-              rowKey="userId"
-              loading={loading}
-              dataSource={salesperson}
-              pagination={false}
-              columns={[
-                { title: "Salesperson", dataIndex: "name" },
-                { title: "Leads", dataIndex: "leads" },
-                { title: "Converted", dataIndex: "converted" },
-                { title: "Conv. %", dataIndex: "conversionRate", render: (v: number) => `${v}%` },
-                { title: "Revenue", dataIndex: "revenue", render: (v: number) => money(v) },
-              ]}
-              summary={(rows) => {
-                const leads = rows.reduce((s, r) => s + r.leads, 0);
-                const converted = rows.reduce((s, r) => s + r.converted, 0);
-                const revenue = rows.reduce((s, r) => s + r.revenue, 0);
-                return (
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell index={0}>
-                      <Text strong>Total</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={1}>
-                      <Text strong>{leads}</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={2}>
-                      <Text strong>{converted}</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={3}>
-                      <Text strong>{leads === 0 ? 0 : Math.round((converted / leads) * 1000) / 10}%</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={4}>
-                      <Text strong>{money(revenue)}</Text>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
-                );
-              }}
-            />
-          </>
-        )}
+      {tab === "salesperson" && (
+        <ReportCard
+          title="Performance by salesperson"
+          sub={caption}
+          right={
+            <Space>
+              <DatePicker picker="month" placeholder="All time" value={month} onChange={setMonth} allowClear />
+              <Select
+                placeholder="All regions"
+                allowClear
+                style={{ width: 160 }}
+                value={zoneId}
+                onChange={setZoneId}
+                options={zones.map((z) => ({ value: z.id, label: z.name }))}
+              />
+            </Space>
+          }
+        >
+          <ReportTable<SalespersonPerformanceRow>
+            loading={loading}
+            rows={salesperson}
+            rowKey={(r) => r.userId}
+            emptyText="No leads owned by anyone in your reporting line yet"
+            columns={[
+              { key: "name", label: "Salesperson", flex: 1.4, render: (r) => <Text strong>{r.name}</Text> },
+              { key: "leads", label: "Leads", align: "right", render: (r) => r.leads },
+              { key: "converted", label: "Converted", align: "right", render: (r) => r.converted },
+              { key: "rate", label: "Conv. %", align: "right", render: (r) => `${r.conversionRate}%` },
+              { key: "revenue", label: "Revenue", align: "right", render: (r) => <Text strong>{money(r.revenue)}</Text> },
+            ]}
+            totalRow={[
+              <Text strong key="l">
+                Total
+              </Text>,
+              <Text strong key="le" style={{ display: "block", textAlign: "right" }}>
+                {salespersonTotals.leads}
+              </Text>,
+              <Text strong key="c" style={{ display: "block", textAlign: "right" }}>
+                {salespersonTotals.converted}
+              </Text>,
+              <Text strong key="r" style={{ display: "block", textAlign: "right" }}>
+                {salespersonTotals.leads === 0 ? 0 : Math.round((salespersonTotals.converted / salespersonTotals.leads) * 1000) / 10}%
+              </Text>,
+              <Text strong key="rev" style={{ display: "block", textAlign: "right" }}>
+                {money(salespersonTotals.revenue)}
+              </Text>,
+            ]}
+          />
+        </ReportCard>
+      )}
 
-        {tab === "state_wise" && (
-          <>
-            <Text strong style={{ display: "block" }}>
-              State-wise leads and customers
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 12 }}>
-              "Open tickets" is shown as "-" - FieldForce has no support-ticket system yet.
-            </Text>
-            <Table<StateWiseRow>
-              className="thin-scroll-table"
-              size="small"
-              rowKey="stateId"
-              loading={loading}
-              dataSource={stateWise}
-              pagination={false}
-              locale={{ emptyText: "No leads have a State assigned yet - set Region/State on a lead to see it here" }}
-              columns={[
-                { title: "State", dataIndex: "stateName" },
-                { title: "Leads", dataIndex: "leads" },
-                { title: "Customers", dataIndex: "customers" },
-                { title: "FOFO live", dataIndex: "fofoLive" },
-                { title: "Open tickets", dataIndex: "openTickets", render: (v: number | null) => v ?? "-" },
-              ]}
-            />
-          </>
-        )}
+      {tab === "state_wise" && (
+        <ReportCard title="State-wise leads and customers" sub={'"Open tickets" is shown as "-" - FieldForce has no support-ticket system yet.'}>
+          <ReportTable<StateWiseRow>
+            loading={loading}
+            rows={stateWise}
+            rowKey={(r) => r.stateId}
+            emptyText="No leads have a State assigned yet - set Region/State on a lead to see it here"
+            columns={[
+              { key: "state", label: "State", flex: 1.4, render: (r) => <Text strong>{r.stateName}</Text> },
+              { key: "leads", label: "Leads", align: "right", render: (r) => r.leads },
+              { key: "customers", label: "Customers", align: "right", render: (r) => r.customers },
+              { key: "fofo", label: "FOFO live", align: "right", render: (r) => r.fofoLive },
+              { key: "tickets", label: "Open tickets", align: "right", render: (r) => r.openTickets ?? "-" },
+            ]}
+          />
+        </ReportCard>
+      )}
 
-        {tab === "b2b_group" && (
-          <>
-            <Text strong style={{ display: "block" }}>
-              B2B group performance
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 12 }}>
-              Non-FOFO channel mix, current data. "Avg order" and "Overdue" are shown as "-" - no orders/billing system exists yet.
-            </Text>
-            <Table<B2BGroupRow>
-              className="thin-scroll-table"
-              size="small"
-              rowKey="category"
-              loading={loading}
-              dataSource={b2bGroup}
-              pagination={false}
-              locale={{ emptyText: "No non-FOFO leads yet - this report excludes FOFO, which has its own Cohort retention report" }}
-              columns={[
-                { title: "Category", dataIndex: "category" },
-                { title: "Accounts", dataIndex: "accounts" },
-                { title: "Revenue", dataIndex: "revenue", render: (v: number) => money(v) },
-                { title: "Avg order", dataIndex: "avgOrder", render: (v: number | null) => money(v) },
-                { title: "Overdue", dataIndex: "overdue", render: (v: number | null) => money(v) },
-              ]}
-            />
-          </>
-        )}
+      {tab === "b2b_group" && (
+        <ReportCard
+          title="B2B group performance"
+          sub='Non-FOFO channel mix, current data. "Avg order" and "Overdue" are shown as "-" - no orders/billing system exists yet.'
+        >
+          <ReportTable<B2BGroupRow>
+            loading={loading}
+            rows={b2bGroup}
+            rowKey={(r) => r.category}
+            emptyText="No non-FOFO leads yet - this report excludes FOFO, which has its own Cohort retention report"
+            columns={[
+              { key: "category", label: "Category", flex: 1.4, render: (r) => <Text strong>{r.category}</Text> },
+              { key: "accounts", label: "Accounts", align: "right", render: (r) => r.accounts },
+              { key: "revenue", label: "Revenue", align: "right", render: (r) => <Text strong>{money(r.revenue)}</Text> },
+              { key: "avgOrder", label: "Avg order", align: "right", render: (r) => money(r.avgOrder) },
+              { key: "overdue", label: "Overdue", align: "right", render: (r) => money(r.overdue) },
+            ]}
+          />
+        </ReportCard>
+      )}
 
-        {tab === "lead_source_roi" && (
-          <>
-            <Text strong style={{ display: "block" }}>
-              Lead source ROI
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 12 }}>
-              Grouped by the inquiry source salespeople actually record. "Cost" and "CPQL" are shown as "-" - no marketing spend is tracked yet.
-            </Text>
-            <Table<LeadSourceRoiRow>
-              className="thin-scroll-table"
-              size="small"
-              rowKey="source"
-              loading={loading}
-              dataSource={leadSource}
-              pagination={false}
-              columns={[
-                { title: "Source", dataIndex: "source" },
-                { title: "Leads", dataIndex: "leads" },
-                { title: "Qualified", dataIndex: "qualified" },
-                { title: "Cost", dataIndex: "cost", render: (v: number | null) => money(v) },
-                { title: "CPQL", dataIndex: "cpql", render: (v: number | null) => money(v) },
-              ]}
-            />
-          </>
-        )}
+      {tab === "lead_source_roi" && (
+        <ReportCard
+          title="Lead source ROI"
+          sub='Grouped by the inquiry source salespeople actually record. "Cost" and "CPQL" are shown as "-" - no marketing spend is tracked yet.'
+        >
+          <ReportTable<LeadSourceRoiRow>
+            loading={loading}
+            rows={leadSource}
+            rowKey={(r) => r.source}
+            emptyText="No leads with an inquiry source recorded yet"
+            columns={[
+              { key: "source", label: "Source", flex: 1.4, render: (r) => <Text strong>{r.source}</Text> },
+              { key: "leads", label: "Leads", align: "right", render: (r) => r.leads },
+              { key: "qualified", label: "Qualified", align: "right", render: (r) => r.qualified },
+              { key: "cost", label: "Cost", align: "right", render: (r) => money(r.cost) },
+              { key: "cpql", label: "CPQL", align: "right", render: (r) => money(r.cpql) },
+            ]}
+          />
+        </ReportCard>
+      )}
 
-        {tab === "fofo_cohort_retention" && (
-          <>
-            <Text strong style={{ display: "block" }}>
-              FOFO cohort retention
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 12 }}>
-              Cohort and store count are real (grouped by when each store actually went live). M+3/M+6/M+12 are shown as "-" - FieldForce
-              has no recurring-order tracking, so ongoing retention can't be measured yet.
-            </Text>
-            <Table<FofoCohortRow>
-              className="thin-scroll-table"
-              size="small"
-              rowKey="cohortMonth"
-              loading={loading}
-              dataSource={cohort}
-              pagination={false}
-              columns={[
-                { title: "Cohort", dataIndex: "cohortMonth", render: (v: string) => dayjs(v).format("MMM YYYY") },
-                { title: "Stores", dataIndex: "stores" },
-                { title: "M+3", dataIndex: "m3", render: (v: number | null) => (v === null ? "-" : `${v}%`) },
-                { title: "M+6", dataIndex: "m6", render: (v: number | null) => (v === null ? "-" : `${v}%`) },
-                { title: "M+12", dataIndex: "m12", render: (v: number | null) => (v === null ? "-" : `${v}%`) },
-              ]}
-            />
-          </>
-        )}
-      </div>
+      {tab === "fofo_cohort_retention" && (
+        <ReportCard
+          title="FOFO cohort retention"
+          sub={`Cohort and store count are real (grouped by when each store actually went live). M+3/M+6/M+12 are shown as "-" - FieldForce has no recurring-order tracking, so ongoing retention can't be measured yet.`}
+        >
+          <ReportTable<FofoCohortRow>
+            loading={loading}
+            rows={cohort}
+            rowKey={(r) => r.cohortMonth}
+            emptyText="No FOFO stores have gone live yet"
+            columns={[
+              { key: "cohort", label: "Cohort", flex: 1.4, render: (r) => <Text strong>{dayjs(r.cohortMonth).format("MMM YYYY")}</Text> },
+              { key: "stores", label: "Stores", align: "right", render: (r) => r.stores },
+              { key: "m3", label: "M+3", align: "right", render: (r) => (r.m3 === null ? "-" : `${r.m3}%`) },
+              { key: "m6", label: "M+6", align: "right", render: (r) => (r.m6 === null ? "-" : `${r.m6}%`) },
+              { key: "m12", label: "M+12", align: "right", render: (r) => (r.m12 === null ? "-" : `${r.m12}%`) },
+            ]}
+          />
+        </ReportCard>
+      )}
 
       <Modal
         title="Save view"

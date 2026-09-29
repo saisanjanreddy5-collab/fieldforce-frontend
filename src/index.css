@@ -110,6 +110,32 @@ body {
   animation: message-fade-in 0.18s ease-out;
 }
 
+/* Every AntD date-picker calendar, everywhere in the app - forced to a
+   fixed, predictable spot instead of anchored under whichever field opened
+   it. The anchored default can't fit in EITHER direction (above or below
+   the field) when a field sits low in a tall modal on a short screen, and
+   when that happens the library still renders it anchored anyway, letting
+   it go off-screen with the month/year header clipped - confirmed by
+   measuring the real popup/trigger/viewport boxes, not a guess: at a
+   663px-tall viewport, a field at y=334-356 has 334px above and 307px
+   below, and the ~379px-tall calendar doesn't fit in either, so it renders
+   with a negative top and its header off-screen. A pure per-field fix
+   (reordering fields to buy back a few more px) only ever patches one
+   occurrence at a time. This is the general fix: always open top-center of
+   the viewport, capped well under any real screen height, so it is always
+   fully visible regardless of which field opened it or how short the
+   window is. */
+.ant-picker-dropdown {
+  position: fixed !important;
+  top: 64px !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  max-height: calc(100vh - 96px) !important;
+  overflow-y: auto !important;
+}
+
 /* Opportunities Kanban: a real hover lift on cards, so the board reads as
    draggable/interactive rather than a flat list of boxes. */
 .opportunity-card:hover {
