@@ -53,7 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     groupLabel: "Team",
     items: [
-      { path: "/team/dashboard", label: "Dashboard", icon: <AppstoreOutlined /> },
+      { path: "/team/dashboard", label: "Dashboard", icon: <AppstoreOutlined />, built: true },
       { path: "/activity-calendar", label: "Activity calendar", icon: <CalendarOutlined />, built: true },
       { path: "/expenses", label: "Expenses", icon: <WalletOutlined />, built: true },
       { path: "/leave", label: "Leave", icon: <ClockCircleOutlined />, built: true },
@@ -66,9 +66,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     groupLabel: "Govern",
     items: [
-      { path: "/approvals", label: "Approvals", icon: <CheckCircleOutlined /> },
+      { path: "/approvals", label: "Approvals", icon: <CheckCircleOutlined />, built: true },
       { path: "/reports", label: "Reports", icon: <FileTextOutlined />, built: true },
-      { path: "/audit-consent", label: "Audit & consent", icon: <SafetyCertificateOutlined /> },
+      { path: "/audit-consent", label: "Audit & consent", icon: <SafetyCertificateOutlined />, built: true },
       { path: "/settings", label: "Settings", icon: <SettingOutlined />, built: true },
       { path: "/dev-handoff", label: "Dev handoff", icon: <CodeOutlined /> },
     ],

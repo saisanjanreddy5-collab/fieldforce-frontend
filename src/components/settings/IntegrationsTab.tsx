@@ -87,7 +87,7 @@ export function IntegrationsTab() {
               <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{row.description}</Text>
             </div>
           </div>
-          <Tag style={{ margin: 0, background: appTokens.surfaceMuted, border: "none", color: appTokens.textSecondary }}>{row.scope}</Tag>
+          <Text style={{ fontSize: 12, color: appTokens.textTertiary, flexShrink: 0 }}>{row.scope}</Text>
           <Tag
             style={{
               margin: 0,

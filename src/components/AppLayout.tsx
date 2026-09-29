@@ -213,7 +213,13 @@ export function AppLayout() {
             </div>
           </div>
         </Header>
-        <Content style={{ margin: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
+        {/* padding, not margin - with overflowY:auto here, the scrollbar sits
+            at this box's own edge. Margin would put the gap between that
+            edge and the window (leaving 0 room between content and the
+            scrollbar itself); padding puts the gap where it's actually
+            visible, between the content and the scrollbar. Shared by every
+            page, so this one change fixes it everywhere at once. */}
+        <Content style={{ padding: "16px 22px 16px 16px", overflowY: "auto", overscrollBehavior: "contain" }}>
           <Outlet />
         </Content>
       </Layout>

@@ -13,9 +13,14 @@ import { appTokens } from "../../utils/design-system";
 
 const { Text, Title } = Typography;
 
-const TYPE_ROWS: ExpenseTypeKey[][] = [
-  ["travel", "fuel", "lodging", "meals", "client_entertainment"],
-  ["telecom", "marketing_collateral"],
+const EXPENSE_TYPE_ORDER: ExpenseTypeKey[] = [
+  "travel",
+  "fuel",
+  "lodging",
+  "meals",
+  "client_entertainment",
+  "telecom",
+  "marketing_collateral",
 ];
 
 // fuel/lodging/meals scale with a quantity (₹/km, ₹/night, ₹/day) - the
@@ -100,9 +105,10 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
         style={{
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 6,
-          padding: "6px 12px",
-          fontSize: 13,
+          padding: "6px 10px",
+          fontSize: 12.5,
           fontFamily: appTokens.font,
           fontWeight: active ? 600 : 500,
           borderRadius: 999,
@@ -110,10 +116,11 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
           background: appTokens.surface,
           color: active ? (t?.color ?? appTokens.primary) : appTokens.textPrimary,
           cursor: "pointer",
+          minWidth: 0,
         }}
       >
         {EXPENSE_TYPE_ICON[key]}
-        {t?.label ?? key}
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{t?.label ?? key}</span>
       </button>
     );
   };
@@ -123,7 +130,19 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
       open={open}
       onCancel={onClose}
       width={580}
-      footer={null}
+      style={{ top: 24 }}
+      styles={{ body: { maxHeight: "calc(100vh - 220px)", overflowY: "auto", paddingRight: 4 } }}
+      footer={
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>Goes to your reporting manager, then finance for payout</Text>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="primary" loading={submitting} disabled={!canSubmit} onClick={handleSubmit}>
+              Submit claim
+            </Button>
+          </div>
+        </div>
+      }
       title={
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
@@ -151,12 +170,8 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
         </div>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, marginBottom: 16 }}>
-        {TYPE_ROWS.map((row, idx) => (
-          <div key={idx} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {row.map(pill)}
-          </div>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 8, marginBottom: 16 }}>
+        {EXPENSE_TYPE_ORDER.map(pill)}
       </div>
 
       <div>
@@ -264,16 +279,6 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
           </Text>
         </div>
       )}
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-        <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>Goes to your reporting manager, then finance for payout</Text>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" loading={submitting} disabled={!canSubmit} onClick={handleSubmit}>
-            Submit claim
-          </Button>
-        </div>
-      </div>
     </Modal>
   );
 }

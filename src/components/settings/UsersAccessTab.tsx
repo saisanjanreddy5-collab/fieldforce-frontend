@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Avatar, Button, Typography, message } from "antd";
+import { useNavigate } from "react-router-dom";
 import * as microsoftApi from "../../api/microsoft-api";
 import { useAuth } from "../../context/AuthContext";
 import { avatarGradient, appTokens } from "../../utils/design-system";
@@ -9,6 +10,7 @@ import { errorMessageFrom } from "../../utils/api-error";
 const { Text } = Typography;
 
 export function UsersAccessTab() {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<microsoftApi.UserMicrosoftConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,13 +59,32 @@ export function UsersAccessTab() {
         boxShadow: appTokens.shadowSm,
       }}
     >
-      <div style={{ padding: "14px 18px", borderBottom: `1px solid ${appTokens.borderLight}` }}>
-        <Text strong style={{ fontSize: 14 }}>
-          Users &amp; access
-        </Text>
+      <div
+        style={{
+          padding: "14px 18px",
+          borderBottom: `1px solid ${appTokens.borderLight}`,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 18,
+        }}
+      >
         <div>
-          <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Each user connects their own Microsoft 365 account, so mail and meetings send as them.</Text>
+          <Text strong style={{ fontSize: 14 }}>
+            Users &amp; access
+          </Text>
+          <div>
+            <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Each user connects their own Microsoft 365 account, so mail and meetings send as them.</Text>
+          </div>
+          <div>
+            <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
+              Looking for roles and permissions instead? That's managed under Sales force management.
+            </Text>
+          </div>
         </div>
+        <Button size="small" onClick={() => navigate("/sales-force-management")} style={{ flexShrink: 0 }}>
+          Manage roles &amp; permissions
+        </Button>
       </div>
 
       {!loading &&

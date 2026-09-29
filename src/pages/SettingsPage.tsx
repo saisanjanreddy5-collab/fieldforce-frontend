@@ -10,6 +10,7 @@ import { LeaveTypesTab } from "../components/settings/LeaveTypesTab";
 import { TemplatesTab } from "../components/settings/TemplatesTab";
 import { IntegrationsTab } from "../components/settings/IntegrationsTab";
 import { UsersAccessTab } from "../components/settings/UsersAccessTab";
+import { QrLeadCaptureTab } from "../components/settings/QrLeadCaptureTab";
 import { NotBuiltTab } from "../components/settings/NotBuiltTab";
 
 const { Title, Text } = Typography;
@@ -102,12 +103,7 @@ export default function SettingsPage() {
         {tab === "integrations" && <IntegrationsTab />}
         {tab === "leave_types" && <LeaveTypesTab />}
         {tab === "users_access" && <UsersAccessTab />}
-        {tab === "qr_lead_capture" && (
-          <NotBuiltTab
-            title="QR lead capture"
-            reason="QR code generation, public capture forms, and scan/conversion analytics don't exist yet - this is a standalone feature on the scale of the Activity calendar, not a quick add."
-          />
-        )}
+        {tab === "qr_lead_capture" && <QrLeadCaptureTab />}
         {tab === "whatsapp_api" && (
           <NotBuiltTab
             title="WhatsApp API"

@@ -75,7 +75,8 @@ export function EditTemplateModal({ open, onClose, onSaved, template }: EditTemp
       open={open}
       onCancel={onClose}
       width={520}
-      styles={{ body: { maxHeight: "min(560px, 65vh)", overflowY: "auto", paddingRight: 4 } }}
+      style={{ top: 24 }}
+      styles={{ body: { maxHeight: "calc(100vh - 180px)", overflowY: "auto", paddingRight: 4 } }}
       title={
         <Title level={5} style={{ margin: 0 }}>
           {isNew ? "New template" : `Edit ${template.name}`}
