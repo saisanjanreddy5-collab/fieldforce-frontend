@@ -137,6 +137,31 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
 
+  // Inbound messages arrive via a server-side webhook, not anything this tab
+  // triggered itself - without this, a real reply from the lead only ever
+  // showed up after a manual page refresh, confirmed against production
+  // logs. No websocket infra exists elsewhere in this app, so this polls
+  // the same way the rest of FieldForce does. Only actually replaces
+  // `messages` (and so re-triggers the scroll-to-bottom effect below) when
+  // the thread genuinely changed, so quietly polling every few seconds
+  // doesn't yank the view back to the bottom while someone's scrolled up
+  // reading history.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      whatsappApi
+        .listMessagesForLead(lead.id)
+        .then((fresh) => {
+          setMessages((prev) => {
+            const samePrevLast = prev[prev.length - 1]?.id;
+            const sameFreshLast = fresh[fresh.length - 1]?.id;
+            return fresh.length !== prev.length || sameFreshLast !== samePrevLast ? fresh : prev;
+          });
+        })
+        .catch(() => undefined);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [lead.id]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
