@@ -1,20 +1,14 @@
-import { useEffect } from "react";
-import { Button, Drawer, Form, Input, InputNumber, Select, Space, message } from "antd";
+import { useEffect, useState } from "react";
+import { Button, Drawer, Input, InputNumber, Select, Typography, message } from "antd";
+import { FileProtectOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import * as approvalBandApi from "../api/approval-band-api";
 import type { ApprovalBand, ApprovalRequestType } from "../types/approval-band";
 import type { Level } from "../types/level";
 import { REQUEST_TYPE_OPTIONS } from "./ApprovalBandsCard";
+import { appTokens } from "../utils/design-system";
 
-interface FormValues {
-  requestType: ApprovalRequestType;
-  bandName: string;
-  rangeFrom?: number;
-  rangeTo?: number;
-  approverLevelId?: string;
-  countersignedByLevelId?: string;
-  slaHours?: number;
-}
+const { Text, Title } = Typography;
 
 interface ApprovalBandDrawerProps {
   open: boolean;
@@ -26,49 +20,69 @@ interface ApprovalBandDrawerProps {
   onSaved: () => void;
 }
 
+// Same hand-styled field pattern as every other edit drawer/modal in this
+// app (EditAssignmentRuleModal, EmailComposeDrawer, ...) - this one was
+// still plain default AntD Form.Item layout, which is exactly what stood
+// out as unpolished next to everything else.
 export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrder, levels, onClose, onSaved }: ApprovalBandDrawerProps) {
-  const [form] = Form.useForm<FormValues>();
+  const isNew = band === null;
+  const [requestType, setRequestType] = useState<ApprovalRequestType>(defaultRequestType);
+  const [bandName, setBandName] = useState("");
+  const [rangeFrom, setRangeFrom] = useState<number | null>(0);
+  const [rangeTo, setRangeTo] = useState<number | null>(null);
+  const [approverLevelId, setApproverLevelId] = useState<string | undefined>();
+  const [countersignedByLevelId, setCountersignedByLevelId] = useState<string | undefined>();
+  const [slaHours, setSlaHours] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const levelOptions = levels.map((l) => ({ value: l.id, label: l.name }));
 
   useEffect(() => {
     if (!open) return;
     if (band) {
-      form.setFieldsValue({
-        requestType: band.requestType,
-        bandName: band.bandName,
-        rangeFrom: band.rangeFrom,
-        rangeTo: band.rangeTo ?? undefined,
-        approverLevelId: band.approverLevelId ?? undefined,
-        countersignedByLevelId: band.countersignedByLevelId ?? undefined,
-        slaHours: band.slaHours ?? undefined,
-      });
+      setRequestType(band.requestType);
+      setBandName(band.bandName);
+      setRangeFrom(band.rangeFrom);
+      setRangeTo(band.rangeTo);
+      setApproverLevelId(band.approverLevelId ?? undefined);
+      setCountersignedByLevelId(band.countersignedByLevelId ?? undefined);
+      setSlaHours(band.slaHours);
     } else {
-      form.resetFields();
-      form.setFieldsValue({ requestType: defaultRequestType, rangeFrom: 0 });
+      setRequestType(defaultRequestType);
+      setBandName("");
+      setRangeFrom(0);
+      setRangeTo(null);
+      setApproverLevelId(undefined);
+      setCountersignedByLevelId(undefined);
+      setSlaHours(null);
     }
-  }, [open, band, defaultRequestType, form]);
+  }, [open, band, defaultRequestType]);
 
-  const handleSubmit = async (values: FormValues) => {
+  const canSave = bandName.trim().length > 0 && rangeFrom !== null;
+
+  const handleSubmit = async () => {
+    if (rangeFrom === null) return;
+    setSaving(true);
     try {
       if (band) {
         await approvalBandApi.updateApprovalBand(band.id, {
-          bandName: values.bandName,
-          rangeFrom: values.rangeFrom,
-          rangeTo: values.rangeTo ?? null,
-          approverLevelId: values.approverLevelId ?? null,
-          countersignedByLevelId: values.countersignedByLevelId ?? null,
-          slaHours: values.slaHours ?? null,
+          bandName: bandName.trim(),
+          rangeFrom,
+          rangeTo,
+          approverLevelId: approverLevelId ?? null,
+          countersignedByLevelId: countersignedByLevelId ?? null,
+          slaHours,
         });
         message.success("Approval band updated");
       } else {
         await approvalBandApi.createApprovalBand({
-          requestType: values.requestType,
-          bandName: values.bandName,
-          rangeFrom: values.rangeFrom,
-          rangeTo: values.rangeTo,
-          approverLevelId: values.approverLevelId,
-          countersignedByLevelId: values.countersignedByLevelId,
-          slaHours: values.slaHours,
+          requestType,
+          bandName: bandName.trim(),
+          rangeFrom,
+          rangeTo: rangeTo ?? undefined,
+          approverLevelId,
+          countersignedByLevelId,
+          slaHours: slaHours ?? undefined,
           sortOrder: nextSortOrder,
         });
         message.success("Approval band added");
@@ -80,49 +94,112 @@ export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrd
           ? err.response.data.message
           : "Failed to save approval band";
       message.error(description);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <Drawer
-      title={band ? `Edit ${band.bandName}` : "Add approval band"}
       open={open}
       onClose={onClose}
-      size="default"
-      extra={
-        <Space>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" onClick={() => form.submit()}>
-            {band ? "Save changes" : "Add band"}
-          </Button>
-        </Space>
+      width={420}
+      title={
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: appTokens.radiusSm,
+              background: appTokens.primarySoft,
+              color: appTokens.primary,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <FileProtectOutlined />
+          </div>
+          <div>
+            <Title level={5} style={{ margin: 0 }}>
+              {isNew ? "New approval band" : `Edit ${band.bandName}`}
+            </Title>
+            <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>An escalation tier within one request type</Text>
+          </div>
+        </div>
       }
     >
-      <Form<FormValues> form={form} layout="vertical" onFinish={handleSubmit}>
-        <Form.Item name="requestType" label="Request type" rules={[{ required: true, message: "Request type is required" }]}>
-          <Select options={REQUEST_TYPE_OPTIONS} disabled={!!band} />
-        </Form.Item>
-        <Form.Item name="bandName" label="Band name" rules={[{ required: true, message: "Band name is required" }]}>
-          <Input placeholder="e.g. Band 1 - Team lead" />
-        </Form.Item>
-        <Space.Compact style={{ width: "100%" }}>
-          <Form.Item name="rangeFrom" label="From" style={{ width: "50%" }}>
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="rangeTo" label="To" tooltip="Leave blank for no upper limit" style={{ width: "50%" }}>
-            <InputNumber min={0} style={{ width: "100%" }} placeholder="No limit" />
-          </Form.Item>
-        </Space.Compact>
-        <Form.Item name="approverLevelId" label="Approver" tooltip="A role/level, not a specific person - whoever holds it approves">
-          <Select allowClear placeholder="Select an approver level" showSearch optionFilterProp="label" options={levelOptions} />
-        </Form.Item>
-        <Form.Item name="countersignedByLevelId" label="Countersigned by" tooltip="Optional - a second level that must also sign off">
-          <Select allowClear placeholder="No countersigner" showSearch optionFilterProp="label" options={levelOptions} />
-        </Form.Item>
-        <Form.Item name="slaHours" label="SLA (hours)" tooltip="Configuration only for now - not yet enforced by any approval workflow">
-          <InputNumber min={0} style={{ width: "100%" }} placeholder="No SLA set" />
-        </Form.Item>
-      </Form>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500 }}>
+            Request type <span style={{ color: appTokens.danger }}>*</span>
+          </Text>
+          <Select
+            style={{ width: "100%", marginTop: 4 }}
+            value={requestType}
+            onChange={setRequestType}
+            disabled={!isNew}
+            options={REQUEST_TYPE_OPTIONS}
+          />
+        </div>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500 }}>
+            Band name <span style={{ color: appTokens.danger }}>*</span>
+          </Text>
+          <Input style={{ marginTop: 4 }} value={bandName} onChange={(e) => setBandName(e.target.value)} placeholder="e.g. Band 1 - Team lead" />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <Text style={{ fontSize: 12.5, fontWeight: 500 }}>From</Text>
+            <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} value={rangeFrom} onChange={setRangeFrom} />
+          </div>
+          <div>
+            <Text style={{ fontSize: 12.5, fontWeight: 500 }}>To</Text>
+            <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} value={rangeTo} onChange={setRangeTo} placeholder="No limit" />
+          </div>
+        </div>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Approver</Text>
+          <Select
+            style={{ width: "100%", marginTop: 4 }}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="Select an approver level"
+            value={approverLevelId}
+            onChange={setApproverLevelId}
+            options={levelOptions}
+          />
+          <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>A role/level, not a specific person - whoever holds it approves</Text>
+        </div>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Countersigned by</Text>
+          <Select
+            style={{ width: "100%", marginTop: 4 }}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="No countersigner"
+            value={countersignedByLevelId}
+            onChange={setCountersignedByLevelId}
+            options={levelOptions}
+          />
+          <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>Optional - a second level that must also sign off</Text>
+        </div>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500 }}>SLA (hours)</Text>
+          <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} value={slaHours} onChange={setSlaHours} placeholder="No SLA set" />
+          <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>Configuration only for now - not yet enforced by any approval workflow</Text>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button type="primary" loading={saving} disabled={!canSave} onClick={handleSubmit}>
+          {isNew ? "Add band" : "Save changes"}
+        </Button>
+      </div>
     </Drawer>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { App, DatePicker, Form, Input, Modal, Select, Typography, message as staticMessage } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
@@ -32,6 +32,7 @@ interface LeadDetailProps {
   lead: Lead;
   showOwner: boolean;
   onEdit: () => void;
+  initialTab?: string;
 }
 
 const DETAIL_TABS = [
@@ -56,13 +57,20 @@ interface MeetingFormValues {
   durationMinutes: number;
 }
 
-export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
+export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailProps) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
   const { user } = useAuth();
   const { connected: microsoftConnected } = useMicrosoftConnection();
-  const [activeTabKey, setActiveTabKey] = useState("overview");
+  // A lazy initializer, not a prop read directly in the effect below - this
+  // only ever seeds the very first mount (e.g. a fresh deep link from the
+  // Activity calendar's WhatsApp button landing straight on that tab).
+  // Every subsequent lead switch after that goes through the effect below,
+  // which always resets to "overview" regardless of this prop's value -
+  // otherwise a stale initialTab would keep pulling every later lead
+  // selection back to the same tab instead of behaving normally.
+  const [activeTabKey, setActiveTabKey] = useState(initialTab ?? "overview");
   const [emailOpen, setEmailOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -121,8 +129,17 @@ export function LeadDetail({ lead, showOwner, onEdit }: LeadDetailProps) {
       .finally(() => setActivitiesLoading(false));
   };
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    setActiveTabKey("overview");
+    // Skip the reset on the very first run - activeTabKey's own initializer
+    // already seeded it correctly (see above), and resetting here too would
+    // immediately stomp a deep-linked initialTab back to "overview" before
+    // the user ever saw it.
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+    } else {
+      setActiveTabKey("overview");
+    }
     loadOpportunities();
     loadHandoff();
     loadActivities();

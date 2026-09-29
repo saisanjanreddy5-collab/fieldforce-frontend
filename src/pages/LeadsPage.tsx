@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Empty, Grid, Typography, message } from "antd";
 import { ArrowLeftOutlined, PlusOutlined } from "@ant-design/icons";
+import { useSearchParams } from "react-router-dom";
 import * as leadApi from "../api/lead-api";
 import type { Lead, LeadListFilters } from "../types/lead";
 import { useAuth } from "../context/AuthContext";
@@ -54,6 +55,38 @@ export default function LeadsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [miningOpen, setMiningOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [deepLinkedLead, setDeepLinkedLead] = useState<Lead | null>(null);
+  const [deepLinkedTab, setDeepLinkedTab] = useState<string | undefined>();
+
+  // Cross-module handoff (e.g. the Activity calendar's WhatsApp button
+  // jumping here to open a specific lead's WhatsApp tab). Kept as its own
+  // state rather than merged into `leads` - that array gets wholly replaced
+  // by the normal paginated/filtered load below, which would otherwise
+  // evict this lead moments after it appears if it isn't part of that
+  // query's results.
+  useEffect(() => {
+    const leadIdParam = searchParams.get("leadId");
+    if (!leadIdParam) return;
+    setDeepLinkedTab(searchParams.get("tab") ?? undefined);
+    leadApi
+      .getLead(leadIdParam)
+      .then((lead) => {
+        setDeepLinkedLead(lead);
+        setSelectedId(lead.id);
+      })
+      .catch(() => message.error("Failed to load the requested lead"));
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("leadId");
+        next.delete("tab");
+        return next;
+      },
+      { replace: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filters: LeadListFilters = useMemo(
     () => ({
@@ -123,11 +156,13 @@ export default function LeadsPage() {
   // screens rather than a side-by-side split.
   useEffect(() => {
     if (isMobile || leads.length === 0) return;
-    setSelectedId((current) => (current && leads.some((l) => l.id === current) ? current : leads[0].id));
+    setSelectedId((current) =>
+      current && (current === deepLinkedLead?.id || leads.some((l) => l.id === current)) ? current : leads[0].id
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, isMobile]);
 
-  const selectedLead = leads.find((l) => l.id === selectedId) ?? null;
+  const selectedLead = (deepLinkedLead?.id === selectedId ? deepLinkedLead : leads.find((l) => l.id === selectedId)) ?? null;
   const selectedIndex = leads.findIndex((l) => l.id === selectedId);
 
   // Keyboard next/previous - only while the page itself has focus (not a
@@ -318,6 +353,7 @@ export default function LeadsPage() {
                     setEditingLead(selectedLead);
                     setDrawerOpen(true);
                   }}
+                  initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
                 />
               </div>
             </div>
@@ -379,6 +415,7 @@ export default function LeadsPage() {
                     setEditingLead(selectedLead);
                     setDrawerOpen(true);
                   }}
+                  initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
                 />
               </div>
             ) : (

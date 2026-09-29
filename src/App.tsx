@@ -10,6 +10,7 @@ import ReportsPage from "./pages/ReportsPage";
 import LeavePage from "./pages/LeavePage";
 import ExpensesPage from "./pages/ExpensesPage";
 import ActivityCalendarPage from "./pages/ActivityCalendarPage";
+import SettingsPage from "./pages/SettingsPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -34,6 +35,7 @@ function App() {
               <Route path="/leave" element={<LeavePage />} />
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/activity-calendar" element={<ActivityCalendarPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               {ALL_NAV_LEAVES.filter((item) => !item.built).map((item) => (
                 <Route key={item.path} path={item.path} element={<ComingSoonPage title={item.label} />} />
               ))}

@@ -7,10 +7,17 @@ import type {
   LeaveContext,
   LeaveRequest,
   LeaveType,
+  LeaveTypeKey,
+  UpdateLeaveTypePayload,
 } from "../types/leave";
 
 export async function listLeaveTypes(): Promise<LeaveType[]> {
   const response = await apiClient.get<ApiSuccess<LeaveType[]>>("/leave/types");
+  return response.data.data;
+}
+
+export async function updateLeaveType(key: LeaveTypeKey, payload: UpdateLeaveTypePayload): Promise<LeaveType> {
+  const response = await apiClient.patch<ApiSuccess<LeaveType>>(`/leave/types/${key}`, payload);
   return response.data.data;
 }
 
