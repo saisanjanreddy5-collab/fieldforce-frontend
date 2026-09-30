@@ -262,34 +262,6 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {!showDetailOnMobile && counts && (
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
-          {[
-            { label: "Total leads", value: counts.all, color: appTokens.textPrimary, subtitle: "in your scope" },
-            { label: "Overdue", value: counts.overdue, color: counts.overdue > 0 ? appTokens.danger : appTokens.textPrimary, subtitle: "needs action" },
-            { label: "Unassigned", value: counts.unassigned, color: counts.unassigned > 0 ? appTokens.warning : appTokens.textPrimary, subtitle: "no owner yet" },
-            { label: "High score", value: counts.highScore, color: counts.highScore > 0 ? appTokens.success : appTokens.textPrimary, subtitle: "likely to convert" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              style={{
-                flex: "1 1 180px",
-                minWidth: 180,
-                border: `1px solid ${appTokens.border}`,
-                borderRadius: appTokens.radius,
-                padding: "14px 16px",
-                background: appTokens.surface,
-                boxShadow: appTokens.shadowSm,
-              }}
-            >
-              <Typography.Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Typography.Text>
-              <div style={{ fontSize: 26, fontWeight: 700, color: stat.color, letterSpacing: -0.4, lineHeight: 1.25 }}>{stat.value}</div>
-              <Typography.Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{stat.subtitle}</Typography.Text>
-            </div>
-          ))}
-        </div>
-      )}
-
       {!showDetailOnMobile && (
         <LeadFilterToolbar
           quickFilter={quickFilter}

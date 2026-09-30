@@ -35,7 +35,7 @@ interface LeadDetailProps {
   initialTab?: string;
 }
 
-const DETAIL_TABS = [
+const BASE_DETAIL_TABS = [
   { key: "overview", label: "Overview" },
   { key: "opportunities", label: "Opportunities" },
   { key: "activity", label: "Activity" },
@@ -210,6 +210,11 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
   const canOnboard = lead.category === "FOFO" && hasPermission("fofo_onboarding.view");
   const hasOpenOpportunity = opportunities.some((o) => o.stage !== "won" && o.stage !== "lost");
 
+  const pendingActivityCount = activities.filter((a) => a.status !== "completed").length;
+  const detailTabs = BASE_DETAIL_TABS.map((tab) =>
+    tab.key === "activity" && pendingActivityCount > 0 ? { ...tab, badge: String(pendingActivityCount) } : tab
+  );
+
   return (
     <div>
       <LeadSnapshot
@@ -234,7 +239,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
       />
 
       <div style={{ marginTop: 16 }}>
-        <ScrollableTabBar items={DETAIL_TABS} activeKey={activeTabKey} onChange={setActiveTabKey} />
+        <ScrollableTabBar items={detailTabs} activeKey={activeTabKey} onChange={setActiveTabKey} />
         <div style={{ marginTop: 16 }}>
           {activeTabKey === "overview" && <OverviewTab lead={lead} />}
           {activeTabKey === "opportunities" && (

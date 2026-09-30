@@ -171,11 +171,11 @@ export function OverviewTab({ lead }: OverviewTabProps) {
                 transition: "background 0.12s",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <Text strong={activeSection === section.key} style={{ color: appTokens.textPrimary, fontSize: 13.5 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <Text strong={activeSection === section.key} style={{ color: appTokens.textPrimary, fontSize: 13.5, minWidth: 0 }}>
                   {section.label}
                 </Text>
-                <Text style={{ color: appTokens.textTertiary, fontSize: 12.5 }}>
+                <Text style={{ color: appTokens.textTertiary, fontSize: 12.5, flexShrink: 0, whiteSpace: "nowrap" }}>
                   {section.filled}/{section.total}
                 </Text>
               </div>

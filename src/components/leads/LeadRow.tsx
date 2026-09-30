@@ -1,6 +1,6 @@
 import { Avatar, Tag, Typography } from "antd";
 import type { Lead } from "../../types/lead";
-import { formatCompactCurrency, initials, scoreColor } from "../../utils/lead-format";
+import { formatCompactCurrency, formatFollowUpDate, initials, scoreColor } from "../../utils/lead-format";
 import { avatarGradient, appTokens } from "../../utils/design-system";
 import { LEAD_STATUS_COLORS } from "../../utils/lead-constants";
 
@@ -23,6 +23,7 @@ interface LeadRowProps {
 export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
   const location = [lead.storeCity, lead.storeState].filter(Boolean).join(", ");
   const isOverdue = Boolean(lead.hasOverdueActivity);
+  const followUp = formatFollowUpDate(lead.nextActivityDueAt);
 
   return (
     <div
@@ -73,9 +74,16 @@ export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
           >
             {lead.fullName}
           </Text>
-          <Text strong style={{ fontSize: 13, whiteSpace: "nowrap", flexShrink: 0, textAlign: "right", color: appTokens.textPrimary }}>
-            {formatCompactCurrency(lead.expectedValue)}
-          </Text>
+          <div style={{ flexShrink: 0, textAlign: "right" }}>
+            <Text strong style={{ display: "block", fontSize: 13, whiteSpace: "nowrap", color: appTokens.textPrimary, lineHeight: 1.3 }}>
+              {formatCompactCurrency(lead.expectedValue)}
+            </Text>
+            {lead.leadScore !== null && (
+              <Text strong style={{ display: "block", fontSize: 11, whiteSpace: "nowrap", color: scoreColor(lead.leadScore), lineHeight: 1.3 }}>
+                {lead.leadScore}%
+              </Text>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
           {lead.category && (
@@ -138,9 +146,9 @@ export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
               {lead.ownerName ?? "Unassigned"}
             </Text>
           )}
-          {lead.leadScore !== null && (
-            <Text strong style={{ fontSize: 11, flexShrink: 0, color: scoreColor(lead.leadScore) }}>
-              {lead.leadScore}%
+          {followUp && (
+            <Text strong style={{ fontSize: 11, flexShrink: 0, color: followUp.overdue ? appTokens.danger : appTokens.textTertiary }}>
+              {followUp.label}
             </Text>
           )}
         </div>

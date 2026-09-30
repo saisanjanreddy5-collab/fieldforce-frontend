@@ -64,6 +64,21 @@ export function LeadSnapshot({
   const primaryHandlers = { onboard: onOnboard, addActivity: onAddActivity, call: onCall, editLead: onEdit, none: () => undefined };
   const primaryLoading = primaryAction === "call" ? calling : false;
 
+  // The computed primary action gets its own row, above the secondary
+  // utility actions - a normal solid-primary button, not a promotional
+  // banner, but still visually distinct from "one of six equal buttons" so
+  // it doesn't randomly wrap into a 4+2 split depending on panel width. The
+  // "why" (e.g. "This FOFO lead is ready to start onboarding") is a tooltip
+  // instead of a permanent block of screen space.
+  const primaryButton =
+    primaryAction !== "none" ? (
+      <Tooltip title={PRIMARY_ACTION_REASON[primaryAction]}>
+        <Button type="primary" icon={PRIMARY_ICON[primaryAction]} loading={primaryLoading} onClick={primaryHandlers[primaryAction]}>
+          {PRIMARY_ACTION_LABEL[primaryAction]}
+        </Button>
+      </Tooltip>
+    ) : null;
+
   const secondaryButtons: React.ReactNode[] = [];
   if (primaryAction !== "call") {
     secondaryButtons.push(
@@ -172,75 +187,8 @@ export function LeadSnapshot({
         )}
       </div>
 
-      {primaryAction !== "none" && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            marginTop: 18,
-            padding: "12px 16px",
-            borderRadius: appTokens.radiusLg,
-            background: `linear-gradient(135deg, ${appTokens.primary} 0%, #3f6fef 100%)`,
-            boxShadow: "0 8px 20px rgba(19,84,224,0.22)",
-            // Never wrap to a second row, however long the reasoning text
-            // gets - a dropped button beneath the text is what made this
-            // banner balloon in height. The reasoning line truncates with
-            // an ellipsis instead, so the banner always stays one compact
-            // row regardless of container width or text length.
-            flexWrap: "nowrap",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 9,
-                background: "rgba(255,255,255,0.18)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontSize: 15,
-                flexShrink: 0,
-              }}
-            >
-              {PRIMARY_ICON[primaryAction]}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <Text style={{ fontSize: 10.5, fontWeight: 700, display: "block", color: "rgba(255,255,255,0.75)", letterSpacing: 0.6 }}>
-                RECOMMENDED NEXT STEP
-              </Text>
-              <Text
-                strong
-                style={{
-                  fontSize: 14,
-                  color: "#fff",
-                  display: "block",
-                  lineHeight: 1.3,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-                title={PRIMARY_ACTION_REASON[primaryAction]}
-              >
-                {PRIMARY_ACTION_REASON[primaryAction]}
-              </Text>
-            </div>
-          </div>
-          <Button
-            loading={primaryLoading}
-            onClick={primaryHandlers[primaryAction]}
-            style={{ background: "#fff", color: appTokens.primary, fontWeight: 700, border: "none", flexShrink: 0 }}
-          >
-            {PRIMARY_ACTION_LABEL[primaryAction]}
-          </Button>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>{secondaryButtons}</div>
+      {primaryButton && <div style={{ marginTop: 16 }}>{primaryButton}</div>}
+      <div style={{ display: "flex", gap: 8, marginTop: primaryButton ? 8 : 16, alignItems: "center", flexWrap: "wrap" }}>{secondaryButtons}</div>
     </div>
   );
 }
