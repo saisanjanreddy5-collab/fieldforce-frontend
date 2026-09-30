@@ -76,6 +76,8 @@ export interface Lead {
   updatedAt: string;
   /** Only present on list responses. */
   hasOverdueActivity?: boolean;
+  /** Due date of the earliest not-yet-completed activity on this lead. Only present on list responses. */
+  nextActivityDueAt?: string | null;
   /** Only present on list responses. */
   consentPending?: boolean;
 }

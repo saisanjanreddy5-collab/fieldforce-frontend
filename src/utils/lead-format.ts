@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 export function scoreColor(score: number | null): string {
   if (score === null) return "#c3c2b7";
   if (score >= 70) return "#0ca30c";
@@ -54,4 +56,21 @@ export function formatDateTime(value: string | null): string {
 export function formatDate(value: string | null): string {
   if (!value) return "-";
   return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// Compact "next follow-up" label for a lead row: today's due activities show
+// their time, tomorrow's just say "Tomorrow", overdue ones say how overdue,
+// anything further out shows a short date - matching how a follow-up queue
+// is normally scanned at a glance.
+export function formatFollowUpDate(value: string | null | undefined): { label: string; overdue: boolean } | null {
+  if (!value) return null;
+  const due = dayjs(value);
+  const now = dayjs();
+  if (due.isBefore(now)) {
+    const days = now.startOf("day").diff(due.startOf("day"), "day");
+    return { label: days <= 0 ? "Overdue today" : `${days} day${days === 1 ? "" : "s"} overdue`, overdue: true };
+  }
+  if (due.isSame(now, "day")) return { label: `Today ${due.format("h:mm A")}`, overdue: false };
+  if (due.isSame(now.add(1, "day"), "day")) return { label: "Tomorrow", overdue: false };
+  return { label: due.format("D MMM"), overdue: false };
 }

@@ -260,9 +260,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
     }
   };
 
-  const customerRequired = 1; // fullName
-  const statusRequired = 1; // category
-
   return (
     <Drawer
       title={
@@ -303,19 +300,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         </Space>
       }
     >
-      <Form form={form} layout="vertical" requiredMark={false}>
+      <Form form={form} layout="vertical">
         <Tabs
           items={[
             {
               key: "customer",
-              label: (
-                <span>
-                  Customer
-                  <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
-                    {customerRequired + statusRequired}
-                  </Text>
-                </span>
-              ),
+              label: "Customer",
               children: (
                 <>
                   <FormSection
@@ -323,7 +313,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     iconColor="#1677ff"
                     title="Customer information"
                     description="Who the franchise applicant is"
-                    requiredCount={customerRequired}
                   >
                     <Form.Item name="fullName" label="Full Name" rules={[{ required: true, message: "Required" }]}>
                       <Input />
@@ -350,7 +339,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     iconColor="#7248b8"
                     title="Lead status"
                     description="Where this enquiry currently stands"
-                    requiredCount={statusRequired}
                   >
                     <Form.Item name="welcomeMessageSent" label="Welcome Message Sent">
                       <Select options={YES_NO} allowClear />
