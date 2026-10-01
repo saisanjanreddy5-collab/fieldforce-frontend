@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Drawer, Input, Typography, message } from "antd";
-import { MailOutlined } from "@ant-design/icons";
+import { CloseOutlined, MailOutlined, PaperClipOutlined } from "@ant-design/icons";
 import * as leadApi from "../../api/lead-api";
 import * as microsoftApi from "../../api/microsoft-api";
 import * as messageTemplateApi from "../../api/message-template-api";
@@ -12,6 +12,16 @@ import { appTokens } from "../../utils/design-system";
 import { errorMessageFrom } from "../../utils/api-error";
 
 const BLANK_TEMPLATE_KEY = "blank";
+// Matches the backend's emailAttachmentUpload limits exactly (microsoft-service.ts)
+// - Graph's simple inline-attachment sendMail tops out around 3MB per file.
+const MAX_ATTACHMENT_SIZE = 3 * 1024 * 1024;
+const MAX_ATTACHMENTS = 5;
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
@@ -36,6 +46,8 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
   const [templateKey, setTemplateKey] = useState(BLANK_TEMPLATE_KEY);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -44,6 +56,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     setTemplateKey(BLANK_TEMPLATE_KEY);
     setSubject("");
     setBody("");
+    setAttachments([]);
     Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus(), messageTemplateApi.listMessageTemplates("email")])
       .then(([leadResult, statusResult, templatesResult]) => {
         setLead(leadResult);
@@ -77,7 +90,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
   const handleSend = async () => {
     setSending(true);
     try {
-      await microsoftApi.sendLeadEmail(leadId, subject.trim(), body);
+      await microsoftApi.sendLeadEmail(leadId, subject.trim(), body, attachments);
       message.success("Email sent");
       onSent();
     } catch (err) {
@@ -85,6 +98,31 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     } finally {
       setSending(false);
     }
+  };
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (picked.length === 0) return;
+    setAttachments((prev) => {
+      const next = [...prev];
+      for (const file of picked) {
+        if (next.length >= MAX_ATTACHMENTS) {
+          message.error(`You can attach up to ${MAX_ATTACHMENTS} files`);
+          break;
+        }
+        if (file.size > MAX_ATTACHMENT_SIZE) {
+          message.error(`${file.name} is larger than 3 MB`);
+          continue;
+        }
+        next.push(file);
+      }
+      return next;
+    });
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleConnect = async () => {
@@ -100,7 +138,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
       onClose={onClose}
       width={480}
       loading={loading}
-      styles={{ body: { paddingBottom: 12 } }}
+      styles={{ body: { paddingBottom: 12, display: "flex", flexDirection: "column", overflow: "hidden" } }}
       footer={
         !showConnectPrompt && !loading ? (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
@@ -150,11 +188,11 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
         </div>
       ) : (
         !loading && (
-          <>
-            <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+            <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 6 }}>
               Template
             </Text>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", overflowX: "auto", marginBottom: 14, flexShrink: 0, paddingBottom: 2 }}>
               {[...templates, { key: BLANK_TEMPLATE_KEY, name: "Blank email" }].map((t) => {
                 const active = templateKey === t.key;
                 return (
@@ -173,6 +211,8 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                       color: active ? appTokens.primary : appTokens.textSecondary,
                       boxShadow: active ? "none" : appTokens.shadowXs,
                       cursor: "pointer",
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {t.name}
@@ -181,8 +221,8 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
               })}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1, minHeight: 0 }}>
+              <div style={{ flexShrink: 0 }}>
                 <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>To</Text>
                 <div
                   style={{
@@ -198,20 +238,68 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                   {lead?.email ?? "No email on file for this lead"}
                 </div>
               </div>
-              <div>
+              <div style={{ flexShrink: 0 }}>
                 <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
                   Subject
                 </Text>
                 <Input style={{ marginTop: 5 }} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" />
               </div>
-              <div>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 110 }}>
                 <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
                   Message
                 </Text>
-                <TextArea style={{ marginTop: 5 }} rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
+                <TextArea
+                  style={{ marginTop: 5, flex: 1, resize: "none" }}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              </div>
+              <div style={{ flexShrink: 0 }}>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  Attachments
+                </Text>
+                <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 6, maxHeight: 110, overflowY: "auto" }}>
+                  {attachments.map((file, index) => (
+                    <div
+                      key={`${file.name}-${index}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        padding: "6px 10px",
+                        borderRadius: appTokens.radiusSm,
+                        background: appTokens.surfaceMuted,
+                        border: `1px solid ${appTokens.borderLight}`,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <PaperClipOutlined style={{ color: appTokens.textTertiary, flexShrink: 0 }} />
+                        <Text
+                          style={{ fontSize: 13, color: appTokens.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        >
+                          {file.name}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: appTokens.textTertiary, flexShrink: 0 }}>{formatFileSize(file.size)}</Text>
+                      </div>
+                      <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => removeAttachment(index)} />
+                    </div>
+                  ))}
+                  <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={handleFilesSelected} />
+                  {attachments.length < MAX_ATTACHMENTS && (
+                    <Button
+                      icon={<PaperClipOutlined />}
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{ alignSelf: "flex-start", flexShrink: 0 }}
+                    >
+                      Attach file
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-          </>
+          </div>
         )
       )}
     </Drawer>
