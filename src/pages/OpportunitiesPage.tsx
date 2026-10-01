@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { App, Button, Segmented, Select, Typography } from "antd";
 import { AppstoreOutlined, BarChartOutlined, PlusOutlined, TableOutlined, TeamOutlined } from "@ant-design/icons";
+import { useSearchParams } from "react-router-dom";
 import * as opportunityApi from "../api/opportunity-api";
 import * as userApi from "../api/user-api";
 import * as leadApi from "../api/lead-api";
@@ -52,6 +53,8 @@ export default function OpportunitiesPage() {
   const [newModalStage, setNewModalStage] = useState<string | undefined>();
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [rollupGroups, setRollupGroups] = useState<TeamRollupGroup[]>([]);
   const [rollupLoading, setRollupLoading] = useState(true);
   const [rollupLoaded, setRollupLoaded] = useState(false);
@@ -66,6 +69,25 @@ export default function OpportunitiesPage() {
   };
 
   useEffect(load, []);
+
+  // Deep link from global search ("/opportunities?opportunityId=...") -
+  // fetches that one opportunity and opens it in the same edit drawer a
+  // normal click would, then drops the param so a refresh/back doesn't
+  // reopen it.
+  useEffect(() => {
+    const opportunityId = searchParams.get("opportunityId");
+    if (!opportunityId) return;
+    opportunityApi
+      .getOpportunityById(opportunityId)
+      .then(setEditingOpportunity)
+      .catch(() => message.error("Failed to load that opportunity"));
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("opportunityId");
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lazy-loaded the first time this tab is actually opened, not on page
   // load - it's a heavier aggregation query than the other three views and

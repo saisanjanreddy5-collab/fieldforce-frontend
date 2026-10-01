@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Layout, Menu, Button, Drawer, Grid, Input, Avatar, message } from "antd";
+import { Layout, Menu, Button, Drawer, Grid, Avatar, message } from "antd";
 import type { MenuProps } from "antd";
-import { MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
+import { MenuOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { NAV_GROUPS } from "./nav-config";
 import { SoftphoneWidget } from "./SoftphoneWidget";
+import { GlobalSearch } from "./GlobalSearch";
 import { ProfileDrawer } from "./ProfileDrawer";
 import { appTokens, avatarGradient } from "../utils/design-system";
 
@@ -180,14 +181,7 @@ export function AppLayout() {
             </div>
           </div>
 
-          {!isMobile && (
-            <Input
-              disabled
-              prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
-              placeholder="Search leads, opportunities, contacts"
-              style={{ maxWidth: 380, margin: "0 24px", background: appTokens.surfaceMuted }}
-            />
-          )}
+          {!isMobile && <GlobalSearch />}
 
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
             {!isMobile && <SoftphoneWidget />}

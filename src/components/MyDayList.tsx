@@ -35,16 +35,15 @@ export function MyDayList({ activities, loading }: MyDayListProps) {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "center",
+                  alignItems: "flex-start",
                   gap: 8,
-                  flexWrap: "wrap",
                   paddingBottom: 12,
                   borderBottom: `1px solid ${appTokens.borderLight}`,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
                   <TypeBadge type={item.type} />
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <Text strong style={{ color: appTokens.textPrimary }}>
                       {item.subject ?? TYPE_LABEL[item.type]}
                     </Text>
@@ -53,7 +52,7 @@ export function MyDayList({ activities, loading }: MyDayListProps) {
                     </div>
                   </div>
                 </div>
-                <Tag color={isOverdue ? "error" : "processing"}>
+                <Tag color={isOverdue ? "error" : "processing"} style={{ flexShrink: 0 }}>
                   {isOverdue ? "Overdue" : dayjs(item.dueDate).format("h:mm A")}
                 </Tag>
               </div>

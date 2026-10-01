@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Col, Row, Typography, message } from "antd";
-import { AimOutlined, RiseOutlined, TeamOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useAuth } from "../context/AuthContext";
 import * as dashboardApi from "../api/dashboard-api";
 import type { OverviewStats, PipelineStageStat } from "../types/dashboard";
@@ -52,40 +51,16 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            label="Open leads"
-            value={overview ? formatCompactNumber(overview.totalLeads) : "-"}
-            loading={loading}
-            icon={<AimOutlined />}
-            iconColor={appTokens.primary}
-          />
+          <StatCard label="Open leads" value={overview ? formatCompactNumber(overview.totalLeads) : "-"} loading={loading} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            label="Pipeline value"
-            value={overview ? formatCurrency(overview.pipelineValue) : "-"}
-            loading={loading}
-            icon={<RiseOutlined />}
-            iconColor={appTokens.purple}
-          />
+          <StatCard label="Pipeline value" value={overview ? formatCurrency(overview.pipelineValue) : "-"} loading={loading} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            label="Conversion (30d)"
-            value={overview ? formatPercent(overview.conversionRate30d) : "-"}
-            loading={loading}
-            icon={<TrophyOutlined />}
-            iconColor={appTokens.success}
-          />
+          <StatCard label="Conversion (30d)" value={overview ? formatPercent(overview.conversionRate30d) : "-"} loading={loading} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            label="Active team members"
-            value={overview ? formatCompactNumber(overview.activeTeamMembersCount) : "-"}
-            loading={loading}
-            icon={<TeamOutlined />}
-            iconColor={appTokens.warning}
-          />
+          <StatCard label="Active team members" value={overview ? formatCompactNumber(overview.activeTeamMembersCount) : "-"} loading={loading} />
         </Col>
       </Row>
 

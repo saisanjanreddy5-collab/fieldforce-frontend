@@ -12,6 +12,11 @@ export async function listOpportunities(filters: ListOpportunitiesFilters = {}):
   return response.data.data;
 }
 
+export async function getOpportunityById(id: string): Promise<Opportunity> {
+  const response = await apiClient.get<ApiSuccess<Opportunity>>(`/opportunities/${id}`);
+  return response.data.data;
+}
+
 export async function convertLead(leadId: string, payload: CreateOpportunityPayload): Promise<Opportunity> {
   const response = await apiClient.post<ApiSuccess<Opportunity>>(`/leads/${leadId}/convert`, payload);
   return response.data.data;
