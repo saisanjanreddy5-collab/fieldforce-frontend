@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 import { Card, Input, Modal, Popconfirm, Segmented, Switch, Table, Tag, Typography, message } from "antd";
 import { CheckOutlined, CloseOutlined, MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import * as rolePermissionApi from "../api/role-permission-api";
@@ -74,23 +74,37 @@ type OverrideAction = { permission: string; kind: "grant" | "revoke" | "clear"; 
 
 type CellState = "na" | "granted" | "not-granted" | "extra-grant" | "revoked";
 
-function Cell({ state, onClick }: { state: CellState; onClick?: () => void }) {
-  if (state === "na") return <MinusOutlined style={{ color: "#d9d9d9" }} />;
+// forwardRef is load-bearing, not cosmetic: Popconfirm clones its child to
+// attach a ref it uses to measure/position the confirmation popup. A plain
+// function component silently drops that ref (React can't attach refs to
+// function components), so Popconfirm never gets a real DOM node to align
+// against and the popup stays parked at its pre-measurement off-screen
+// staging position (rc-trigger's `inset: -1000vh auto auto -1000vw`)
+// forever - clicking the cell looked like it did nothing. Confirmed by
+// comparing against the "Reset role to default" Popconfirm on this same
+// page, which wraps a real antd <Tag> (ref-forwarding) and has always
+// positioned correctly.
+const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => void }>(function Cell({ state, onClick }, ref) {
   const icon =
-    state === "granted" || state === "extra-grant" ? (
+    state === "na" ? (
+      <MinusOutlined style={{ color: "#d9d9d9" }} />
+    ) : state === "granted" || state === "extra-grant" ? (
       <CheckOutlined style={{ color: state === "extra-grant" ? appTokens.purple : appTokens.success }} />
     ) : state === "revoked" ? (
       <CloseOutlined style={{ color: appTokens.danger }} />
     ) : (
       <MinusOutlined style={{ color: "#bfbfbf" }} />
     );
-  if (!onClick) return icon;
   return (
-    <span style={{ cursor: "pointer", display: "inline-block", padding: "0 6px" }} onClick={onClick}>
+    <span
+      ref={ref}
+      style={{ display: "inline-block", cursor: onClick ? "pointer" : "default", padding: onClick ? "0 6px" : 0 }}
+      onClick={onClick}
+    >
       {icon}
     </span>
   );
-}
+});
 
 // Two modes sharing one table shape: "By role" edits the real
 // role_permissions baseline (grouped under Levels now, per the user's

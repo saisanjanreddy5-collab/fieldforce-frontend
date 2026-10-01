@@ -67,6 +67,19 @@ export const appTheme: ThemeConfig = {
     colorText: appTokens.textPrimary,
     colorTextSecondary: appTokens.textSecondary,
     colorTextTertiary: appTokens.textTertiary,
+    // AntD's own default (rgba(0,0,0,0.25), ~2.6:1 contrast on white) isn't
+    // derived from colorText/colorTextTertiary above - it's a separate
+    // token that silently keeps its very low-contrast default unless set
+    // here too. Every empty Select/Input placeholder app-wide reads from
+    // this one place now, instead of each screen needing its own fix.
+    colorTextPlaceholder: appTokens.textTertiary,
+    // AntD's 4th text tier - defaults to rgba(0,0,0,0.25), same problem as
+    // colorTextPlaceholder above but for icons rather than text: every
+    // Select's dropdown arrow, and other "quietest" icons app-wide, were
+    // still using this raw unstyled default even after the placeholder fix,
+    // which is why the filter row still read as faint - the arrow next to
+    // each properly-colored placeholder was three times fainter than it.
+    colorTextQuaternary: appTokens.textTertiary,
     colorBorder: appTokens.border,
     colorBorderSecondary: appTokens.borderLight,
     colorBgLayout: appTokens.surfaceSunken,

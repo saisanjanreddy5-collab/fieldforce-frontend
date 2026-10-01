@@ -17,6 +17,7 @@ export const MODULE_LABELS: Record<string, string> = {
   approval_bands: "Approval bands",
   territory_transfers: "Territory transfers",
   delegations: "Cover & delegation",
+  quotes: "Quotes",
 };
 
 export function moduleOf(permission: string): string {
