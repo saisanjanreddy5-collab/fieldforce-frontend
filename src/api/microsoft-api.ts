@@ -21,8 +21,14 @@ export async function disconnect(): Promise<void> {
   await apiClient.delete("/integrations/microsoft/disconnect");
 }
 
-export async function sendLeadEmail(leadId: string, subject: string, body: string): Promise<void> {
-  await apiClient.post(`/leads/${leadId}/microsoft/email`, { subject, body });
+export async function sendLeadEmail(leadId: string, subject: string, body: string, attachments: File[] = []): Promise<void> {
+  const formData = new FormData();
+  formData.append("subject", subject);
+  formData.append("body", body);
+  attachments.forEach((file) => formData.append("attachments", file));
+  await apiClient.post(`/leads/${leadId}/microsoft/email`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 }
 
 export interface UserMicrosoftConnection {

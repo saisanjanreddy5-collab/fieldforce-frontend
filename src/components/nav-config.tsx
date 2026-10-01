@@ -5,7 +5,6 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   ClusterOutlined,
-  CodeOutlined,
   DashboardOutlined,
   ExportOutlined,
   FileDoneOutlined,
@@ -72,7 +71,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: "/reports", label: "Reports", icon: <FileTextOutlined />, built: true },
       { path: "/audit-consent", label: "Audit & consent", icon: <SafetyCertificateOutlined />, built: true },
       { path: "/settings", label: "Settings", icon: <SettingOutlined />, built: true },
-      { path: "/dev-handoff", label: "Dev handoff", icon: <CodeOutlined /> },
     ],
   },
 ];
