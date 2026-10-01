@@ -1,4 +1,5 @@
-import { Card, Progress, Typography } from "antd";
+import type { ReactNode } from "react";
+import { Progress, Typography } from "antd";
 import dayjs from "dayjs";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency } from "../../utils/lead-format";
@@ -9,6 +10,38 @@ const { Title, Text } = Typography;
 
 interface ForecastViewProps {
   opportunities: Opportunity[];
+}
+
+// Matches the flat-card header/body pattern used everywhere else in the app
+// (Reports, the Opportunities stat cards) instead of AntD's stock <Card>,
+// whose own header styling/shadow reads as a visibly different, older look
+// sitting next to the rest of this same page.
+function ForecastCard({ title, subtitle, flex, children }: { title: string; subtitle?: string; flex: number; children: ReactNode }) {
+  return (
+    <div
+      style={{
+        flex,
+        minWidth: 260,
+        border: `1px solid ${appTokens.border}`,
+        borderRadius: appTokens.radius,
+        background: appTokens.surface,
+        boxShadow: appTokens.shadowXs,
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ padding: "14px 18px", borderBottom: `1px solid ${appTokens.borderLight}` }}>
+        <Text strong style={{ fontSize: 14, color: appTokens.textPrimary }}>
+          {title}
+        </Text>
+        {subtitle && (
+          <div>
+            <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{subtitle}</Text>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: 18 }}>{children}</div>
+    </div>
+  );
 }
 
 function weightedValue(o: Opportunity): number {
@@ -50,76 +83,61 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
 
   return (
     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-      <Card
-        title="Weighted forecast by stage"
-        style={{ flex: 2, minWidth: 320, boxShadow: appTokens.shadowXs }}
-        styles={{ body: { paddingTop: 8 } }}
-      >
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Stage probability × open value
-        </Text>
-        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+      <ForecastCard title="Weighted forecast by stage" subtitle="Stage probability × open value" flex={2}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {byStage.map((stage) => (
             <div key={stage.key}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                <Text>{stage.label}</Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+                <Text style={{ color: appTokens.textPrimary }}>{stage.label}</Text>
+                <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>
                   {stage.count} deals · {stage.avgProbability}% avg
                 </Text>
-                <Text strong>{formatCompactCurrency(stage.weighted)}</Text>
+                <Text strong style={{ color: appTokens.textPrimary }}>{formatCompactCurrency(stage.weighted)}</Text>
               </div>
               <Progress percent={(stage.weighted / maxWeighted) * 100} showInfo={false} size="small" strokeColor={stage.color} />
             </div>
           ))}
         </div>
-      </Card>
+      </ForecastCard>
 
-      <Card title="Commit vs best case" style={{ flex: 1, minWidth: 260, boxShadow: appTokens.shadowXs }}>
-        <div style={{ marginBottom: 16 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Commit
-          </Text>
+      <ForecastCard title="Commit vs best case" flex={1}>
+        <div style={{ marginBottom: 18 }}>
+          <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>Commit</Text>
           <div>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              Agreement stage and above
-            </Text>
+            <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>Agreement stage and above</Text>
           </div>
           <Title level={4} style={{ margin: 0, color: appTokens.success }}>
             {formatCompactCurrency(commit)}
           </Title>
         </div>
         <div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Best case
-          </Text>
+          <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>Best case</Text>
           <div>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              All open, unweighted
-            </Text>
+            <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>All open, unweighted</Text>
           </div>
-          <Title level={4} style={{ margin: 0 }}>
+          <Title level={4} style={{ margin: 0, color: appTokens.primary }}>
             {formatCompactCurrency(bestCase)}
           </Title>
         </div>
-      </Card>
+      </ForecastCard>
 
-      <Card title="Close month" style={{ flex: 1, minWidth: 260, boxShadow: appTokens.shadowXs }}>
+      <ForecastCard title="Close month" flex={1}>
         {months.length === 0 ? (
-          <Text type="secondary">No opportunities have an expected close date yet</Text>
+          <Text style={{ color: appTokens.textTertiary }}>No opportunities have an expected close date yet</Text>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {months.map(([month, value]) => (
               <div key={month}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                  <Text>{month}</Text>
-                  <Text strong>{formatCompactCurrency(value)}</Text>
+                  <Text style={{ color: appTokens.textPrimary }}>{month}</Text>
+                  <Text strong style={{ color: appTokens.textPrimary }}>{formatCompactCurrency(value)}</Text>
                 </div>
                 <Progress percent={(value / maxMonth) * 100} showInfo={false} size="small" />
               </div>
             ))}
           </div>
         )}
-      </Card>
+      </ForecastCard>
     </div>
   );
 }

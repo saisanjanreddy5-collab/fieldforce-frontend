@@ -25,6 +25,7 @@ import { LogsTab } from "./tabs/LogsTab";
 import { ConsentTab } from "./tabs/ConsentTab";
 import { ApprovalsTab } from "./tabs/ApprovalsTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
+import { QuotesTab } from "./tabs/QuotesTab";
 
 const { Text } = Typography;
 
@@ -38,6 +39,7 @@ interface LeadDetailProps {
 const BASE_DETAIL_TABS = [
   { key: "overview", label: "Overview" },
   { key: "opportunities", label: "Opportunities" },
+  { key: "quotes", label: "Quotes" },
   { key: "activity", label: "Activity" },
   { key: "whatsapp", label: "WhatsApp" },
   { key: "logs", label: "Logs" },
@@ -245,6 +247,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
           {activeTabKey === "opportunities" && (
             <OpportunitiesTab leadId={lead.id} opportunities={opportunities} loading={opportunitiesLoading} onChanged={loadOpportunities} />
           )}
+          {activeTabKey === "quotes" && <QuotesTab leadId={lead.id} />}
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
           )}

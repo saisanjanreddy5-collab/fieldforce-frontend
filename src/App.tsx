@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import LeadsPage from "./pages/LeadsPage";
 import OpportunitiesPage from "./pages/OpportunitiesPage";
+import QuotesPage from "./pages/QuotesPage";
 import SalesForceManagementPage from "./pages/SalesForceManagementPage";
 import FofoOnboardingPage from "./pages/FofoOnboardingPage";
 import ReportsPage from "./pages/ReportsPage";
@@ -33,6 +34,7 @@ function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/opportunities" element={<OpportunitiesPage />} />
+              <Route path="/quotes" element={<QuotesPage />} />
               <Route path="/sales-force-management" element={<SalesForceManagementPage />} />
               <Route path="/fofo-onboarding" element={<FofoOnboardingPage />} />
               <Route path="/fofo-onboarding/:leadId" element={<FofoOnboardingPage />} />
