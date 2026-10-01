@@ -56,7 +56,15 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
 
   const applyTemplate = (key: string) => {
     setTemplateKey(key);
-    if (!lead || key === BLANK_TEMPLATE_KEY) return;
+    if (key === BLANK_TEMPLATE_KEY) {
+      // Switching back to "Blank email" must actually blank the fields -
+      // previously this returned early and left whichever template's text
+      // was last applied sitting in the form while the pill looked blank.
+      setSubject("");
+      setBody("");
+      return;
+    }
+    if (!lead) return;
     const template = templates.find((t) => t.key === key);
     if (!template) return;
     const tokens = templateTokens(lead, activityDueDate);
@@ -92,6 +100,17 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
       onClose={onClose}
       width={480}
       loading={loading}
+      styles={{ body: { paddingBottom: 12 } }}
+      footer={
+        !showConnectPrompt && !loading ? (
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="primary" loading={sending} disabled={!canSend} onClick={handleSend}>
+              Send
+            </Button>
+          </div>
+        ) : null
+      }
       title={
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
@@ -132,8 +151,11 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
       ) : (
         !loading && (
           <>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-              {[{ key: BLANK_TEMPLATE_KEY, name: "Blank email" }, ...templates].map((t) => {
+            <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 8 }}>
+              Template
+            </Text>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+              {[...templates, { key: BLANK_TEMPLATE_KEY, name: "Blank email" }].map((t) => {
                 const active = templateKey === t.key;
                 return (
                   <button
@@ -141,14 +163,15 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                     type="button"
                     onClick={() => applyTemplate(t.key)}
                     style={{
-                      padding: "5px 12px",
+                      padding: "6px 14px",
                       fontSize: 12.5,
                       fontFamily: appTokens.font,
                       fontWeight: active ? 600 : 500,
                       borderRadius: 999,
                       border: `1px solid ${active ? appTokens.primary : appTokens.border}`,
                       background: active ? appTokens.primarySoft : appTokens.surface,
-                      color: active ? appTokens.primary : appTokens.textPrimary,
+                      color: active ? appTokens.primary : appTokens.textSecondary,
+                      boxShadow: active ? "none" : appTokens.shadowXs,
                       cursor: "pointer",
                     }}
                   >
@@ -158,26 +181,35 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
               })}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <Text style={{ fontSize: 12, fontWeight: 500 }}>To</Text>
-                <Input style={{ marginTop: 4 }} value={lead?.email ?? "No email on file for this lead"} disabled />
+                <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>To</Text>
+                <div
+                  style={{
+                    marginTop: 5,
+                    padding: "7px 11px",
+                    borderRadius: appTokens.radiusSm,
+                    background: appTokens.surfaceMuted,
+                    border: `1px solid ${appTokens.borderLight}`,
+                    fontSize: 14,
+                    color: lead?.email ? appTokens.textPrimary : appTokens.textTertiary,
+                  }}
+                >
+                  {lead?.email ?? "No email on file for this lead"}
+                </div>
               </div>
               <div>
-                <Text style={{ fontSize: 12, fontWeight: 500 }}>Subject</Text>
-                <Input style={{ marginTop: 4 }} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" />
+                <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  Subject
+                </Text>
+                <Input style={{ marginTop: 5 }} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" />
               </div>
               <div>
-                <Text style={{ fontSize: 12, fontWeight: 500 }}>Message</Text>
-                <TextArea style={{ marginTop: 4 }} rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
+                <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  Message
+                </Text>
+                <TextArea style={{ marginTop: 5 }} rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
               </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-              <Button onClick={onClose}>Cancel</Button>
-              <Button type="primary" loading={sending} disabled={!canSend} onClick={handleSend}>
-                Send
-              </Button>
             </div>
           </>
         )

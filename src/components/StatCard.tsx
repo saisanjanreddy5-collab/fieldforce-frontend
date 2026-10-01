@@ -1,5 +1,4 @@
-import { Card, Typography } from "antd";
-import type { ReactNode } from "react";
+import { Skeleton, Typography } from "antd";
 import { appTokens } from "../utils/design-system";
 
 const { Text } = Typography;
@@ -8,37 +7,36 @@ interface StatCardProps {
   label: string;
   value: string;
   loading?: boolean;
-  icon?: ReactNode;
-  iconColor?: string;
+  subtitle?: string;
 }
 
-export function StatCard({ label, value, loading, icon, iconColor = appTokens.primary }: StatCardProps) {
+// The same compact, flat stat-card pattern used on Opportunities/Quotes -
+// no decorative icon box, just label/value/subtitle, so this page reads as
+// the same app as the rest of it instead of an older generation of the UI.
+export function StatCard({ label, value, loading, subtitle }: StatCardProps) {
   return (
-    <Card loading={loading} styles={{ body: { padding: 20 } }} style={{ boxShadow: appTokens.shadowXs }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div>
-          <Text style={{ fontSize: 12.5, fontWeight: 600, color: appTokens.textTertiary, letterSpacing: 0.2 }}>{label}</Text>
-          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4, color: appTokens.textPrimary, letterSpacing: -0.5 }}>{value}</div>
-        </div>
-        {icon && (
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: appTokens.radiusSm,
-              background: `${iconColor}14`,
-              color: iconColor,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 16,
-              flexShrink: 0,
-            }}
-          >
-            {icon}
+    <div
+      style={{
+        border: `1px solid ${appTokens.borderLight}`,
+        borderRadius: appTokens.radius,
+        padding: "14px 16px",
+        background: appTokens.surface,
+        boxShadow: appTokens.shadowXs,
+      }}
+    >
+      {loading ? (
+        <Skeleton active title={false} paragraph={{ rows: 2, width: ["60%", "40%"] }} />
+      ) : (
+        <>
+          <Text style={{ fontSize: 12.5, fontWeight: 600, color: appTokens.textTertiary, letterSpacing: 0.2, display: "block" }}>
+            {label}
+          </Text>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+            <span style={{ fontSize: 24, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.4, lineHeight: 1.3 }}>{value}</span>
+            {subtitle && <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{subtitle}</Text>}
           </div>
-        )}
-      </div>
-    </Card>
+        </>
+      )}
+    </div>
   );
 }

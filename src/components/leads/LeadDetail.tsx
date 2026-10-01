@@ -26,6 +26,7 @@ import { ConsentTab } from "./tabs/ConsentTab";
 import { ApprovalsTab } from "./tabs/ApprovalsTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { QuotesTab } from "./tabs/QuotesTab";
+import { EmailComposeDrawer } from "../calendar/EmailComposeDrawer";
 
 const { Text } = Typography;
 
@@ -47,11 +48,6 @@ const BASE_DETAIL_TABS = [
   { key: "approvals", label: "Approvals" },
   { key: "documents", label: "Documents" },
 ];
-
-interface EmailFormValues {
-  subject: string;
-  body: string;
-}
 
 interface MeetingFormValues {
   subject: string;
@@ -75,10 +71,8 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
   const [activeTabKey, setActiveTabKey] = useState(initialTab ?? "overview");
   const [emailOpen, setEmailOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
   const [creatingMeeting, setCreatingMeeting] = useState(false);
   const [calling, setCalling] = useState(false);
-  const [emailForm] = Form.useForm<EmailFormValues>();
   const [meetingForm] = Form.useForm<MeetingFormValues>();
 
   // Fetched once here, not inside OpportunitiesTab - needed for the
@@ -147,20 +141,6 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
     loadActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
-
-  const handleSendEmail = async (values: EmailFormValues) => {
-    setSendingEmail(true);
-    try {
-      await microsoftApi.sendLeadEmail(lead.id, values.subject, values.body);
-      message.success("Email sent");
-      emailForm.resetFields();
-      setEmailOpen(false);
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to send email"));
-    } finally {
-      setSendingEmail(false);
-    }
-  };
 
   const handleCreateMeeting = async (values: MeetingFormValues) => {
     setCreatingMeeting(true);
@@ -263,24 +243,13 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
         </div>
       </div>
 
-      <Modal
-        title={`Email ${lead.fullName}`}
+      <EmailComposeDrawer
         open={emailOpen}
-        onCancel={() => setEmailOpen(false)}
-        onOk={() => emailForm.submit()}
-        okText="Send"
-        confirmLoading={sendingEmail}
-      >
-        <Text type="secondary">To: {lead.email}</Text>
-        <Form form={emailForm} layout="vertical" onFinish={handleSendEmail} style={{ marginTop: 12 }}>
-          <Form.Item name="subject" label="Subject" rules={[{ required: true, message: "Subject is required" }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="body" label="Message" rules={[{ required: true, message: "Message is required" }]}>
-            <Input.TextArea rows={6} />
-          </Form.Item>
-        </Form>
-      </Modal>
+        onClose={() => setEmailOpen(false)}
+        leadId={lead.id}
+        activityDueDate={null}
+        onSent={() => setEmailOpen(false)}
+      />
 
       <Modal
         title={`Schedule Teams meeting with ${lead.fullName}`}
