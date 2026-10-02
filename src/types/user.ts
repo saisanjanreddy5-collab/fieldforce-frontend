@@ -52,6 +52,7 @@ export interface CreateUserPayload {
 }
 
 export interface UpdateUserPayload {
+  name?: string;
   designation?: string;
   managerId?: string;
   dottedLineManagerId?: string;
