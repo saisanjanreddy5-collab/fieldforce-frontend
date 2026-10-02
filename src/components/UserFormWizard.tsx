@@ -236,6 +236,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
     if (!open) return;
     if (user) {
       form.setFieldsValue({
+        name: user.name ?? undefined,
         employeeCode: user.employeeCode ?? undefined,
         mobile: user.mobile ?? undefined,
         dateOfJoining: user.dateOfJoining ?? undefined,
@@ -291,12 +292,25 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
     if (!u.managerId) continue;
     directReportCounts.set(u.managerId, (directReportCounts.get(u.managerId) ?? 0) + 1);
   }
-  const ladderLevels = levels.filter((l) => !l.isCrossCutting).slice().sort((a, b) => a.sortOrder - b.sortOrder);
 
   const handleSubmit = async (values: FormValues) => {
+    // Enforced here rather than as a Form.Item rule - managerId's own
+    // Form.Item is `hidden` (the actual picker is the custom clickable-row
+    // UI below, not a standard input), and a `hidden` Form.Item swallows
+    // its own validation error text along with its input, so a `required`
+    // rule there would block saving with zero visible feedback - the exact
+    // bug Level's required rule caused earlier. Only checked for brand-new
+    // accounts; an existing account with no manager (e.g. the top of the
+    // hierarchy) is left alone on every subsequent edit.
+    if (!user && !values.managerId && managerCandidates.length > 0) {
+      setManagerPickerExpanded(true);
+      message.error("Pick a reporting manager for this person (Position & geography tab) - or pick the top-most Level if they have none.");
+      return;
+    }
     setSaving(true);
     try {
       const shared = {
+        name: values.name,
         designation: values.designation,
         managerId: values.managerId,
         dottedLineManagerId: values.dottedLineManagerId,
@@ -438,10 +452,13 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                   )}
                   {user && (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                      <Form.Item name="employeeCode" label="Employee code" rules={[{ required: true, message: "Employee code is required" }]}>
+                      <Form.Item name="name" label="Full name" rules={[{ required: true, message: "Name is required" }]}>
+                        <Input placeholder="e.g. Neha Sharma" />
+                      </Form.Item>
+                      <Form.Item name="employeeCode" label="Employee code">
                         <Input placeholder="e.g. EMP-0041" />
                       </Form.Item>
-                      <Form.Item name="mobile" label="Mobile" rules={[{ required: true, message: "Mobile is required" }]}>
+                      <Form.Item name="mobile" label="Mobile">
                         <Input placeholder="e.g. +91 98xxx xxxxx" />
                       </Form.Item>
                     </div>
@@ -583,23 +600,19 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       <Form.Item
                         name="levelId"
                         label="Level"
-                        tooltip="Ladder position - also determines their real backend access tier"
-                        rules={[{ required: true, message: "Level is required" }]}
+                        tooltip="Ladder position (or Administrator/Finance) - also determines their real backend access tier"
+                        // Only required when creating - the backend itself requires a Level
+                        // (or a role) on every new account, with no frontend role picker as a
+                        // fallback, so skipping this here would let a brand-new user submit
+                        // successfully on screen and then fail with a confusing 422 from the
+                        // server. Editing an existing account has no such requirement - their
+                        // role is already set in the database and stays untouched if Level is
+                        // left blank here (see updateUser's partial-update logic).
+                        rules={user ? [] : [{ required: true, message: "Level is required" }]}
                       >
                         <Select
                           placeholder="Select a level"
-                          options={ladderLevels.map((l) => ({ value: l.id, label: `L${ladderIndex(l, levels)} · ${l.name}` }))}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        label="Role"
-                        tooltip="Same underlying Level, shown against the full list including Administrator and Finance"
-                      >
-                        <Select
-                          placeholder="Select a role"
-                          value={levelId || undefined}
-                          onChange={(v) => form.setFieldValue("levelId", v)}
-                          options={levels.map((l) => ({ value: l.id, label: l.name }))}
+                          options={levels.map((l) => ({ value: l.id, label: `L${ladderIndex(l, levels)} · ${l.name}` }))}
                         />
                       </Form.Item>
                       <Form.Item name="dottedLineManagerId" label="Dotted-line to (optional)">
