@@ -333,7 +333,6 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
         message.success("Account updated");
       } else {
         const payload: CreateUserPayload = {
-          name: values.name,
           email: values.email,
           password: values.password,
           ...shared,
