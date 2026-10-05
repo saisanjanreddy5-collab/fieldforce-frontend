@@ -17,6 +17,3 @@ export async function updateIncentivePlan(id: string, payload: UpdateIncentivePl
   return response.data.data;
 }
 
-export async function deleteIncentivePlan(id: string): Promise<void> {
-  await apiClient.delete(`/incentive-plans/${id}`);
-}

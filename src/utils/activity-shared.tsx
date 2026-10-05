@@ -1,4 +1,5 @@
-import { MailOutlined, PhoneOutlined, PushpinOutlined, ShopOutlined, TeamOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { PhoneOutlined, PushpinOutlined, ShopOutlined } from "@ant-design/icons";
+import { OutlookLogo, TeamsLogo, WhatsAppLogo } from "../components/icons/BrandIcons";
 import type { ActivityType } from "../types/activity";
 
 export const TYPE_LABEL: Record<ActivityType, string> = {
@@ -21,10 +22,10 @@ export const TYPE_DOT_COLOR: Record<ActivityType, string> = {
 
 export const TYPE_ICON: Record<ActivityType, React.ReactNode> = {
   call: <PhoneOutlined style={{ color: TYPE_DOT_COLOR.call }} />,
-  email: <MailOutlined style={{ color: TYPE_DOT_COLOR.email }} />,
-  teams_meeting: <TeamOutlined style={{ color: TYPE_DOT_COLOR.teams_meeting }} />,
+  email: <OutlookLogo size={13} />,
+  teams_meeting: <TeamsLogo size={13} />,
   site_visit: <ShopOutlined style={{ color: TYPE_DOT_COLOR.site_visit }} />,
-  whatsapp: <WhatsAppOutlined style={{ color: TYPE_DOT_COLOR.whatsapp }} />,
+  whatsapp: <WhatsAppLogo size={13} />,
   internal: <PushpinOutlined style={{ color: TYPE_DOT_COLOR.internal }} />,
 };
 
