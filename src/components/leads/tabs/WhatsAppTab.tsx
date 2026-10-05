@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Avatar, Button, Input, Tooltip, Typography, message } from "antd";
 import { CheckOutlined, PaperClipOutlined, SendOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { WhatsAppLogo } from "../../icons/BrandIcons";
 import * as whatsappApi from "../../../api/whatsapp-api";
 import type { WhatsappMessage } from "../../../types/whatsapp";
 import type { Lead } from "../../../types/lead";
@@ -238,7 +239,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
                 borderRadius: 20,
               }}
             >
-              <WhatsAppOutlined style={{ fontSize: 10 }} />
+              <WhatsAppLogo size={11} />
               WhatsApp
             </span>
           </div>

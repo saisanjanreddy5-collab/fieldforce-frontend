@@ -41,6 +41,17 @@ export async function updateLead(id: string, payload: Partial<CreateLeadPayload>
   return response.data.data;
 }
 
+export interface BulkImportResult {
+  created: number;
+  skipped: { row: number; reason: string }[];
+  errors: { row: number; message: string }[];
+}
+
+export async function bulkImportLeads(rows: Record<string, unknown>[]): Promise<BulkImportResult> {
+  const response = await apiClient.post<ApiSuccess<BulkImportResult>>("/leads/bulk-import", { rows });
+  return response.data.data;
+}
+
 export async function getLeadConsent(id: string): Promise<LeadConsent | null> {
   const response = await apiClient.get<ApiSuccess<LeadConsent | null>>(`/leads/${id}/consent`);
   return response.data.data;

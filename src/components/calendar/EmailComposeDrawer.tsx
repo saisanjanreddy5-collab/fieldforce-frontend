@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Drawer, Input, Typography, message } from "antd";
-import { CloseOutlined, MailOutlined, PaperClipOutlined } from "@ant-design/icons";
+import { CloseOutlined, PaperClipOutlined } from "@ant-design/icons";
+import { OutlookLogo } from "../icons/BrandIcons";
 import * as leadApi from "../../api/lead-api";
 import * as microsoftApi from "../../api/microsoft-api";
 import * as messageTemplateApi from "../../api/message-template-api";
@@ -157,14 +158,13 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
               height: 32,
               borderRadius: appTokens.radiusSm,
               background: appTokens.primarySoft,
-              color: appTokens.primary,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
             }}
           >
-            <MailOutlined />
+            <OutlookLogo size={18} />
           </div>
           <div>
             <Title level={5} style={{ margin: 0 }}>

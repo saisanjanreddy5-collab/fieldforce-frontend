@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AuthUser } from "../types/auth";
 import * as authApi from "../api/auth-api";
-import { clearTokens, getAccessToken, setTokens } from "../api/token-storage";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../api/token-storage";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -18,8 +18,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
+    // Clears local state immediately, regardless of the revoke call below -
+    // the user is logged out of this device either way. The server call is
+    // best-effort cleanup (so a leaked copy of this refresh token can't
+    // keep minting access tokens elsewhere) and never blocks on it.
+    const refreshToken = getRefreshToken();
     clearTokens();
     setUser(null);
+    if (refreshToken) {
+      authApi.logout(refreshToken).catch(() => undefined);
+    }
   }, []);
 
   useEffect(() => {

@@ -406,7 +406,7 @@ export default function LeadsPage() {
         }}
         onSaved={handleSaved}
       />
-      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load(1, false)} />
       <LeadMiningModal open={miningOpen} onClose={() => setMiningOpen(false)} />
     </div>
   );

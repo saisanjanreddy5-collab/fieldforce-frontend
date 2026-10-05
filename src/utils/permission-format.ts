@@ -20,22 +20,12 @@ export const MODULE_LABELS: Record<string, string> = {
   quotes: "Quotes",
 };
 
-export function moduleOf(permission: string): string {
+function moduleOf(permission: string): string {
   return permission.split(".")[0];
 }
 
 export function verbOf(permission: string): string {
   return permission.split(".").slice(1).join(".");
-}
-
-export function groupByModule(catalog: string[]): [string, string[]][] {
-  const map = new Map<string, string[]>();
-  for (const perm of catalog) {
-    const mod = moduleOf(perm);
-    if (!map.has(mod)) map.set(mod, []);
-    map.get(mod)!.push(perm);
-  }
-  return Array.from(map.entries());
 }
 
 export function modulesOf(catalog: string[]): string[] {
