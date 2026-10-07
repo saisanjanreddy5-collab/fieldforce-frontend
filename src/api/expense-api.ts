@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateExpenseClaimPayload, ExpenseClaim, ExpenseType } from "../types/expense";
 
 export async function listExpenseTypes(): Promise<ExpenseType[]> {
-  const response = await apiClient.get<ApiSuccess<ExpenseType[]>>("/expenses/types");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ expenseTypes: ExpenseType[]; total: number }>>("/expenses/types", {
+    params: { limit: 200 },
+  });
+  return response.data.data.expenseTypes;
 }
 
 export async function listMyClaims(): Promise<ExpenseClaim[]> {

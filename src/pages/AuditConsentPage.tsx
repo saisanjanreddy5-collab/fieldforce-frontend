@@ -37,7 +37,7 @@ export default function AuditConsentPage() {
   useEffect(() => {
     Promise.all([auditConsentApi.listAuditLog(), auditConsentApi.getConsentRegister()])
       .then(([e, b]) => {
-        setEvents(e);
+        setEvents(e.events);
         setBuckets(b);
       })
       .catch(() => message.error("Failed to load audit trail"))
@@ -47,7 +47,17 @@ export default function AuditConsentPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const records = await auditConsentApi.listConsentRecords();
+      // An export means every record, not one page - the endpoint now
+      // paginates, so walk every page until there's nothing left rather
+      // than silently truncating what used to be an unbounded query.
+      const records = [];
+      let page = 1;
+      for (;;) {
+        const res = await auditConsentApi.listConsentRecords(page);
+        records.push(...res.records);
+        if (records.length >= res.total || res.records.length === 0) break;
+        page += 1;
+      }
       await exportToXlsx(
         "Consent proof",
         [
@@ -229,11 +239,13 @@ export default function AuditConsentPage() {
               </div>
             ))}
 
-            <div style={{ padding: "14px 18px" }}>
-              <Button block loading={exporting} onClick={handleExport}>
-                Export consent proof
-              </Button>
-            </div>
+            {hasPermission("audit_log.export") && (
+              <div style={{ padding: "14px 18px" }}>
+                <Button block loading={exporting} onClick={handleExport}>
+                  Export consent proof
+                </Button>
+              </div>
+            )}
           </div>
 
           <div

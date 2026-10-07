@@ -345,9 +345,11 @@ export default function ReportsPage() {
         </div>
         <Space>
           {canSaveView && <Button onClick={() => setSavedViewOpen(true)}>Save view</Button>}
-          <Button type="primary" onClick={handleExport}>
-            Export XLSX
-          </Button>
+          {hasPermission("reports.export") && (
+            <Button type="primary" onClick={handleExport}>
+              Export XLSX
+            </Button>
+          )}
         </Space>
       </div>
 

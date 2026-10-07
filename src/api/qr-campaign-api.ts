@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { QrCampaign, QrCampaignSummary, UpdateQrCampaignPayload, UpsertQrCampaignPayload } from "../types/qr-campaign";
 
 export async function listQrCampaigns(): Promise<QrCampaign[]> {
-  const response = await apiClient.get<ApiSuccess<QrCampaign[]>>("/qr-campaigns");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ qrCampaigns: QrCampaign[]; total: number }>>("/qr-campaigns", {
+    params: { limit: 200 },
+  });
+  return response.data.data.qrCampaigns;
 }
 
 export async function getQrCampaignSummary(): Promise<QrCampaignSummary> {

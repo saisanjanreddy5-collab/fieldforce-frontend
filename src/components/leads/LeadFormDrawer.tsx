@@ -15,7 +15,9 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as leadApi from "../../api/lead-api";
+import * as salesTeamApi from "../../api/sales-team-api";
 import type { CreateLeadPayload, Lead } from "../../types/lead";
+import type { State } from "../../types/sales-team";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { errorMessageFrom } from "../../utils/api-error";
@@ -52,6 +54,7 @@ interface FormValues {
   website?: string;
   preferredLanguage?: string;
   pincode?: string;
+  stateId?: string;
   addressLine1?: string;
   addressLine2?: string;
   territory?: string;
@@ -121,6 +124,15 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   const captureChannel = Form.useWatch("captureChannel", form);
   const inquiryFieldsLocked = Boolean(captureChannel) && captureChannel !== "manual_entry";
 
+  // Flat list, not region-filtered - the state itself (not which zone it's
+  // in) is what assignment_rules actually matches a new lead's owner
+  // against, so there's no reason to make a person pick a region first.
+  const [states, setStates] = useState<State[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    salesTeamApi.listStates().then(setStates).catch(() => setStates([]));
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -143,6 +155,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         website: lead.website ?? undefined,
         preferredLanguage: lead.preferredLanguage ?? undefined,
         pincode: lead.pincode ?? undefined,
+        stateId: lead.stateId ?? undefined,
         addressLine1: lead.addressLine1 ?? undefined,
         addressLine2: lead.addressLine2 ?? undefined,
         territory: lead.territory ?? undefined,
@@ -200,6 +213,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       website: values.website,
       preferredLanguage: values.preferredLanguage,
       pincode: values.pincode,
+      stateId: values.stateId,
       addressLine1: values.addressLine1,
       addressLine2: values.addressLine2,
       territory: values.territory,
@@ -388,6 +402,19 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                   <FormSection icon={<EnvironmentOutlined />} iconColor="#eda100" title="Address" description="Where this lead is located">
                     <Form.Item name="pincode" label="PinCode">
                       <Input />
+                    </Form.Item>
+                    <Form.Item
+                      name="stateId"
+                      label="State"
+                      tooltip="Drives automatic owner assignment for new leads (Settings > Assignment rules)"
+                    >
+                      <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="Select a state"
+                        options={states.map((s) => ({ value: s.id, label: s.name }))}
+                      />
                     </Form.Item>
                     <Form.Item name="territory" label="Territory">
                       <Input placeholder="e.g. AP South · Guntur" />

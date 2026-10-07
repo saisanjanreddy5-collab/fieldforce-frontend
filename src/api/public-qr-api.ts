@@ -12,6 +12,7 @@ export async function submitPublicQrCapture(code: string, payload: PublicQrSubmi
   formData.append("fullName", payload.fullName);
   formData.append("phone", payload.phone);
   formData.append("cityOrPincode", payload.cityOrPincode);
+  if (payload.stateId) formData.append("stateId", payload.stateId);
   if (payload.email) formData.append("email", payload.email);
   if (payload.investmentCapacity !== undefined) formData.append("investmentCapacity", String(payload.investmentCapacity));
   if (payload.existingStore !== undefined) formData.append("existingStore", String(payload.existingStore));

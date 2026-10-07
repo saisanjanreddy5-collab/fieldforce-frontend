@@ -3,10 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateTargetPayload, Target, UpdateTargetPayload } from "../types/target";
 
 export async function listTargets(userId?: string): Promise<Target[]> {
-  const response = await apiClient.get<ApiSuccess<Target[]>>("/targets", {
-    params: userId ? { userId } : undefined,
+  const response = await apiClient.get<ApiSuccess<{ targets: Target[]; total: number }>>("/targets", {
+    params: { limit: 200, ...(userId ? { userId } : {}) },
   });
-  return response.data.data;
+  return response.data.data.targets;
 }
 
 export async function createTarget(payload: CreateTargetPayload): Promise<Target> {

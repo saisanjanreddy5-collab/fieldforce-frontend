@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateLeadCategoryPayload, LeadCategory, UpdateLeadCategoryPayload } from "../types/lead-category";
 
 export async function listLeadCategories(): Promise<LeadCategory[]> {
-  const response = await apiClient.get<ApiSuccess<LeadCategory[]>>("/lead-categories");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ leadCategories: LeadCategory[]; total: number }>>("/lead-categories", {
+    params: { limit: 200 },
+  });
+  return response.data.data.leadCategories;
 }
 
 export async function createLeadCategory(payload: CreateLeadCategoryPayload): Promise<LeadCategory> {

@@ -43,7 +43,12 @@ export function OpportunityListView({ opportunities, loading, onEdit }: Opportun
       rowKey="id"
       loading={loading}
       dataSource={opportunities}
-      pagination={false}
+      pagination={{
+        pageSize: 20,
+        showSizeChanger: true,
+        pageSizeOptions: [20, 50, 100, 200],
+        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total.toLocaleString()} opportunities`,
+      }}
       scroll={{ x: 820 }}
       className="thin-scroll-table"
       onRow={() => ({ className: "table-row-hover" })}

@@ -8,8 +8,10 @@ import type {
 } from "../types/scheduled-transfer";
 
 export async function listScheduledTransfers(): Promise<ScheduledTransfer[]> {
-  const response = await apiClient.get<ApiSuccess<ScheduledTransfer[]>>("/scheduled-transfers");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ transfers: ScheduledTransfer[]; total: number }>>("/scheduled-transfers", {
+    params: { limit: 200 },
+  });
+  return response.data.data.transfers;
 }
 
 export async function createTerritoryTransfer(payload: CreateTerritoryTransferPayload): Promise<ScheduledTransfer> {

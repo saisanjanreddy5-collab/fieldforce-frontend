@@ -12,8 +12,10 @@ import type {
 } from "../types/leave";
 
 export async function listLeaveTypes(): Promise<LeaveType[]> {
-  const response = await apiClient.get<ApiSuccess<LeaveType[]>>("/leave/types");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ leaveTypes: LeaveType[]; total: number }>>("/leave/types", {
+    params: { limit: 200 },
+  });
+  return response.data.data.leaveTypes;
 }
 
 export async function updateLeaveType(key: LeaveTypeKey, payload: UpdateLeaveTypePayload): Promise<LeaveType> {

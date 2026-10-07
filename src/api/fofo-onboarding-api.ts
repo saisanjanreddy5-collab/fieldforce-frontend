@@ -2,8 +2,13 @@ import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { FofoHandoff, FofoOnboardingListItem, LeadDocument } from "../types/fofo-onboarding";
 
-export async function listFofoOnboardings(): Promise<FofoOnboardingListItem[]> {
-  const response = await apiClient.get<ApiSuccess<FofoOnboardingListItem[]>>("/fofo-onboarding");
+export interface ListFofoOnboardingsResult {
+  leads: FofoOnboardingListItem[];
+  total: number;
+}
+
+export async function listFofoOnboardings(page = 1, limit = 200): Promise<ListFofoOnboardingsResult> {
+  const response = await apiClient.get<ApiSuccess<ListFofoOnboardingsResult>>("/fofo-onboarding", { params: { page, limit } });
   return response.data.data;
 }
 

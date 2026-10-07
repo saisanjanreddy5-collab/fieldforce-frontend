@@ -42,7 +42,7 @@ function FofoOnboardingList() {
     setLoading(true);
     fofoApi
       .listFofoOnboardings()
-      .then(setItems)
+      .then((res) => setItems(res.leads))
       .catch(() => message.error("Failed to load FOFO onboarding handoffs"))
       .finally(() => setLoading(false));
   }, []);

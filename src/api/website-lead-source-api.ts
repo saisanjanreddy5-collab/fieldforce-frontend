@@ -3,8 +3,11 @@ import type { ApiSuccess } from "../types/api";
 import type { UpdateWebsiteLeadSourcePayload, UpsertWebsiteLeadSourcePayload, WebsiteLeadSource } from "../types/website-lead-source";
 
 export async function listWebsiteLeadSources(): Promise<WebsiteLeadSource[]> {
-  const response = await apiClient.get<ApiSuccess<WebsiteLeadSource[]>>("/website-lead-sources");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ websiteLeadSources: WebsiteLeadSource[]; total: number }>>(
+    "/website-lead-sources",
+    { params: { limit: 200 } }
+  );
+  return response.data.data.websiteLeadSources;
 }
 
 export async function createWebsiteLeadSource(payload: UpsertWebsiteLeadSourcePayload): Promise<WebsiteLeadSource> {

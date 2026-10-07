@@ -14,6 +14,7 @@ import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
 import { LeadMiningModal } from "../components/leads/LeadMiningModal";
+import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 
 const { Title } = Typography;
@@ -217,6 +218,26 @@ export default function LeadsPage() {
   const showDetailOnMobile = isMobile && selectedLead;
   const showOwner = user?.role !== "agent";
 
+  const handleExportLeads = () =>
+    exportToXlsx(
+      "Leads",
+      [
+        { header: "Lead #", key: "leadNumber" },
+        { header: "Name", key: "fullName" },
+        { header: "Phone", key: "phone" },
+        { header: "Email", key: "email" },
+        { header: "Company", key: "companyName" },
+        { header: "Category", key: "category" },
+        { header: "Status", key: "status" },
+        { header: "Owner", key: "ownerName" },
+        { header: "Territory", key: "territory" },
+        { header: "Source", key: "source" },
+        { header: "Expected value", key: "expectedValue" },
+      ],
+      leads.map((l) => ({ ...l })),
+      "leads"
+    );
+
   return (
     <div
       ref={containerRef}
@@ -244,6 +265,7 @@ export default function LeadsPage() {
             </Typography.Text>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {hasPermission("leads.export") && <Button onClick={handleExportLeads}>Export</Button>}
             <Button onClick={() => setImportOpen(true)}>Import</Button>
             <Button onClick={() => setMiningOpen(true)}>Lead mining</Button>
             {hasPermission("leads.create") && (

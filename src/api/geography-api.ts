@@ -9,6 +9,8 @@ export interface State {
 }
 
 export async function listStates(): Promise<State[]> {
-  const response = await apiClient.get<ApiSuccess<State[]>>("/geography/states");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ states: State[]; total: number }>>("/geography/states", {
+    params: { limit: 200 },
+  });
+  return response.data.data.states;
 }

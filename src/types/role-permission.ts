@@ -4,4 +4,5 @@ export interface RolePermissionMatrix {
   catalog: string[];
   roles: Role[];
   grants: Record<Role, string[]>;
+  defaults: Record<Role, string[]>;
 }

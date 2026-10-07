@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { ApprovalBand, CreateApprovalBandPayload, UpdateApprovalBandPayload } from "../types/approval-band";
 
 export async function listApprovalBands(): Promise<ApprovalBand[]> {
-  const response = await apiClient.get<ApiSuccess<ApprovalBand[]>>("/approval-bands");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ approvalBands: ApprovalBand[]; total: number }>>("/approval-bands", {
+    params: { limit: 200 },
+  });
+  return response.data.data.approvalBands;
 }
 
 export async function createApprovalBand(payload: CreateApprovalBandPayload): Promise<ApprovalBand> {
