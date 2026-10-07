@@ -8,8 +8,10 @@ import type {
 } from "../types/message-template";
 
 export async function listMessageTemplates(channel?: TemplateChannel): Promise<MessageTemplate[]> {
-  const response = await apiClient.get<ApiSuccess<MessageTemplate[]>>("/message-templates", { params: { channel } });
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ messageTemplates: MessageTemplate[]; total: number }>>("/message-templates", {
+    params: { channel, limit: 200 },
+  });
+  return response.data.data.messageTemplates;
 }
 
 export async function createMessageTemplate(payload: CreateMessageTemplatePayload): Promise<MessageTemplate> {

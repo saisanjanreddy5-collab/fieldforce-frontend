@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState } from "react";
-import { Card, Input, Modal, Popconfirm, Segmented, Switch, Table, Tag, Typography, message } from "antd";
+import { Card, Input, Modal, Popconfirm, Segmented, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
 import { CheckOutlined, CloseOutlined, MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import * as rolePermissionApi from "../api/role-permission-api";
 import * as overrideApi from "../api/user-permission-override-api";
@@ -9,7 +9,7 @@ import type { UserPermissionOverride } from "../types/user-permission-override";
 import type { TeamMember } from "../types/user";
 import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
-import { MODULE_LABELS, modulesOf, verbOf } from "../utils/permission-format";
+import { verbOf } from "../utils/permission-format";
 import { RECORD_SCOPE_OPTIONS, ladderIndex, seesLabel } from "../utils/level-format";
 import { appTokens } from "../utils/design-system";
 
@@ -37,31 +37,134 @@ const ENFORCED_PERMISSIONS = new Set([
   "delegations.view", "delegations.create", "delegations.delete",
 ]);
 
-const VERB_ORDER = ["view", "create", "update", "delete", "share", "view_own", "view_team"];
+const VERB_ORDER = ["view", "create", "update", "delete", "share", "approve", "export", "view_own", "view_team"];
 const VERB_LABELS: Record<string, string> = {
   view: "View",
   create: "Create",
   update: "Edit",
   delete: "Delete",
   share: "Share",
+  approve: "Approve",
+  export: "Export",
   view_own: "View own",
   view_team: "View team",
 };
 
+interface ModuleGroup {
+  label: string;
+  scopeHint: string;
+  modules: string[];
+}
+
+// One row per real nav item (see nav-config.tsx's NAV_GROUPS) - not a
+// logical regrouping, a literal 1:1 mirror of the 17 things in the sidebar,
+// so "what can this role see in the CRM" and "what's configurable here"
+// are the exact same list. A row's modules are every permission-bearing
+// module that page's own code actually touches (confirmed by reading each
+// page/card's real API calls, not guessed) - Sales force management and
+// Settings legitimately bundle many modules because that's what's really
+// behind those two nav items; a module can appear in more than one row
+// when a real permission is genuinely used in both places (e.g.
+// approval_bands is real content on both pages). Every checkbox still maps
+// to a real, individually-toggleable permission - a row's checkbox just
+// batch-applies to every real permission in it at once (same "shared tier"
+// pattern already used for levels that share one security tier).
+//
+// scopeHint is read off the actual service-layer query, not guessed:
+// leads/opportunities/activities/quotes/customers/call_center use the
+// manager-subtree CTE (own + below); expense_claims/leave_requests/
+// comp_off_credits/support_tickets/approvals use a direct manager_id match
+// only, one level deep (own + team); reports uses the same subtree CTE,
+// phrased "own tree" to match report-service.ts's own comment; audit_log
+// has no create/update/delete path for anyone, ever (read-only); Sales
+// force management and Settings are unscoped admin/config tables with no
+// owner column at all.
+const MODULE_GROUPS: ModuleGroup[] = [
+  { label: "Dashboard", scopeHint: "own + below", modules: ["dashboard"] },
+  { label: "Leads", scopeHint: "own + below", modules: ["leads", "whatsapp"] },
+  { label: "Opportunities", scopeHint: "own + below", modules: ["opportunities"] },
+  { label: "Quotes", scopeHint: "own + below", modules: ["quotes"] },
+  { label: "FOFO onboarding", scopeHint: "own + below", modules: ["fofo_onboarding"] },
+  // Authorization-only for now - the pages behind these 3 are still
+  // "Coming soon" placeholders (see nav-config.tsx), but who will be able to
+  // see them once built is already real and configurable here.
+  { label: "Customers", scopeHint: "own + below", modules: ["customers"] },
+  { label: "Call center", scopeHint: "own + below", modules: ["call_center"] },
+  { label: "Support tickets", scopeHint: "own + team", modules: ["support_tickets"] },
+  { label: "Team dashboard", scopeHint: "own + below", modules: ["team_dashboard", "attendance"] },
+  { label: "Activity calendar", scopeHint: "own + below", modules: ["activities"] },
+  { label: "Expenses", scopeHint: "own + team", modules: ["expense_claims", "expense_types"] },
+  { label: "Leave", scopeHint: "own + team", modules: ["leave_requests", "leave_types", "comp_off_credits"] },
+  {
+    label: "Sales force management",
+    scopeHint: "config",
+    modules: [
+      "users", "offices", "levels", "structure_axis", "sales_teams", "targets", "role_permissions",
+      "user_permission_overrides", "manager_change_log", "approval_bands", "incentive_plans", "commission_rules",
+      "user_commissions", "territory_transfers", "delegations",
+    ],
+  },
+  {
+    label: "Approvals",
+    scopeHint: "own + team",
+    modules: ["expense_claims", "leave_requests", "fofo_onboarding"],
+  },
+  { label: "Reports", scopeHint: "own tree", modules: ["reports"] },
+  { label: "Audit & consent", scopeHint: "read-only", modules: ["audit_log"] },
+  {
+    label: "Settings",
+    scopeHint: "config",
+    modules: [
+      "pipeline_stages", "lead_categories", "assignment_rules", "approval_bands", "app_settings",
+      "message_templates", "leave_types", "qr_campaigns", "website_lead_sources", "users",
+    ],
+  },
+];
+
+function permsFor(group: ModuleGroup, verb: string, catalog: string[]): string[] {
+  const set = new Set(catalog);
+  return group.modules.map((m) => `${m}.${verb}`).filter((p) => set.has(p));
+}
+
+// Generalizes the old single-permission granted-vs-default comparison to a
+// whole group at once: "on" is whatever's live right now (a role grant, or
+// an employee's effective access), "isBaseline" is whatever it'd be with no
+// edits (the role default, or the role grant with no override). Mixed only
+// fires when the group's real permissions genuinely disagree with each
+// other for this role/employee - never papered over as a clean check or
+// dash, since that would misreport what's actually granted.
+function aggregateCellState(flags: { on: boolean; isBaseline: boolean }[]): CellState {
+  if (flags.length === 0) return "na";
+  const onCount = flags.filter((f) => f.on).length;
+  const baselineCount = flags.filter((f) => f.isBaseline).length;
+  const allOn = onCount === flags.length;
+  const noneOn = onCount === 0;
+  const allBaseline = baselineCount === flags.length;
+  const noneBaseline = baselineCount === 0;
+  if (!allOn && !noneOn) return "mixed";
+  if (allOn && allBaseline) return "granted";
+  if (noneOn && noneBaseline) return "not-granted";
+  if (allOn && !allBaseline) return "extra-grant";
+  return "revoked";
+}
+
+// Deterministic so the same person always gets the same color across
+// renders/sessions, without storing anything - purely decorative, same idea
+// as initials-avatars anywhere else in the app.
+const AVATAR_COLORS = ["#1354e0", "#7c3aed", "#059669", "#d97706", "#dc2626", "#0891b2", "#be185d", "#4f46e5"];
+function avatarColorFor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
 function allVerbsIn(catalog: string[]): string[] {
   const found = new Set(catalog.map(verbOf));
   return VERB_ORDER.filter((v) => found.has(v));
-}
-
-function moduleVerbSets(catalog: string[]): Map<string, Set<string>> {
-  const map = new Map<string, Set<string>>();
-  for (const perm of catalog) {
-    const mod = perm.split(".")[0];
-    const verb = verbOf(perm);
-    if (!map.has(mod)) map.set(mod, new Set());
-    map.get(mod)!.add(verb);
-  }
-  return map;
 }
 
 interface PermissionsCardProps {
@@ -70,9 +173,9 @@ interface PermissionsCardProps {
   onLevelsChange?: (levels: Level[]) => void;
 }
 
-type OverrideAction = { permission: string; kind: "grant" | "revoke" | "clear"; overrideId?: string };
+type OverrideAction = { permissions: string[]; label: string; kind: "grant" | "revoke" | "clear"; overrideIds?: string[] };
 
-type CellState = "na" | "granted" | "not-granted" | "extra-grant" | "revoked";
+type CellState = "na" | "granted" | "not-granted" | "extra-grant" | "revoked" | "mixed";
 
 // forwardRef is load-bearing, not cosmetic: Popconfirm clones its child to
 // attach a ref it uses to measure/position the confirmation popup. A plain
@@ -84,7 +187,16 @@ type CellState = "na" | "granted" | "not-granted" | "extra-grant" | "revoked";
 // comparing against the "Reset role to default" Popconfirm on this same
 // page, which wraps a real antd <Tag> (ref-forwarding) and has always
 // positioned correctly.
-const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => void }>(function Cell({ state, onClick }, ref) {
+const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => void; tooltip?: string }>(function Cell(
+  { state, onClick, tooltip },
+  ref
+) {
+  // Binary only, by design - "granted" means every real permission in this
+  // row is on, anything less (including "mixed", where a merged row's bundled
+  // modules genuinely disagree per role) reads as the same plain dash as
+  // "not granted". It never overclaims a full grant that isn't really there;
+  // the exact split (e.g. "6 of 21 granted") is still available on hover via
+  // the tooltip, just not as a third symbol cluttering the grid.
   const icon =
     state === "na" ? (
       <MinusOutlined style={{ color: "#d9d9d9" }} />
@@ -95,7 +207,7 @@ const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => voi
     ) : (
       <MinusOutlined style={{ color: "#bfbfbf" }} />
     );
-  return (
+  const content = (
     <span
       ref={ref}
       style={{ display: "inline-block", cursor: onClick ? "pointer" : "default", padding: onClick ? "0 6px" : 0 }}
@@ -104,6 +216,7 @@ const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => voi
       {icon}
     </span>
   );
+  return tooltip ? <Tooltip title={tooltip}>{content}</Tooltip> : content;
 });
 
 // Two modes sharing one table shape: "By role" edits the real
@@ -166,9 +279,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
   const activeOverrides = overrides.filter((o) => !o.clearedAt);
   const overrideFor = (permission: string) => activeOverrides.find((o) => o.permission === permission);
 
-  const modules = useMemo(() => (matrix ? modulesOf(matrix.catalog) : []), [matrix]);
   const verbs = useMemo(() => (matrix ? allVerbsIn(matrix.catalog) : []), [matrix]);
-  const verbSetsByModule = useMemo(() => (matrix ? moduleVerbSets(matrix.catalog) : new Map()), [matrix]);
 
   const grantsForSelectedTier = selectedLevel ? matrix?.grants[selectedLevel.securityTier] ?? [] : [];
   const levelsSharingTier = selectedLevel ? levels.filter((l) => l.id !== selectedLevel.id && l.securityTier === selectedLevel.securityTier) : [];
@@ -190,6 +301,26 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
     }
   };
 
+  // Sequential, not Promise.all - each call re-reads the whole table server
+  // side, so firing them concurrently risks one write's read missing
+  // another's not-yet-committed write. A handful of single-row INSERT/DELETE
+  // statements in a row is fast enough that this is never user-visible.
+  const toggleGroupPermission = async (group: ModuleGroup, perms: string[], grant: boolean) => {
+    if (!selectedLevel) return;
+    try {
+      let updated: RolePermissionMatrix | null = null;
+      for (const p of perms) {
+        updated = await rolePermissionApi.setRolePermission(selectedLevel.securityTier, p, grant);
+      }
+      if (updated) setMatrix(updated);
+      message.success(
+        `${perms.length} permission${perms.length === 1 ? "" : "s"} under ${group.label} ${grant ? "granted to" : "revoked from"} the ${selectedLevel.securityTier} tier`
+      );
+    } catch {
+      message.error("Failed to update role permissions");
+    }
+  };
+
   const updateLevelField = async (field: keyof Level, value: unknown) => {
     if (!selectedLevel) return;
     try {
@@ -200,29 +331,43 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
     }
   };
 
-  const openAction = (permission: string, roleGranted: boolean) => {
-    const existing = overrideFor(permission);
+  // Picks exactly which real permissions need to change, so the override we
+  // create always matches what clicking the cell visually promised -
+  // "clear" wins whenever any member of the group already has an override
+  // (reverting the whole group to the role baseline); otherwise "revoke"
+  // only touches the role-granted members and "grant" only the ungranted
+  // ones, never both.
+  const openGroupAction = (perms: string[], label: string) => {
     setReason("");
-    if (existing) {
-      setAction({ permission, kind: "clear", overrideId: existing.id });
+    const existing = perms.map((p) => overrideFor(p)).filter((o): o is UserPermissionOverride => Boolean(o));
+    if (existing.length > 0) {
+      setAction({ permissions: existing.map((o) => o.permission), label, kind: "clear", overrideIds: existing.map((o) => o.id) });
+      return;
+    }
+    const roleGrantedPerms = perms.filter((p) => (selectedUser ? matrix?.grants[selectedUser.role]?.includes(p) ?? false : false));
+    const notGrantedPerms = perms.filter((p) => !roleGrantedPerms.includes(p));
+    if (roleGrantedPerms.length > 0 && roleGrantedPerms.length >= notGrantedPerms.length) {
+      setAction({ permissions: roleGrantedPerms, label, kind: "revoke" });
     } else {
-      setAction({ permission, kind: roleGranted ? "revoke" : "grant" });
+      setAction({ permissions: notGrantedPerms, label, kind: "grant" });
     }
   };
 
   const submitAction = async () => {
     if (!action || !selectedUserId) return;
     try {
-      if (action.kind === "clear" && action.overrideId) {
-        await overrideApi.clearOverride(action.overrideId);
+      if (action.kind === "clear") {
+        for (const id of action.overrideIds ?? []) await overrideApi.clearOverride(id);
         message.success("Override cleared");
       } else {
-        await overrideApi.createOverride({
-          userId: selectedUserId,
-          permission: action.permission,
-          grantType: action.kind === "grant" ? "grant" : "revoke",
-          reason: reason || undefined,
-        });
+        for (const p of action.permissions) {
+          await overrideApi.createOverride({
+            userId: selectedUserId,
+            permission: p,
+            grantType: action.kind === "grant" ? "grant" : "revoke",
+            reason: reason || undefined,
+          });
+        }
         message.success(action.kind === "grant" ? "Extra access granted" : "Access revoked for this person");
       }
       setAction(null);
@@ -232,48 +377,98 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
     }
   };
 
-  const roleCellState = (mod: string, verb: string): CellState => {
-    if (!verbSetsByModule.get(mod)?.has(verb)) return "na";
-    return grantsForSelectedTier.includes(`${mod}.${verb}`) ? "granted" : "not-granted";
-  };
-
-  const employeeCellState = (mod: string, verb: string): CellState => {
-    if (!verbSetsByModule.get(mod)?.has(verb)) return "na";
-    const permission = `${mod}.${verb}`;
+  const singleEmployeeGranted = (permission: string): boolean => {
     const roleGranted = selectedUser ? matrix?.grants[selectedUser.role]?.includes(permission) ?? false : false;
     const override = overrideFor(permission);
-    if (override?.grantType === "grant") return "extra-grant";
-    if (override?.grantType === "revoke") return "revoked";
-    return roleGranted ? "granted" : "not-granted";
+    if (override?.grantType === "grant") return true;
+    if (override?.grantType === "revoke") return false;
+    return roleGranted;
   };
 
+  const roleGroupCellState = (group: ModuleGroup, verb: string): CellState => {
+    if (!matrix) return "na";
+    const perms = permsFor(group, verb, matrix.catalog);
+    if (perms.length === 0) return "na";
+    if (!selectedLevel) return "not-granted";
+    const flags = perms.map((p) => ({
+      on: grantsForSelectedTier.includes(p),
+      isBaseline: matrix.defaults[selectedLevel.securityTier]?.includes(p) ?? false,
+    }));
+    return aggregateCellState(flags);
+  };
+
+  const employeeGroupCellState = (group: ModuleGroup, verb: string): CellState => {
+    if (!matrix || !selectedUser) return "na";
+    const perms = permsFor(group, verb, matrix.catalog);
+    if (perms.length === 0) return "na";
+    const flags = perms.map((p) => {
+      const roleGranted = matrix.grants[selectedUser.role]?.includes(p) ?? false;
+      return { on: singleEmployeeGranted(p), isBaseline: roleGranted };
+    });
+    return aggregateCellState(flags);
+  };
+
+  const mixedTooltip = (state: CellState, perms: string[], onCount: number): string | undefined =>
+    state === "mixed" ? `${onCount} of ${perms.length} granted` : undefined;
+
   const bulkReassignGranted = grantsForSelectedTier.includes("leads.update");
-  const employeeBulkReassignState = employeeCellState("leads", "update");
-  const employeeBulkReassignGranted = employeeBulkReassignState === "granted" || employeeBulkReassignState === "extra-grant";
+  const employeeBulkReassignGranted = singleEmployeeGranted("leads.update");
 
   const tableColumns = [
-    { title: "Module", key: "module", render: (_: unknown, mod: string) => <Text strong>{MODULE_LABELS[mod] ?? mod}</Text> },
+    {
+      title: "Module",
+      key: "module",
+      render: (_: unknown, group: ModuleGroup) => (
+        <div>
+          <Text strong>{group.label}</Text>
+          <div>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {group.scopeHint}
+            </Text>
+          </div>
+        </div>
+      ),
+    },
     ...verbs.map((verb) => ({
       title: VERB_LABELS[verb] ?? verb,
       key: verb,
       align: "center" as const,
-      render: (_: unknown, mod: string) => {
-        const state = mode === "role" ? roleCellState(mod, verb) : employeeCellState(mod, verb);
-        const enforced = ENFORCED_PERMISSIONS.has(`${mod}.${verb}`);
+      render: (_: unknown, group: ModuleGroup) => {
+        if (!matrix) return null;
+        const perms = permsFor(group, verb, matrix.catalog);
         if (mode === "role") {
-          if (state === "na" || !canManageRoles) return <Cell state={state} />;
+          const state = roleGroupCellState(group, verb);
+          if (state === "na" || !canManageRoles) {
+            return <Cell state={state} tooltip={mixedTooltip(state, perms, perms.filter((p) => grantsForSelectedTier.includes(p)).length)} />;
+          }
+          const shouldGrant = !(state === "granted" || state === "extra-grant");
+          const enforcedCount = perms.filter((p) => ENFORCED_PERMISSIONS.has(p)).length;
+          const description =
+            enforcedCount === perms.length
+              ? "This takes effect immediately."
+              : enforcedCount === 0
+                ? "These modules still check a fixed role, not this table - this only changes what this screen displays."
+                : `${enforcedCount} of ${perms.length} take effect immediately - the rest still check a fixed role, not this table.`;
           return (
             <Popconfirm
-              title={`${state === "granted" ? "Revoke" : "Grant"} ${mod}.${verb} ${state === "granted" ? "from" : "to"} the ${selectedLevel?.securityTier} tier?`}
-              description={enforced ? "This takes effect immediately." : "This module still checks a fixed role, not this table - this only changes what this screen displays."}
-              onConfirm={() => toggleRolePermission(`${mod}.${verb}`, state === "granted")}
+              title={`${shouldGrant ? "Grant" : "Revoke"} ${perms.length} permission${perms.length === 1 ? "" : "s"} under ${group.label} - ${VERB_LABELS[verb] ?? verb} ${shouldGrant ? "to" : "from"} the ${selectedLevel?.securityTier} tier?`}
+              description={description}
+              onConfirm={() => toggleGroupPermission(group, perms, shouldGrant)}
             >
-              <Cell state={state} />
+              <Cell state={state} tooltip={mixedTooltip(state, perms, perms.filter((p) => grantsForSelectedTier.includes(p)).length)} />
             </Popconfirm>
           );
         }
-        if (state === "na" || !canManageOverrides) return <Cell state={state} />;
-        return <Cell state={state} onClick={() => openAction(`${mod}.${verb}`, state === "granted")} />;
+        const state = employeeGroupCellState(group, verb);
+        const onCount = perms.filter((p) => singleEmployeeGranted(p)).length;
+        if (state === "na" || !canManageOverrides) return <Cell state={state} tooltip={mixedTooltip(state, perms, onCount)} />;
+        return (
+          <Cell
+            state={state}
+            tooltip={mixedTooltip(state, perms, onCount)}
+            onClick={() => openGroupAction(perms, `${group.label} - ${VERB_LABELS[verb] ?? verb}`)}
+          />
+        );
       },
     })),
   ];
@@ -373,7 +568,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                 >
                   <Text style={{ fontSize: 13, fontWeight: selectedLevelId === l.id ? 600 : 400, display: "block" }}>{l.name}</Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    L{ladderIndex(l, levels)} · {l.securityTier}
+                    L{ladderIndex(l, levels)} · {seesLabel(l, l.sortOrder === topLadderSortOrder)}
                   </Text>
                 </div>
               ))}
@@ -387,6 +582,9 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                     key={u.id}
                     onClick={() => setSelectedUserId(u.id)}
                     style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
                       padding: "6px 10px",
                       borderRadius: 6,
                       cursor: "pointer",
@@ -394,12 +592,31 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                       background: selectedUserId === u.id ? appTokens.primarySoft : "transparent",
                     }}
                   >
-                    <Text strong style={{ fontSize: 13, display: "block" }}>
-                      {u.name}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      {levels.find((l) => l.id === u.levelId)?.name ?? u.role}
-                    </Text>
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: avatarColorFor(u.id),
+                        color: "#fff",
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {initialsOf(u.name)}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <Text strong style={{ fontSize: 13, display: "block" }}>
+                        {u.name}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {levels.find((l) => l.id === u.levelId)?.name ?? u.role}
+                      </Text>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -426,97 +643,110 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                 </div>
                 <Table
                   size="small"
-                  rowKey={(mod) => mod as string}
-                  dataSource={modules}
+                  rowKey={(group) => (group as ModuleGroup).label}
+                  dataSource={MODULE_GROUPS}
                   pagination={false}
                   columns={tableColumns}
                   scroll={{ x: "max-content" }}
                 />
-
-                <Text strong style={{ display: "block", marginTop: 16, marginBottom: 4 }}>
-                  Record scope
-                </Text>
-                <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-                  Which rows they reach, before column rules apply - configuration only for now, the real
-                  leads/opportunities/activities visibility still uses the manager-subtree rule underneath
-                </Text>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {RECORD_SCOPE_OPTIONS.map((opt) => (
-                    <div
-                      key={opt.value}
-                      onClick={() => canManageRoles && updateLevelField("recordScope", opt.value)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "4px 8px",
-                        borderRadius: 6,
-                        cursor: canManageRoles ? "pointer" : "default",
-                        background: selectedLevel.recordScope === opt.value ? appTokens.primarySoft : "transparent",
-                      }}
-                    >
-                      <input type="radio" readOnly checked={selectedLevel.recordScope === opt.value} />
-                      <div>
-                        <Text style={{ fontSize: 13 }}>{opt.label}</Text>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            {opt.description}
-                          </Text>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ marginTop: 8 }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    <CheckOutlined style={{ color: appTokens.success }} /> From role &nbsp; <MinusOutlined /> Not allowed &nbsp;
+                    <CheckOutlined style={{ color: appTokens.purple }} /> Edited &nbsp;
+                    <MinusOutlined style={{ color: appTokens.danger }} /> Turned off
+                  </Text>
                 </div>
 
-                <Text strong style={{ display: "block", marginTop: 16, marginBottom: 4 }}>
-                  Field & feature rules
-                </Text>
-                <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-                  Sensitive columns and privileged actions
-                </Text>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <Text style={{ fontSize: 13 }}>Bulk re-assign records</Text>
-                      <div>
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                          Move a book of business between people - same as Leads &rarr; Edit above
-                        </Text>
-                      </div>
-                    </div>
-                    <Switch checked={bulkReassignGranted} disabled={!canManageRoles} onChange={(v) => toggleRolePermission("leads.update", !v)} />
-                  </div>
-                  {(
-                    [
-                      { key: "seeCreditFields", label: "See customer credit and exposure", desc: "Credit limit, overdue and exposure columns" },
-                      { key: "seeMarginFields", label: "See margin and cost fields", desc: "Landed cost, margin slab, net margin" },
-                      { key: "canExport", label: "Export to Excel / CSV", desc: "Any list view, watermarked with the user id" },
-                      { key: "canViewCallRecordings", label: "View call recordings", desc: "Own team only, logged in the audit trail" },
-                      { key: "canSeeUnmaskedPii", label: "See personal data unmasked", desc: "Phone and email in full, DPDP logged" },
-                    ] as const
-                  ).map((f) => (
-                    <div key={f.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <Text style={{ fontSize: 13 }}>{f.label}</Text>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            {f.desc}
-                          </Text>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
+                  <Card size="small" style={{ flex: "1 1 280px", minWidth: 240, borderColor: appTokens.border }}>
+                    <Text strong style={{ display: "block", marginBottom: 2 }}>
+                      Record scope
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+                      Which rows they reach, before column rules apply - configuration only for now, the real
+                      leads/opportunities/activities visibility still uses the manager-subtree rule underneath
+                    </Text>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {RECORD_SCOPE_OPTIONS.map((opt) => (
+                        <div
+                          key={opt.value}
+                          onClick={() => canManageRoles && updateLevelField("recordScope", opt.value)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            cursor: canManageRoles ? "pointer" : "default",
+                            background: selectedLevel.recordScope === opt.value ? appTokens.primarySoft : "transparent",
+                          }}
+                        >
+                          <input type="radio" readOnly checked={selectedLevel.recordScope === opt.value} />
+                          <div>
+                            <Text style={{ fontSize: 13 }}>{opt.label}</Text>
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                {opt.description}
+                              </Text>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <Switch
-                        checked={selectedLevel[f.key]}
-                        disabled={!canManageRoles}
-                        onChange={(v) => updateLevelField(f.key, v)}
-                      />
+                      ))}
                     </div>
-                  ))}
+                  </Card>
+
+                  <Card size="small" style={{ flex: "1 1 280px", minWidth: 240, borderColor: appTokens.border }}>
+                    <Text strong style={{ display: "block", marginBottom: 2 }}>
+                      Field & feature rules
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+                      Sensitive columns and privileged actions
+                    </Text>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <Text style={{ fontSize: 13 }}>Bulk re-assign records</Text>
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              Move a book of business between people - same as Leads &rarr; Edit above
+                            </Text>
+                          </div>
+                        </div>
+                        <Switch checked={bulkReassignGranted} disabled={!canManageRoles} onChange={(v) => toggleRolePermission("leads.update", !v)} />
+                      </div>
+                      {(
+                        [
+                          { key: "seeCreditFields", label: "See customer credit and exposure", desc: "Credit limit, overdue and exposure columns" },
+                          { key: "seeMarginFields", label: "See margin and cost fields", desc: "Landed cost, margin slab, net margin" },
+                          { key: "canExport", label: "Export to Excel / CSV", desc: "Any list view, watermarked with the user id" },
+                          { key: "canViewCallRecordings", label: "View call recordings", desc: "Own team only, logged in the audit trail" },
+                          { key: "canSeeUnmaskedPii", label: "See personal data unmasked", desc: "Phone and email in full, DPDP logged" },
+                        ] as const
+                      ).map((f) => (
+                        <div key={f.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <Text style={{ fontSize: 13 }}>{f.label}</Text>
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                {f.desc}
+                              </Text>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={selectedLevel[f.key]}
+                            disabled={!canManageRoles}
+                            onChange={(v) => updateLevelField(f.key, v)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 11, display: "block", marginTop: 8 }}>
+                      Configuration only - none of these 5 fields/actions exist anywhere in FieldForce yet, so nothing
+                      reads these toggles to actually gate anything. "Bulk re-assign records" is the one real exception -
+                      it's the same leads.update permission shown in the table above.
+                    </Text>
+                  </Card>
                 </div>
-                <Text type="secondary" style={{ fontSize: 11, display: "block", marginTop: 8 }}>
-                  Configuration only - none of these 5 fields/actions exist anywhere in FieldForce yet, so nothing
-                  reads these toggles to actually gate anything. "Bulk re-assign records" is the one real exception -
-                  it's the same leads.update permission shown in the table above.
-                </Text>
               </>
             )
           ) : !selectedUser ? (
@@ -525,21 +755,40 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
             <Text type="secondary">Only an administrator can view or change per-employee overrides.</Text>
           ) : (
             <>
-              <div style={{ marginBottom: 8 }}>
-                <Text strong>{selectedUser.name}</Text>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: avatarColorFor(selectedUser.id),
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  {initialsOf(selectedUser.name)}
+                </div>
                 <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {selectedUser.designation ?? selectedUser.role}
-                    {" · "}
-                    {levels.find((l) => l.id === selectedUser.levelId)?.name ?? "No level assigned"}
-                  </Text>
+                  <Text strong>{selectedUser.name}</Text>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {selectedUser.designation ?? selectedUser.role}
+                      {" · "}
+                      {levels.find((l) => l.id === selectedUser.levelId)?.name ?? "No level assigned"}
+                    </Text>
+                  </div>
                 </div>
               </div>
 
               <Table
                 size="small"
-                rowKey={(mod) => mod as string}
-                dataSource={modules}
+                rowKey={(group) => (group as ModuleGroup).label}
+                dataSource={MODULE_GROUPS}
                 pagination={false}
                 columns={tableColumns}
                 scroll={{ x: "max-content" }}
@@ -691,7 +940,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
         {action && (
           <>
             <Text>
-              {action.permission} for {selectedUser?.name}
+              {action.label} ({action.permissions.length} permission{action.permissions.length === 1 ? "" : "s"}) for {selectedUser?.name}
             </Text>
             {action.kind !== "clear" && (
               <Input.TextArea

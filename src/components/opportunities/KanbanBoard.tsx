@@ -65,11 +65,18 @@ export function KanbanBoard({ opportunities, loading, onCardClick, onAddToStage,
               background: isDragTarget ? appTokens.primarySoft : baseBackground,
               borderRadius: appTokens.radius,
               padding: 10,
+              paddingBottom: 0,
               border: isDragTarget ? `1.5px dashed ${appTokens.primary}` : "1px solid transparent",
               transition: "background 0.12s, border-color 0.12s",
+              display: "flex",
+              flexDirection: "column",
+              // Caps a column's own height instead of letting hundreds of
+              // cards stretch the whole page - the column scrolls
+              // internally, the header/count/Add button stay put.
+              maxHeight: "calc(100vh - 340px)",
             }}
           >
-            <div style={{ padding: "6px 6px 12px" }}>
+            <div style={{ padding: "6px 6px 12px", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: column.color, flexShrink: 0 }} />
                 <Text strong style={{ fontSize: 13, color: appTokens.textPrimary, flex: 1 }}>
@@ -98,57 +105,61 @@ export function KanbanBoard({ opportunities, loading, onCardClick, onAddToStage,
               </div>
             </div>
 
-            {loading && (
-              <div
-                style={{
-                  border: `1px solid ${appTokens.borderLight}`,
-                  borderRadius: appTokens.radiusSm,
-                  padding: 12,
-                  background: appTokens.surface,
-                  marginBottom: 8,
-                }}
-              >
-                <Skeleton active title={{ width: "60%" }} paragraph={{ rows: 2, width: ["40%", "80%"] }} />
-              </div>
-            )}
+            <div className="scrollbar-thin" style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+              {loading && (
+                <div
+                  style={{
+                    border: `1px solid ${appTokens.borderLight}`,
+                    borderRadius: appTokens.radiusSm,
+                    padding: 12,
+                    background: appTokens.surface,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Skeleton active title={{ width: "60%" }} paragraph={{ rows: 2, width: ["40%", "80%"] }} />
+                </div>
+              )}
 
-            {!loading && column.items.length === 0 && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "20px 8px",
-                  border: `1px dashed ${appTokens.borderLight}`,
-                  borderRadius: appTokens.radiusSm,
-                  marginBottom: 8,
-                }}
-              >
-                <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>No deals here yet</Text>
-              </div>
-            )}
+              {!loading && column.items.length === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "20px 8px",
+                    border: `1px dashed ${appTokens.borderLight}`,
+                    borderRadius: appTokens.radiusSm,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>No deals here yet</Text>
+                </div>
+              )}
 
-            {!loading &&
-              column.items.map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  onClick={() => onCardClick(opportunity)}
-                  onDragStart={() => setDraggingId(opportunity.id)}
-                  onDragEnd={() => setDraggingId(null)}
-                  dragging={draggingId === opportunity.id}
-                />
-              ))}
+              {!loading &&
+                column.items.map((opportunity) => (
+                  <OpportunityCard
+                    key={opportunity.id}
+                    opportunity={opportunity}
+                    onClick={() => onCardClick(opportunity)}
+                    onDragStart={() => setDraggingId(opportunity.id)}
+                    onDragEnd={() => setDraggingId(null)}
+                    dragging={draggingId === opportunity.id}
+                  />
+                ))}
+            </div>
 
             {hasPermission("opportunities.create") && (
-              <Button
-                type="text"
-                block
-                size="small"
-                icon={<PlusOutlined style={{ fontSize: 11 }} />}
-                onClick={() => onAddToStage(column.key)}
-                style={{ color: appTokens.textSecondary, fontWeight: 500 }}
-              >
-                Add
-              </Button>
+              <div style={{ flexShrink: 0, padding: "4px 0 10px" }}>
+                <Button
+                  type="text"
+                  block
+                  size="small"
+                  icon={<PlusOutlined style={{ fontSize: 11 }} />}
+                  onClick={() => onAddToStage(column.key)}
+                  style={{ color: appTokens.textSecondary, fontWeight: 500 }}
+                >
+                  Add
+                </Button>
+              </div>
             )}
           </div>
         );

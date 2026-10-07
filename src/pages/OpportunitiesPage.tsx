@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Segmented, Select, Typography } from "antd";
 import { AppstoreOutlined, BarChartOutlined, PlusOutlined, TableOutlined, TeamOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
@@ -20,6 +20,7 @@ import { NewOpportunityModal } from "../components/opportunities/NewOpportunityM
 import { EditOpportunityDrawer } from "../components/opportunities/EditOpportunityDrawer";
 import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY, STAGE_OPTIONS } from "../components/opportunities/stages";
 import { useHasPermission } from "../hooks/use-permission";
+import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
@@ -34,6 +35,7 @@ export default function OpportunitiesPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [salesTeams, setSalesTeams] = useState<SalesTeam[]>([]);
@@ -59,13 +61,35 @@ export default function OpportunitiesPage() {
   const [rollupLoading, setRollupLoading] = useState(true);
   const [rollupLoaded, setRollupLoaded] = useState(false);
 
+  // Guards against two overlapping loads clobbering each other - React 18
+  // StrictMode fires this effect twice in dev, and a real reload can also be
+  // triggered (e.g. right after creating an opportunity) while an earlier
+  // multi-page fetch is still streaming in. Only the most recently started
+  // load's progress callbacks are allowed to touch state; a superseded one's
+  // in-flight page requests still run to completion, but their results are
+  // discarded on arrival instead of overwriting newer data.
+  const loadTokenRef = useRef(0);
+
   const load = () => {
+    const token = ++loadTokenRef.current;
     setLoading(true);
+    setStreamProgress(null);
     opportunityApi
-      .listOpportunities()
-      .then(setOpportunities)
-      .catch(() => message.error("Failed to load opportunities"))
-      .finally(() => setLoading(false));
+      .listAllOpportunities((loadedSoFar, total) => {
+        if (loadTokenRef.current !== token) return;
+        // Real data appears the moment the first page lands - loading only
+        // gates the initial skeleton, never a second blank screen while the
+        // rest streams in behind it.
+        setOpportunities(loadedSoFar);
+        setLoading(false);
+        setStreamProgress(loadedSoFar.length < total ? { loaded: loadedSoFar.length, total } : null);
+      })
+      .catch(() => {
+        if (loadTokenRef.current === token) message.error("Failed to load opportunities");
+      })
+      .finally(() => {
+        if (loadTokenRef.current === token) setLoading(false);
+      });
   };
 
   useEffect(load, []);
@@ -167,6 +191,23 @@ export default function OpportunitiesPage() {
     }
   };
 
+  const handleExportOpportunities = () =>
+    exportToXlsx(
+      "Opportunities",
+      [
+        { header: "Name", key: "name" },
+        { header: "Stage", key: "stage" },
+        { header: "Value", key: "value" },
+        { header: "Probability", key: "probability" },
+        { header: "Close date", key: "closeDate" },
+        { header: "Lead", key: "leadFullName" },
+        { header: "Owner", key: "ownerName" },
+        { header: "Territory", key: "leadTerritory" },
+      ],
+      opportunities.map((o) => ({ ...o })),
+      "opportunities"
+    );
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
@@ -177,6 +218,7 @@ export default function OpportunitiesPage() {
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Drag a card to move it between stages. Lost reasons are captured on exit.</Text>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          {hasPermission("opportunities.export") && <Button onClick={handleExportOpportunities}>Export</Button>}
           <Segmented
             value={view}
             onChange={(v) => setView(v as View)}
@@ -194,6 +236,50 @@ export default function OpportunitiesPage() {
           )}
         </div>
       </div>
+
+      {streamProgress && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: "8px 14px",
+            borderRadius: appTokens.radius,
+            background: appTokens.primarySoft,
+            border: `1px solid ${appTokens.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              border: `2px solid ${appTokens.primary}`,
+              borderTopColor: "transparent",
+              flexShrink: 0,
+              animation: "opp-stream-spin 0.7s linear infinite",
+            }}
+          />
+          <Text style={{ fontSize: 12.5, color: appTokens.textSecondary, flexShrink: 0 }}>
+            Loading the rest of the pipeline - {streamProgress.loaded.toLocaleString()} of {streamProgress.total.toLocaleString()}
+          </Text>
+          <div style={{ flex: 1, height: 4, borderRadius: 999, background: appTokens.border, overflow: "hidden", minWidth: 60 }}>
+            <div
+              style={{
+                height: "100%",
+                borderRadius: 999,
+                background: appTokens.primary,
+                width: `${Math.min(100, (streamProgress.loaded / Math.max(1, streamProgress.total)) * 100)}%`,
+                transition: "width 0.25s ease-out",
+              }}
+            />
+          </div>
+          <style>{"@keyframes opp-stream-spin { to { transform: rotate(360deg); } }"}</style>
+        </div>
+      )}
 
       <div style={{ marginBottom: 10 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>

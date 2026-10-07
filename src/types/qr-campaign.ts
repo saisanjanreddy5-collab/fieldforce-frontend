@@ -62,12 +62,15 @@ export interface PublicQrCampaignInfo {
   requireConsent?: boolean;
   categoryLabel?: string | null;
   resolvedCity?: string | null;
+  states?: { id: string; name: string }[];
+  resolvedStateId?: string | null;
 }
 
 export interface PublicQrSubmitPayload {
   fullName: string;
   phone: string;
   cityOrPincode: string;
+  stateId?: string;
   email?: string;
   investmentCapacity?: number;
   existingStore?: boolean;

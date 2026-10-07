@@ -3,10 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CommissionRule, CreateCommissionRulePayload, UpdateCommissionRulePayload } from "../types/commission-rule";
 
 export async function listCommissionRules(incentivePlanId: string): Promise<CommissionRule[]> {
-  const response = await apiClient.get<ApiSuccess<CommissionRule[]>>("/commission-rules", {
-    params: { incentivePlanId },
+  const response = await apiClient.get<ApiSuccess<{ commissionRules: CommissionRule[]; total: number }>>("/commission-rules", {
+    params: { incentivePlanId, limit: 200 },
   });
-  return response.data.data;
+  return response.data.data.commissionRules;
 }
 
 export async function createCommissionRule(payload: CreateCommissionRulePayload): Promise<CommissionRule> {

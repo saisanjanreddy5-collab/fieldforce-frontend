@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CreatePipelineStagePayload, PipelineStage, UpdatePipelineStagePayload } from "../types/pipeline-stage";
 
 export async function listPipelineStages(): Promise<PipelineStage[]> {
-  const response = await apiClient.get<ApiSuccess<PipelineStage[]>>("/pipeline-stages");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ pipelineStages: PipelineStage[]; total: number }>>("/pipeline-stages", {
+    params: { limit: 200 },
+  });
+  return response.data.data.pipelineStages;
 }
 
 export async function createPipelineStage(payload: CreatePipelineStagePayload): Promise<PipelineStage> {

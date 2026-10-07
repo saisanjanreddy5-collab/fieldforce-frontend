@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateDelegationPayload, Delegation } from "../types/delegation";
 
 export async function listDelegations(): Promise<Delegation[]> {
-  const response = await apiClient.get<ApiSuccess<Delegation[]>>("/delegations");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ delegations: Delegation[]; total: number }>>("/delegations", {
+    params: { limit: 200 },
+  });
+  return response.data.data.delegations;
 }
 
 export async function createDelegation(payload: CreateDelegationPayload): Promise<Delegation> {

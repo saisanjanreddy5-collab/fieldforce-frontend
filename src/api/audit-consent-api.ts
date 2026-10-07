@@ -2,8 +2,13 @@ import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { AuditEvent, ConsentBucket, ConsentRecord } from "../types/audit-consent";
 
-export async function listAuditLog(): Promise<AuditEvent[]> {
-  const response = await apiClient.get<ApiSuccess<AuditEvent[]>>("/audit-consent/log");
+export interface ListAuditLogResult {
+  events: AuditEvent[];
+  total: number;
+}
+
+export async function listAuditLog(page = 1, limit = 100): Promise<ListAuditLogResult> {
+  const response = await apiClient.get<ApiSuccess<ListAuditLogResult>>("/audit-consent/log", { params: { page, limit } });
   return response.data.data;
 }
 
@@ -12,7 +17,12 @@ export async function getConsentRegister(): Promise<ConsentBucket[]> {
   return response.data.data;
 }
 
-export async function listConsentRecords(): Promise<ConsentRecord[]> {
-  const response = await apiClient.get<ApiSuccess<ConsentRecord[]>>("/audit-consent/consent-records");
+export interface ListConsentRecordsResult {
+  records: ConsentRecord[];
+  total: number;
+}
+
+export async function listConsentRecords(page = 1, limit = 200): Promise<ListConsentRecordsResult> {
+  const response = await apiClient.get<ApiSuccess<ListConsentRecordsResult>>("/audit-consent/consent-records", { params: { page, limit } });
   return response.data.data;
 }

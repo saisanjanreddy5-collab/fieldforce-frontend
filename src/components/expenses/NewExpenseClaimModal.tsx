@@ -58,7 +58,7 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
     setQuantity("");
     setLinkedOpportunityId(undefined);
     setReceiptFile(null);
-    opportunityApi.listOpportunities({}).then(setOpportunities).catch(() => undefined);
+    opportunityApi.listOpportunities({}).then((res) => setOpportunities(res.opportunities)).catch(() => undefined);
   }, [open]);
 
   const type = types.find((t) => t.key === typeKey);

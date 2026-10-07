@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Button, Checkbox, Input, InputNumber, Spin, Typography, Upload, message } from "antd";
+import { Button, Checkbox, Input, InputNumber, Select, Spin, Typography, Upload, message } from "antd";
 import { CheckCircleFilled, InboxOutlined, ThunderboltFilled } from "@ant-design/icons";
 import type { UploadFile } from "antd/es/upload/interface";
 import * as publicQrApi from "../api/public-qr-api";
@@ -78,6 +78,7 @@ export default function QrCapturePage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [cityOrPincode, setCityOrPincode] = useState("");
+  const [stateId, setStateId] = useState<string | undefined>(undefined);
   const [investmentCapacity, setInvestmentCapacity] = useState<number | null>(null);
   const [existingStore, setExistingStore] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState("");
@@ -91,13 +92,18 @@ export default function QrCapturePage() {
       .then((res) => {
         setInfo(res);
         if (res.resolvedCity) setCityOrPincode(res.resolvedCity);
+        if (res.resolvedStateId) setStateId(res.resolvedStateId);
       })
       .catch(() => setInfo({ active: false, reason: "not_found" }))
       .finally(() => setLoading(false));
   }, [code]);
 
   const canSubmit =
-    fullName.trim().length > 0 && phone.trim().length >= 6 && cityOrPincode.trim().length > 0 && (!info?.requireConsent || consentGranted);
+    fullName.trim().length > 0 &&
+    phone.trim().length >= 6 &&
+    cityOrPincode.trim().length > 0 &&
+    Boolean(stateId) &&
+    (!info?.requireConsent || consentGranted);
 
   const handleSubmit = async () => {
     if (!code || !canSubmit) return;
@@ -107,6 +113,7 @@ export default function QrCapturePage() {
         fullName: fullName.trim(),
         phone: phone.trim(),
         cityOrPincode: cityOrPincode.trim(),
+        stateId,
         email: info?.fieldConfig?.email ? email.trim() || undefined : undefined,
         investmentCapacity: info?.fieldConfig?.investmentCapacity ? investmentCapacity ?? undefined : undefined,
         existingStore: info?.fieldConfig?.existingStore ? existingStore : undefined,
@@ -193,6 +200,21 @@ export default function QrCapturePage() {
             City / pin code <span style={{ color: appTokens.danger }}>*</span>
           </Text>
           <Input style={{ marginTop: 4 }} size="large" value={cityOrPincode} onChange={(e) => setCityOrPincode(e.target.value)} />
+        </div>
+        <div>
+          <Text style={{ fontSize: 12.5, fontWeight: 500 }}>
+            State <span style={{ color: appTokens.danger }}>*</span>
+          </Text>
+          <Select
+            style={{ width: "100%", marginTop: 4 }}
+            size="large"
+            showSearch
+            optionFilterProp="label"
+            placeholder="Select your state"
+            value={stateId}
+            onChange={setStateId}
+            options={(info.states ?? []).map((s) => ({ value: s.id, label: s.name }))}
+          />
         </div>
         {info.fieldConfig?.investmentCapacity && (
           <div>

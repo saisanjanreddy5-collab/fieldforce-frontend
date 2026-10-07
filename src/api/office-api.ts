@@ -3,8 +3,8 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateOfficePayload, Office, UpdateOfficePayload } from "../types/office";
 
 export async function listOffices(): Promise<Office[]> {
-  const response = await apiClient.get<ApiSuccess<Office[]>>("/offices");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ offices: Office[]; total: number }>>("/offices", { params: { limit: 200 } });
+  return response.data.data.offices;
 }
 
 export async function createOffice(payload: CreateOfficePayload): Promise<Office> {

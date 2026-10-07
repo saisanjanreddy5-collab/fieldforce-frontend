@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { AssignmentRule, CreateAssignmentRulePayload, UpdateAssignmentRulePayload } from "../types/assignment-rule";
 
 export async function listAssignmentRules(): Promise<AssignmentRule[]> {
-  const response = await apiClient.get<ApiSuccess<AssignmentRule[]>>("/assignment-rules");
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ assignmentRules: AssignmentRule[]; total: number }>>("/assignment-rules", {
+    params: { limit: 200 },
+  });
+  return response.data.data.assignmentRules;
 }
 
 export async function createAssignmentRule(payload: CreateAssignmentRulePayload): Promise<AssignmentRule> {

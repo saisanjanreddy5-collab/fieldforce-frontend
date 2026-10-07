@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Layout, Menu, Button, Drawer, Grid, Avatar, message } from "antd";
 import type { MenuProps } from "antd";
 import { MenuOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useHasPermission } from "../hooks/use-permission";
 import { NAV_GROUPS } from "./nav-config";
 import { SoftphoneWidget } from "./SoftphoneWidget";
 import { GlobalSearch } from "./GlobalSearch";
@@ -12,17 +13,6 @@ import { appTokens, avatarGradient } from "../utils/design-system";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
-
-const MENU_ITEMS: MenuProps["items"] = NAV_GROUPS.map((group, index) => ({
-  key: `group-${index}`,
-  type: "group",
-  label: group.groupLabel.toUpperCase(),
-  children: group.items.map((item) => ({
-    key: item.path,
-    icon: item.icon,
-    label: item.label,
-  })),
-}));
 
 function Logo({ collapsed }: { collapsed: boolean }) {
   return (
@@ -70,11 +60,35 @@ export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { user } = useAuth();
+  const hasPermission = useHasPermission();
   const navigate = useNavigate();
   const location = useLocation();
   const screens = useBreakpoint();
   const isMobile = !screens.md;
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Hides a nav item entirely once its role holds none of the permissions
+  // behind it - "only what's granted is visible", not just blocked after the
+  // click. Items with no `permissions` listed (the 3 stub pages with nothing
+  // built yet) stay unconditionally visible. A group that ends up with zero
+  // visible items is dropped too, so there's never a bare section header
+  // sitting above nothing.
+  const menuItems: MenuProps["items"] = useMemo(
+    () =>
+      NAV_GROUPS.map((group, index) => ({
+        key: `group-${index}`,
+        type: "group" as const,
+        label: group.groupLabel.toUpperCase(),
+        children: group.items
+          .filter((item) => !item.permissions || item.permissions.some((p) => hasPermission(p)))
+          .map((item) => ({
+            key: item.path,
+            icon: item.icon,
+            label: item.label,
+          })),
+      })).filter((group) => group.children.length > 0),
+    [hasPermission]
+  );
 
   // The Microsoft OAuth round-trip lands back here (the app root) regardless
   // of which page Connect was opened from, since AppLayout is mounted for
@@ -99,7 +113,7 @@ export function AppLayout() {
       mode="inline"
       inlineCollapsed={inlineCollapsed}
       selectedKeys={[location.pathname]}
-      items={MENU_ITEMS}
+      items={menuItems}
       onClick={({ key }) => {
         navigate(key);
         setMobileNavOpen(false);

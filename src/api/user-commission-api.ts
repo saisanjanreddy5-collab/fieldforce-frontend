@@ -3,8 +3,10 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateUserCommissionPayload, UserCommission } from "../types/user-commission";
 
 export async function listUserCommissions(userId?: string): Promise<UserCommission[]> {
-  const response = await apiClient.get<ApiSuccess<UserCommission[]>>("/user-commissions", { params: userId ? { userId } : undefined });
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ userCommissions: UserCommission[]; total: number }>>("/user-commissions", {
+    params: { limit: 200, ...(userId ? { userId } : {}) },
+  });
+  return response.data.data.userCommissions;
 }
 
 export async function createUserCommission(payload: CreateUserCommissionPayload): Promise<UserCommission> {

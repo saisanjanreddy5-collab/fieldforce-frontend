@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Avatar, Button, Drawer, Form, Input, Radio, Select, Space, Tabs, Tag, Typography, message } from "antd";
+import { AutoComplete, Avatar, Button, Drawer, Form, Input, Radio, Select, Space, Tabs, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import * as userApi from "../api/user-api";
@@ -217,6 +217,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
   const [states, setStates] = useState<State[]>([]);
   const [divisionChannels, setDivisionChannels] = useState<DivisionChannel[]>([]);
   const [customerCategories, setCustomerCategories] = useState<CustomerCategory[]>([]);
+  const [territories, setTerritories] = useState<string[]>([]);
   const [managerPickerExpanded, setManagerPickerExpanded] = useState(true);
 
   const zoneId = Form.useWatch("zoneId", form);
@@ -229,6 +230,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
     if (!open) return;
     classificationApi.listDivisionChannels().then(setDivisionChannels).catch(() => undefined);
     classificationApi.listCustomerCategories().then(setCustomerCategories).catch(() => undefined);
+    userApi.listTerritories().then(setTerritories).catch(() => undefined);
     setManagerPickerExpanded(true);
   }, [open]);
 
@@ -256,6 +258,11 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
       });
     } else {
       form.resetFields();
+      // Real code, assigned the same way the backend itself will at save
+      // time (highest existing EMP-### + 1) - shown here so the admin sees
+      // what they're about to get, but never typed by hand, which is what
+      // produced the inconsistent/duplicate codes this replaces.
+      userApi.getNextEmployeeCode().then((code) => form.setFieldValue("employeeCode", code)).catch(() => undefined);
     }
   }, [open, user, form]);
 
@@ -278,6 +285,16 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
       })
       .catch(() => setStates([]));
   }, [open, zoneId, form]);
+
+  // Same stale-clearing as the state effect above, but against the `offices`
+  // prop directly - it's the full list already, not refetched per zone.
+  useEffect(() => {
+    if (!open) return;
+    const current = form.getFieldValue("officeId");
+    if (current && !offices.some((o) => o.id === current && o.zoneId === zoneId)) {
+      form.setFieldValue("officeId", undefined);
+    }
+  }, [open, zoneId, form, offices]);
 
   const selectedLevel = levels.find((l) => l.id === levelId);
   const managerCandidates = selectedLevel
@@ -421,8 +438,13 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       <Form.Item name="name" label="Full name" rules={[{ required: true, message: "Name is required" }]}>
                         <Input placeholder="e.g. Neha Sharma" />
                       </Form.Item>
-                      <Form.Item name="employeeCode" label="Employee code" rules={[{ required: true, message: "Employee code is required" }]}>
-                        <Input placeholder="e.g. EMP-0041" />
+                      <Form.Item
+                        name="employeeCode"
+                        label="Employee code"
+                        rules={[{ required: true, message: "Employee code is required" }]}
+                        tooltip="Assigned automatically - the next code in sequence"
+                      >
+                        <Input disabled placeholder="Assigning..." />
                       </Form.Item>
                       <Form.Item
                         name="email"
@@ -651,17 +673,24 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     <Form.Item
                       name="territory"
                       label="Territory"
-                      tooltip="A new lead is auto-assigned to whoever has this exact territory - must be unique per person"
+                      tooltip="A new lead is auto-assigned to whoever has this exact territory - must match exactly, so pick an existing one from the list where possible, or type a new one"
                     >
-                      <Input placeholder="e.g. Karnataka · Mysuru" />
+                      <AutoComplete
+                        placeholder="e.g. Karnataka · Mysuru"
+                        options={territories.map((t) => ({ value: t }))}
+                        filterOption={(input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase())}
+                      />
                     </Form.Item>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
                       <Form.Item name="officeId" label="Office location">
                         <Select
                           allowClear
-                          placeholder="Select an office"
+                          showSearch
+                          optionFilterProp="label"
+                          placeholder={zoneId ? "Select an office" : "Select a region first"}
+                          disabled={!zoneId}
                           options={offices
-                            .filter((o) => o.isActive || o.id === user?.officeId)
+                            .filter((o) => (o.isActive || o.id === user?.officeId) && (o.zoneId === zoneId || o.id === user?.officeId))
                             .map((o) => {
                               const region = zones.find((z) => z.id === o.zoneId)?.name ?? o.region;
                               const suffix = [region, o.isActive ? null : "inactive"].filter(Boolean).join(" · ");

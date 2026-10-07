@@ -3,10 +3,11 @@ import type { ApiSuccess } from "../types/api";
 import type { CreateUserIncentivePlanPayload, UserIncentivePlan } from "../types/user-incentive-plan";
 
 export async function listUserIncentivePlans(userId?: string): Promise<UserIncentivePlan[]> {
-  const response = await apiClient.get<ApiSuccess<UserIncentivePlan[]>>("/user-incentive-plans", {
-    params: userId ? { userId } : undefined,
-  });
-  return response.data.data;
+  const response = await apiClient.get<ApiSuccess<{ userIncentivePlans: UserIncentivePlan[]; total: number }>>(
+    "/user-incentive-plans",
+    { params: { limit: 200, ...(userId ? { userId } : {}) } }
+  );
+  return response.data.data.userIncentivePlans;
 }
 
 export async function createUserIncentivePlan(payload: CreateUserIncentivePlanPayload): Promise<UserIncentivePlan> {

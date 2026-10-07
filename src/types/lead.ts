@@ -131,6 +131,7 @@ export interface CreateLeadPayload {
   website?: string;
   preferredLanguage?: string;
   pincode?: string;
+  stateId?: string;
   addressLine1?: string;
   addressLine2?: string;
   territory?: string;
