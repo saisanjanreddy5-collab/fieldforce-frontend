@@ -58,7 +58,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // already correct for whoever ends up building the page next.
       { path: "/customers", label: "Customers", icon: <GlobalOutlined />, permissions: ["customers.view"] },
       { path: "/call-center", label: "Call center", icon: <PhoneOutlined />, permissions: ["call_center.view"] },
-      { path: "/support-tickets", label: "Support tickets", icon: <TagsOutlined />, permissions: ["support_tickets.view"] },
+      { path: "/support-tickets", label: "Support tickets", icon: <TagsOutlined />, built: true, permissions: ["support_tickets.view"] },
     ],
   },
   {

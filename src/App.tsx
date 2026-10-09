@@ -15,6 +15,7 @@ import ApprovalsPage from "./pages/ApprovalsPage";
 import AuditConsentPage from "./pages/AuditConsentPage";
 import TeamDashboardPage from "./pages/TeamDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
+import SupportTicketsPage from "./pages/SupportTicketsPage";
 import QrCapturePage from "./pages/QrCapturePage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -46,6 +47,7 @@ function App() {
               <Route path="/audit-consent" element={<AuditConsentPage />} />
               <Route path="/team/dashboard" element={<TeamDashboardPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/support-tickets" element={<SupportTicketsPage />} />
               {ALL_NAV_LEAVES.filter((item) => !item.built).map((item) => (
                 <Route key={item.path} path={item.path} element={<ComingSoonPage title={item.label} />} />
               ))}
