@@ -91,10 +91,10 @@ export default function QuotesPage() {
               boxShadow: appTokens.shadowXs,
             }}
           >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3 }}>{stat.value}</span>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
+            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block", whiteSpace: "nowrap" }}>{stat.label}</Text>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3, whiteSpace: "nowrap" }}>{stat.value}</span>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>{stat.subtitle}</Text>
             </div>
           </div>
         ))}

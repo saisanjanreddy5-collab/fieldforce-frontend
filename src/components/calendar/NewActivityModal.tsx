@@ -8,7 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import type { ActivityType } from "../../types/activity";
 import type { Lead } from "../../types/lead";
 import type { MicrosoftConnectionStatus } from "../../types/microsoft";
-import { ALL_ACTIVITY_TYPES, TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shared";
+import { CREATABLE_ACTIVITY_TYPES, TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shared";
 import { appTokens } from "../../utils/design-system";
 import { errorMessageFrom } from "../../utils/api-error";
 
@@ -121,7 +121,7 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
       }
     >
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, marginBottom: 16 }}>
-        {ALL_ACTIVITY_TYPES.map((t) => {
+        {CREATABLE_ACTIVITY_TYPES.map((t) => {
           const active = type === t;
           return (
             <button
