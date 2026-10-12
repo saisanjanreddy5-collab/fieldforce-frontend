@@ -6,6 +6,7 @@ import type { Lead } from "../../types/lead";
 import type { SupportTicket } from "../../types/support-ticket";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
+import { TICKET_PRIORITIES } from "./support-ticket-constants";
 
 const { Text } = Typography;
 
@@ -23,6 +24,7 @@ export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId 
   const [leadId, setLeadId] = useState<string | undefined>();
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<string>("Medium");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId 
     setLeadId(defaultLeadId);
     setSubject("");
     setDescription("");
+    setPriority("Medium");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -47,6 +50,7 @@ export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId 
         leadId,
         subject: subject.trim(),
         description: description.trim() || undefined,
+        priority,
       });
       message.success("Ticket raised");
       onCreated(ticket);
@@ -93,11 +97,24 @@ export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId 
           />
         </div>
 
-        <div>
-          <Text style={{ fontSize: 12.5, fontWeight: 600, display: "block", marginBottom: 4, color: appTokens.textSecondary }}>
-            Subject <span style={{ color: appTokens.danger }}>*</span>
-          </Text>
-          <Input placeholder="What's the issue?" value={subject} onChange={(e) => setSubject(e.target.value)} />
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12.5, fontWeight: 600, display: "block", marginBottom: 4, color: appTokens.textSecondary }}>
+              Subject <span style={{ color: appTokens.danger }}>*</span>
+            </Text>
+            <Input placeholder="What's the issue?" value={subject} onChange={(e) => setSubject(e.target.value)} />
+          </div>
+          <div style={{ width: 140 }}>
+            <Text style={{ fontSize: 12.5, fontWeight: 600, display: "block", marginBottom: 4, color: appTokens.textSecondary }}>
+              Priority <span style={{ color: appTokens.danger }}>*</span>
+            </Text>
+            <Select
+              value={priority}
+              onChange={setPriority}
+              style={{ width: "100%" }}
+              options={TICKET_PRIORITIES.map((p) => ({ value: p, label: p }))}
+            />
+          </div>
         </div>
 
         <div>

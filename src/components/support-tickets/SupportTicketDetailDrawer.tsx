@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { App, Button, Drawer, Input, Skeleton, Tag, Typography } from "antd";
+import { App, Button, Drawer, Input, Select, Skeleton, Tag, Typography } from "antd";
 import { SendOutlined, TagsOutlined } from "@ant-design/icons";
 import * as supportTicketApi from "../../api/support-ticket-api";
 import type { SupportTicket, SupportTicketMessage } from "../../types/support-ticket";
+import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
-import { STATUS_COLORS } from "./support-ticket-constants";
+import { PRIORITY_COLORS, STATUS_COLORS, TICKET_STATUSES } from "./support-ticket-constants";
 
 const { Text, Title } = Typography;
 
 interface SupportTicketDetailDrawerProps {
   ticketId: string | null;
   onClose: () => void;
+  /** Called after a status change so the parent list's own stats/status column can refresh too. */
+  onChanged?: () => void;
 }
 
 function timeLabel(dateStr: string): string {
@@ -43,13 +46,16 @@ function Bubble({ msg }: { msg: SupportTicketMessage }) {
   );
 }
 
-export function SupportTicketDetailDrawer({ ticketId, onClose }: SupportTicketDetailDrawerProps) {
+export function SupportTicketDetailDrawer({ ticketId, onClose, onChanged }: SupportTicketDetailDrawerProps) {
   const { message } = App.useApp();
+  const hasPermission = useHasPermission();
+  const canUpdate = hasPermission("support_tickets.update");
   const [loading, setLoading] = useState(true);
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = () => {
@@ -97,6 +103,25 @@ export function SupportTicketDetailDrawer({ ticketId, onClose }: SupportTicketDe
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
 
+  // Reloads rather than using the PATCH response directly - that response
+  // comes from a plain UPDATE...RETURNING with no lead/user JOIN, so using
+  // it as-is would blank out leadFullName/createdByName in the header for a
+  // moment until the next poll caught up.
+  const changeStatus = async (status: string) => {
+    if (!ticketId) return;
+    setStatusSaving(true);
+    try {
+      await supportTicketApi.updateTicketStatus(ticketId, status);
+      message.success("Status updated");
+      load();
+      onChanged?.();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to update status"));
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!ticketId) return;
     const body = draft.trim();
@@ -137,9 +162,25 @@ export function SupportTicketDetailDrawer({ ticketId, onClose }: SupportTicketDe
                   )}
                 </Text>
               </div>
-              <Tag color={STATUS_COLORS[ticket.status] ?? "default"} style={{ margin: 0, flexShrink: 0 }}>
-                {ticket.status}
-              </Tag>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                <Tag color={PRIORITY_COLORS[ticket.priority] ?? "default"} style={{ margin: 0 }}>
+                  {ticket.priority}
+                </Tag>
+                {canUpdate ? (
+                  <Select
+                    value={ticket.status}
+                    onChange={changeStatus}
+                    loading={statusSaving}
+                    size="small"
+                    style={{ width: 110 }}
+                    options={TICKET_STATUSES.map((s) => ({ value: s, label: s }))}
+                  />
+                ) : (
+                  <Tag color={STATUS_COLORS[ticket.status] ?? "default"} style={{ margin: 0 }}>
+                    {ticket.status}
+                  </Tag>
+                )}
+              </div>
             </div>
             {ticket.description && (
               <Text style={{ display: "block", marginTop: 8, fontSize: 13, color: appTokens.textSecondary, whiteSpace: "pre-wrap" }}>
