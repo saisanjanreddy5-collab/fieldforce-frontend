@@ -12,8 +12,18 @@ export async function listSupportTickets(filters: { leadId?: string; page?: numb
   return response.data.data;
 }
 
-export async function createSupportTicket(payload: { leadId: string; subject: string; description?: string }): Promise<SupportTicket> {
+export async function createSupportTicket(payload: {
+  leadId: string;
+  subject: string;
+  description?: string;
+  priority: string;
+}): Promise<SupportTicket> {
   const response = await apiClient.post<ApiSuccess<SupportTicket>>("/support-tickets", payload);
+  return response.data.data;
+}
+
+export async function updateTicketStatus(ticketId: string, status: string): Promise<SupportTicket> {
+  const response = await apiClient.patch<ApiSuccess<SupportTicket>>(`/support-tickets/${ticketId}/status`, { status });
   return response.data.data;
 }
 

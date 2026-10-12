@@ -5,6 +5,7 @@ export interface SupportTicket {
   subject: string;
   description: string | null;
   status: string;
+  priority: string;
   frappeTicketName: string | null;
   createdBy: string | null;
   createdByName: string | null;

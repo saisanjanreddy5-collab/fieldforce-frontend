@@ -6,7 +6,7 @@ import type { SupportTicket } from "../types/support-ticket";
 import { useHasPermission } from "../hooks/use-permission";
 import { formatDate } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
-import { STATUS_COLORS } from "../components/support-tickets/support-ticket-constants";
+import { PRIORITY_COLORS, STATUS_COLORS } from "../components/support-tickets/support-ticket-constants";
 import { NewSupportTicketModal } from "../components/support-tickets/NewSupportTicketModal";
 import { SupportTicketDetailDrawer } from "../components/support-tickets/SupportTicketDetailDrawer";
 
@@ -43,6 +43,15 @@ export default function SupportTicketsPage() {
     );
   }, [tickets, search]);
 
+  // Real counts from the tickets already loaded - no fabricated SLA/overdue
+  // figures, just what's genuinely knowable from status alone today.
+  const stats = useMemo(() => {
+    const open = tickets.filter((t) => t.status === "Open" || t.status === "Replied").length;
+    const resolved = tickets.filter((t) => t.status === "Resolved" || t.status === "Closed").length;
+    const urgent = tickets.filter((t) => (t.status === "Open" || t.status === "Replied") && t.priority === "Urgent").length;
+    return { total: tickets.length, open, resolved, urgent };
+  }, [tickets]);
+
   if (!hasPermission("support_tickets.view")) {
     return (
       <div>
@@ -68,6 +77,34 @@ export default function SupportTicketsPage() {
             New ticket
           </Button>
         )}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+        {[
+          { label: "Total tickets", value: String(stats.total), subtitle: "all time" },
+          { label: "Open", value: String(stats.open), subtitle: "awaiting resolution" },
+          { label: "Urgent & open", value: String(stats.urgent), subtitle: "needs attention first" },
+          { label: "Resolved", value: String(stats.resolved), subtitle: "resolved or closed" },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            style={{
+              flex: 1,
+              minWidth: 170,
+              border: `1px solid ${appTokens.borderLight}`,
+              borderRadius: appTokens.radius,
+              padding: "10px 14px",
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+            }}
+          >
+            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1 }}>
+              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3 }}>{stat.value}</span>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div
@@ -115,6 +152,15 @@ export default function SupportTicketsPage() {
             },
             { title: "Customer", key: "customer", render: (_, t) => t.leadFullName ?? <Text type="secondary">—</Text> },
             {
+              title: "Priority",
+              key: "priority",
+              render: (_, t) => (
+                <Tag color={PRIORITY_COLORS[t.priority] ?? "default"} style={{ margin: 0 }}>
+                  {t.priority}
+                </Tag>
+              ),
+            },
+            {
               title: "Status",
               key: "status",
               render: (_, t) => (
@@ -139,7 +185,7 @@ export default function SupportTicketsPage() {
         }}
       />
 
-      <SupportTicketDetailDrawer ticketId={openTicketId} onClose={() => setOpenTicketId(null)} />
+      <SupportTicketDetailDrawer ticketId={openTicketId} onClose={() => setOpenTicketId(null)} onChanged={load} />
     </div>
   );
 }
