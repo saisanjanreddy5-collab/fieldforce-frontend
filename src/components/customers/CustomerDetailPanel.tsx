@@ -517,7 +517,9 @@ function AddTransactionModal({
     <Modal title={title} open={open} onCancel={onClose} onOk={() => form.submit()} confirmLoading={submitting} destroyOnHidden>
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item name="amount" label="Amount" rules={[{ required: true, message: "Amount is required" }]}>
-          <InputNumber min={1} style={{ width: "100%" }} formatter={(v) => `₹ ${v}`} parser={(v) => Number((v ?? "0").replace(/[^\d.]/g, ""))} />
+          {/* Explicit <number> generic - with no value prop to anchor inference,
+              a bare numeric min={1} narrows T to the literal 1, not number. */}
+          <InputNumber<number> min={1} style={{ width: "100%" }} formatter={(v) => `₹ ${v}`} parser={(v) => Number((v ?? "0").replace(/[^\d.]/g, ""))} />
         </Form.Item>
         {kind === "sales_order" && (
           <Form.Item name="status" label="Status" initialValue="confirmed">

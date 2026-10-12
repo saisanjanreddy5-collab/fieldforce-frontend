@@ -20,8 +20,13 @@ const DEFAULT_SUBLABEL: Record<Activity["type"], string> = {
   site_visit: "Field",
   whatsapp: "WhatsApp",
   internal: "CRM",
+  support_ticket: "Support",
 };
 
+// support_ticket-typed activities are only ever created already completed
+// (see support-ticket-service.ts), so they never actually reach this
+// scheduled/upcoming row - null here matches 'internal' above (no action
+// button) rather than wiring a handler for a case that can't occur.
 const ACTION_LABEL: Record<Activity["type"], string | null> = {
   call: "Call",
   email: "Open mail",
@@ -29,6 +34,7 @@ const ACTION_LABEL: Record<Activity["type"], string | null> = {
   site_visit: "Directions",
   whatsapp: "WhatsApp",
   internal: null,
+  support_ticket: null,
 };
 
 interface ActivityRowProps {
