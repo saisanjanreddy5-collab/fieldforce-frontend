@@ -56,8 +56,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // Still "Coming soon" pages (see ComingSoonPage/App.tsx) - but the
       // permissions behind them are real and configurable now, so access is
       // already correct for whoever ends up building the page next.
-      { path: "/customers", label: "Customers", icon: <GlobalOutlined />, permissions: ["customers.view"] },
-      { path: "/call-center", label: "Call center", icon: <PhoneOutlined />, permissions: ["call_center.view"] },
+      { path: "/customers", label: "Customers", icon: <GlobalOutlined />, built: true, permissions: ["customers.view"] },
+      { path: "/call-center", label: "Call center", icon: <PhoneOutlined />, built: true, permissions: ["call_center.view"] },
       { path: "/support-tickets", label: "Support tickets", icon: <TagsOutlined />, built: true, permissions: ["support_tickets.view"] },
     ],
   },
