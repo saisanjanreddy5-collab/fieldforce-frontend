@@ -8,7 +8,7 @@ import type { TeamMember } from "../../types/user";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
-import { PRIORITY_COLORS, STATUS_COLORS, TICKET_STATUSES } from "./support-ticket-constants";
+import { PRIORITY_COLORS, STATUS_COLORS, TICKET_STATUSES, formatRelativeDeadline } from "./support-ticket-constants";
 
 const { Text, Title } = Typography;
 
@@ -235,6 +235,49 @@ export function SupportTicketDetailDrawer({ ticketId, onClose, onChanged }: Supp
                 </Text>
               )}
             </div>
+            {(ticket.responseBy || ticket.resolutionBy) && (
+              <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
+                {ticket.responseBy &&
+                  (() => {
+                    const firstOutbound = messages.find((m) => m.direction === "outbound");
+                    const onTime = firstOutbound && ticket.responseBy ? new Date(firstOutbound.createdAt) <= new Date(ticket.responseBy) : null;
+                    const tag = firstOutbound
+                      ? { label: onTime ? "Responded on time" : "Responded late", color: onTime ? "green" : "orange" }
+                      : ticket.responseBreached
+                        ? { label: "Response overdue", color: "red" }
+                        : { label: formatRelativeDeadline(ticket.responseBy), color: "default" };
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Text type="secondary" style={{ fontSize: 11.5 }}>
+                          First response
+                        </Text>
+                        <Tag color={tag.color} style={{ margin: 0, fontSize: 11 }}>
+                          {tag.label}
+                        </Tag>
+                      </div>
+                    );
+                  })()}
+                {ticket.resolutionBy &&
+                  (() => {
+                    const closed = ticket.status === "Resolved" || ticket.status === "Closed";
+                    const tag = closed
+                      ? { label: ticket.status, color: STATUS_COLORS[ticket.status] ?? "default" }
+                      : ticket.resolutionBreached
+                        ? { label: "Resolution overdue", color: "red" }
+                        : { label: formatRelativeDeadline(ticket.resolutionBy), color: "default" };
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Text type="secondary" style={{ fontSize: 11.5 }}>
+                          Resolution
+                        </Text>
+                        <Tag color={tag.color} style={{ margin: 0, fontSize: 11 }}>
+                          {tag.label}
+                        </Tag>
+                      </div>
+                    );
+                  })()}
+              </div>
+            )}
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", background: appTokens.surfaceSunken, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>

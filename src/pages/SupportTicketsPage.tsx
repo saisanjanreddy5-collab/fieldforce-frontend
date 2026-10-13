@@ -7,7 +7,7 @@ import { useHasPermission } from "../hooks/use-permission";
 import { useAuth } from "../context/AuthContext";
 import { formatDate } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
-import { PRIORITY_COLORS, STATUS_COLORS } from "../components/support-tickets/support-ticket-constants";
+import { PRIORITY_COLORS, STATUS_COLORS, resolutionSlaTag } from "../components/support-tickets/support-ticket-constants";
 import { NewSupportTicketModal } from "../components/support-tickets/NewSupportTicketModal";
 import { SupportTicketDetailDrawer } from "../components/support-tickets/SupportTicketDetailDrawer";
 
@@ -48,13 +48,15 @@ export default function SupportTicketsPage() {
     });
   }, [tickets, search, mineOnly, user?.id]);
 
-  // Real counts from the tickets already loaded - no fabricated SLA/overdue
-  // figures, just what's genuinely knowable from status alone today.
+  // Real counts from the tickets already loaded. overdue is a genuine SLA
+  // breach (response or resolution deadline passed on a still-open ticket),
+  // sourced from Frappe's own SLA policy, not estimated here.
   const stats = useMemo(() => {
     const open = tickets.filter((t) => t.status === "Open" || t.status === "Replied").length;
     const resolved = tickets.filter((t) => t.status === "Resolved" || t.status === "Closed").length;
     const urgent = tickets.filter((t) => (t.status === "Open" || t.status === "Replied") && t.priority === "Urgent").length;
-    return { total: tickets.length, open, resolved, urgent };
+    const overdue = tickets.filter((t) => t.responseBreached || t.resolutionBreached).length;
+    return { total: tickets.length, open, resolved, urgent, overdue };
   }, [tickets]);
 
   if (!hasPermission("support_tickets.view")) {
@@ -89,6 +91,7 @@ export default function SupportTicketsPage() {
           { label: "Total tickets", value: String(stats.total), subtitle: "all time" },
           { label: "Open", value: String(stats.open), subtitle: "awaiting resolution" },
           { label: "Urgent & open", value: String(stats.urgent), subtitle: "needs attention first" },
+          { label: "SLA breached", value: String(stats.overdue), subtitle: "response or resolution overdue" },
           { label: "Resolved", value: String(stats.resolved), subtitle: "resolved or closed" },
         ].map((stat) => (
           <div
@@ -141,6 +144,7 @@ export default function SupportTicketsPage() {
           loading={loading}
           dataSource={filtered}
           pagination={filtered.length > 20 ? { pageSize: 20 } : false}
+          tableLayout="fixed"
           onRow={(record) => ({ onClick: () => setOpenTicketId(record.id), style: { cursor: "pointer" } })}
           className="thin-scroll-table table-row-hover"
           locale={{ emptyText: loading ? " " : "No tickets yet - raise one from the button above" }}
@@ -148,8 +152,9 @@ export default function SupportTicketsPage() {
             {
               title: "Ticket",
               key: "ticket",
+              width: "7%",
               render: (_, t) => (
-                <Text strong style={{ color: appTokens.textPrimary }}>
+                <Text strong style={{ color: appTokens.textPrimary, whiteSpace: "nowrap" }}>
                   {t.frappeTicketName ? `#${t.frappeTicketName}` : "—"}
                 </Text>
               ),
@@ -157,14 +162,32 @@ export default function SupportTicketsPage() {
             {
               title: "Issue",
               key: "issue",
-              render: (_, t) => <Text style={{ color: appTokens.textPrimary }}>{t.subject}</Text>,
+              width: "18%",
+              render: (_, t) => (
+                <Text style={{ color: appTokens.textPrimary, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={t.subject}>
+                  {t.subject}
+                </Text>
+              ),
             },
-            { title: "Customer", key: "customer", render: (_, t) => t.leadFullName ?? <Text type="secondary">—</Text> },
+            {
+              title: "Customer",
+              key: "customer",
+              width: "13%",
+              render: (_, t) =>
+                t.leadFullName ? (
+                  <Text style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={t.leadFullName}>
+                    {t.leadFullName}
+                  </Text>
+                ) : (
+                  <Text type="secondary">—</Text>
+                ),
+            },
             {
               title: "Priority",
               key: "priority",
+              width: "8%",
               render: (_, t) => (
-                <Tag color={PRIORITY_COLORS[t.priority] ?? "default"} style={{ margin: 0 }}>
+                <Tag color={PRIORITY_COLORS[t.priority] ?? "default"} style={{ margin: 0, whiteSpace: "nowrap" }}>
                   {t.priority}
                 </Tag>
               ),
@@ -172,18 +195,57 @@ export default function SupportTicketsPage() {
             {
               title: "Status",
               key: "status",
+              width: "9%",
               render: (_, t) => (
-                <Tag color={STATUS_COLORS[t.status] ?? "default"} style={{ margin: 0 }}>
+                <Tag color={STATUS_COLORS[t.status] ?? "default"} style={{ margin: 0, whiteSpace: "nowrap" }}>
                   {t.status}
                 </Tag>
               ),
             },
-            { title: "Raised", key: "date", render: (_, t) => formatDate(t.createdAt) },
-            { title: "By", key: "createdBy", render: (_, t) => t.createdByName ?? "—" },
+            {
+              title: "SLA",
+              key: "sla",
+              width: "13%",
+              render: (_, t) => {
+                const tag = resolutionSlaTag(t);
+                return tag ? (
+                  <Tag color={tag.color} style={{ margin: 0, whiteSpace: "nowrap" }}>
+                    {tag.label}
+                  </Tag>
+                ) : (
+                  <Text type="secondary">—</Text>
+                );
+              },
+            },
+            {
+              title: "Raised",
+              key: "date",
+              width: "10%",
+              render: (_, t) => <Text style={{ whiteSpace: "nowrap" }}>{formatDate(t.createdAt)}</Text>,
+            },
+            {
+              title: "By",
+              key: "createdBy",
+              width: "11%",
+              render: (_, t) => (
+                <Text style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={t.createdByName ?? undefined}>
+                  {t.createdByName ?? "—"}
+                </Text>
+              ),
+            },
             {
               title: "Assignee",
               key: "assignee",
-              render: (_, t) => t.assignedToName ?? <Text type="secondary">Unassigned</Text>,
+              width: "11%",
+              render: (_, t) => (
+                <Text
+                  type={t.assignedToName ? undefined : "secondary"}
+                  style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                  title={t.assignedToName ?? undefined}
+                >
+                  {t.assignedToName ?? "Unassigned"}
+                </Text>
+              ),
             },
           ]}
         />

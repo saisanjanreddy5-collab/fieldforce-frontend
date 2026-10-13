@@ -11,6 +11,10 @@ export interface SupportTicket {
   createdByName: string | null;
   assignedTo: string | null;
   assignedToName: string | null;
+  responseBy: string | null;
+  resolutionBy: string | null;
+  responseBreached: boolean;
+  resolutionBreached: boolean;
   createdAt: string;
   updatedAt: string;
 }
