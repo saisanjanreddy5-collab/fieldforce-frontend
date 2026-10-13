@@ -7,7 +7,9 @@ export interface ListSupportTicketsResult {
   total: number;
 }
 
-export async function listSupportTickets(filters: { leadId?: string; page?: number; limit?: number } = {}): Promise<ListSupportTicketsResult> {
+export async function listSupportTickets(
+  filters: { leadId?: string; assignedTo?: string; page?: number; limit?: number } = {}
+): Promise<ListSupportTicketsResult> {
   const response = await apiClient.get<ApiSuccess<ListSupportTicketsResult>>("/support-tickets", { params: { limit: 200, ...filters } });
   return response.data.data;
 }
@@ -24,6 +26,11 @@ export async function createSupportTicket(payload: {
 
 export async function updateTicketStatus(ticketId: string, status: string): Promise<SupportTicket> {
   const response = await apiClient.patch<ApiSuccess<SupportTicket>>(`/support-tickets/${ticketId}/status`, { status });
+  return response.data.data;
+}
+
+export async function assignTicket(ticketId: string, assignedTo: string | null): Promise<SupportTicket> {
+  const response = await apiClient.patch<ApiSuccess<SupportTicket>>(`/support-tickets/${ticketId}/assign`, { assignedTo });
   return response.data.data;
 }
 

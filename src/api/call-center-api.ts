@@ -16,3 +16,17 @@ export async function listUpcomingCalls(limit = 20): Promise<Call[]> {
   const response = await apiClient.get<ApiSuccess<Call[]>>("/call-center/upcoming", { params: { limit } });
   return response.data.data;
 }
+
+export interface CallCenterStats {
+  callsToday: number;
+  connectedPercent: number;
+  avgHandleSeconds: number | null;
+  recordedPercent: number;
+  inQueue: number;
+  overdueInQueue: number;
+}
+
+export async function getStats(): Promise<CallCenterStats> {
+  const response = await apiClient.get<ApiSuccess<CallCenterStats>>("/call-center/stats");
+  return response.data.data;
+}

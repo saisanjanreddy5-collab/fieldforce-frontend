@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { App, Button, Drawer, Input, Select, Skeleton, Tag, Typography } from "antd";
-import { SendOutlined, TagsOutlined } from "@ant-design/icons";
+import { SendOutlined, TagsOutlined, UserOutlined } from "@ant-design/icons";
 import * as supportTicketApi from "../../api/support-ticket-api";
+import * as userApi from "../../api/user-api";
 import type { SupportTicket, SupportTicketMessage } from "../../types/support-ticket";
+import type { TeamMember } from "../../types/user";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
@@ -56,7 +58,17 @@ export function SupportTicketDetailDrawer({ ticketId, onClose, onChanged }: Supp
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  // Best-effort, same reasoning CustomerDetailPanel's own owner-reassignment
+  // dropdown already settled on: users.view isn't guaranteed for every role
+  // that has support_tickets.update, so a 403 here must not take down the
+  // whole drawer - just fall back to plain text instead of a picker.
+  const [users, setUsers] = useState<TeamMember[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    userApi.listUsers().then(setUsers).catch(() => setUsers([]));
+  }, []);
 
   const load = () => {
     if (!ticketId) return;
@@ -119,6 +131,21 @@ export function SupportTicketDetailDrawer({ ticketId, onClose, onChanged }: Supp
       message.error(errorMessageFrom(err, "Failed to update status"));
     } finally {
       setStatusSaving(false);
+    }
+  };
+
+  const handleAssign = async (assignedTo: string | null) => {
+    if (!ticketId) return;
+    setAssigning(true);
+    try {
+      await supportTicketApi.assignTicket(ticketId, assignedTo);
+      message.success(assignedTo ? "Ticket assigned" : "Ticket unassigned");
+      load();
+      onChanged?.();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to assign ticket"));
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -187,6 +214,27 @@ export function SupportTicketDetailDrawer({ ticketId, onClose, onChanged }: Supp
                 {ticket.description}
               </Text>
             )}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+              <UserOutlined style={{ fontSize: 12, color: appTokens.textTertiary }} />
+              {canUpdate && users.length > 0 ? (
+                <Select
+                  value={ticket.assignedTo ?? undefined}
+                  placeholder="Unassigned"
+                  allowClear
+                  onChange={(value) => handleAssign(value ?? null)}
+                  loading={assigning}
+                  size="small"
+                  style={{ width: 180 }}
+                  showSearch
+                  optionFilterProp="label"
+                  options={users.map((u) => ({ value: u.id, label: u.name }))}
+                />
+              ) : (
+                <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>
+                  {ticket.assignedToName ? `Assigned to ${ticket.assignedToName}` : "Unassigned"}
+                </Text>
+              )}
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", background: appTokens.surfaceSunken, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>

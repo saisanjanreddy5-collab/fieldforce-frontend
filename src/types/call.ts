@@ -3,6 +3,9 @@ export interface Call {
   leadId: string | null;
   leadFullName: string | null;
   leadPhone: string | null;
+  customerId: string | null;
+  referenceLabel: string | null;
+  category: string | null;
   assignedTo: string | null;
   assignedToName: string | null;
   subject: string | null;

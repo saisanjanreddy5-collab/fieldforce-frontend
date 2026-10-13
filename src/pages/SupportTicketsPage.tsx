@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Button, Input, Table, Tag, Typography } from "antd";
+import { App, Button, Input, Switch, Table, Tag, Typography } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import * as supportTicketApi from "../api/support-ticket-api";
 import type { SupportTicket } from "../types/support-ticket";
 import { useHasPermission } from "../hooks/use-permission";
+import { useAuth } from "../context/AuthContext";
 import { formatDate } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
 import { PRIORITY_COLORS, STATUS_COLORS } from "../components/support-tickets/support-ticket-constants";
@@ -15,9 +16,11 @@ const { Title, Text } = Typography;
 export default function SupportTicketsPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
 
@@ -34,14 +37,16 @@ export default function SupportTicketsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return tickets;
-    return tickets.filter(
-      (t) =>
+    return tickets.filter((t) => {
+      if (mineOnly && t.assignedTo !== user?.id) return false;
+      if (!q) return true;
+      return (
         t.subject.toLowerCase().includes(q) ||
         (t.leadFullName ?? "").toLowerCase().includes(q) ||
         (t.frappeTicketName ?? "").toLowerCase().includes(q)
-    );
-  }, [tickets, search]);
+      );
+    });
+  }, [tickets, search, mineOnly, user?.id]);
 
   // Real counts from the tickets already loaded - no fabricated SLA/overdue
   // figures, just what's genuinely knowable from status alone today.
@@ -116,7 +121,7 @@ export default function SupportTicketsPage() {
           overflow: "hidden",
         }}
       >
-        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}` }}>
+        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <Input
             placeholder="Search ticket, customer, or subject"
             prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
@@ -125,6 +130,10 @@ export default function SupportTicketsPage() {
             allowClear
             style={{ maxWidth: 360 }}
           />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Switch size="small" checked={mineOnly} onChange={setMineOnly} />
+            <Text style={{ fontSize: 13 }}>My tickets</Text>
+          </div>
         </div>
 
         <Table<SupportTicket>
@@ -171,6 +180,11 @@ export default function SupportTicketsPage() {
             },
             { title: "Raised", key: "date", render: (_, t) => formatDate(t.createdAt) },
             { title: "By", key: "createdBy", render: (_, t) => t.createdByName ?? "—" },
+            {
+              title: "Assignee",
+              key: "assignee",
+              render: (_, t) => t.assignedToName ?? <Text type="secondary">Unassigned</Text>,
+            },
           ]}
         />
       </div>

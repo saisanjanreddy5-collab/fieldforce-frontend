@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Input, Table, Tag, Typography } from "antd";
-import { PhoneOutlined, PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { App, Avatar, Button, Dropdown, Input, Table, Tag, Typography } from "antd";
+import { DownOutlined, PhoneOutlined, PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import * as callCenterApi from "../api/call-center-api";
 import * as smartfloApi from "../api/smartflo-api";
+import * as customerExtrasApi from "../api/customer-extras-api";
 import type { Call } from "../types/call";
+import type { CustomerContact } from "../types/customer-extras";
 import { useHasPermission } from "../hooks/use-permission";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
@@ -11,21 +13,50 @@ import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from 
 
 const { Title, Text } = Typography;
 
+const EMPTY_STATS: callCenterApi.CallCenterStats = {
+  callsToday: 0,
+  connectedPercent: 0,
+  avgHandleSeconds: null,
+  recordedPercent: 0,
+  inQueue: 0,
+  overdueInQueue: 0,
+};
+
 export default function CallCenterPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const [calls, setCalls] = useState<Call[]>([]);
   const [queue, setQueue] = useState<Call[]>([]);
+  const [stats, setStats] = useState<callCenterApi.CallCenterStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
+  // Queue items whose lead has converted to a customer - keyed by
+  // customerId, so the "Call" button can offer a per-contact picker
+  // instead of always dialing the lead's own number. Prefetched once per
+  // load (the queue is already small/capped), not on click, so opening the
+  // picker is instant.
+  const [queueContacts, setQueueContacts] = useState<Record<string, CustomerContact[]>>({});
 
+  // Stats come from a real SQL aggregate over every call this user can
+  // see (call-center-service.ts's getCallCenterStats), not arithmetic over
+  // whatever page of calls happens to be loaded - the log view below is
+  // capped (200, then paginated 20 at a time for display), and computing
+  // percentages over that cap used to silently understate reality once an
+  // org passed 200 historical calls despite the UI still saying "of all
+  // calls". "Today" is IST-anchored there too, not the viewer's browser
+  // clock.
   const load = () => {
     setLoading(true);
-    Promise.all([callCenterApi.listCalls(), callCenterApi.listUpcomingCalls()])
-      .then(([log, upcoming]) => {
+    Promise.all([callCenterApi.listCalls(), callCenterApi.listUpcomingCalls(), callCenterApi.getStats()])
+      .then(async ([log, upcoming, callStats]) => {
         setCalls(log.calls);
         setQueue(upcoming);
+        setStats(callStats);
+
+        const customerIds = [...new Set(upcoming.map((c) => c.customerId).filter((id): id is string => id !== null))];
+        const contactLists = await Promise.all(customerIds.map((id) => customerExtrasApi.listContacts(id).catch(() => [])));
+        setQueueContacts(Object.fromEntries(customerIds.map((id, i) => [id, contactLists[i]])));
       })
       .catch(() => message.error("Failed to load calls"))
       .finally(() => setLoading(false));
@@ -44,25 +75,7 @@ export default function CallCenterPage() {
     );
   }, [calls, search]);
 
-  // Every figure here is arithmetic on calls/queue already loaded - nothing
-  // modeled or estimated. Outcome/recordingUrl/durationSeconds are written
-  // by the real Smartflo webhook (see smartflo-service.ts); dueDate on a
-  // queued call comes from whoever scheduled it via Activity Calendar.
-  const stats = useMemo(() => {
-    const today = new Date().toDateString();
-    const callsToday = calls.filter((c) => new Date(c.createdAt).toDateString() === today).length;
-    const connected = calls.filter((c) => c.outcome?.startsWith("Connected")).length;
-    const connectedPercent = calls.length > 0 ? Math.round((connected / calls.length) * 100) : 0;
-    const withDuration = calls.filter((c) => c.durationSeconds !== null);
-    const avgHandleSeconds =
-      withDuration.length > 0 ? Math.round(withDuration.reduce((sum, c) => sum + (c.durationSeconds ?? 0), 0) / withDuration.length) : null;
-    const recorded = calls.filter((c) => c.recordingUrl).length;
-    const recordedPercent = calls.length > 0 ? Math.round((recorded / calls.length) * 100) : 0;
-    const overdueInQueue = queue.filter((c) => c.dueDate && new Date(c.dueDate).getTime() < Date.now()).length;
-    return { callsToday, connectedPercent, avgHandleSeconds, inQueue: queue.length, overdueInQueue, recordedPercent };
-  }, [calls, queue]);
-
-  const handleCall = async (leadId: string | null) => {
+  const handleCall = async (leadId: string | null, override?: { phone: string; contactName?: string }) => {
     if (!leadId) return;
     setCallingLeadId(leadId);
     try {
@@ -70,8 +83,8 @@ export default function CallCenterPage() {
       // the new call as an Activity - reload so it shows up right away (as
       // "In progress", until the webhook fills in the real outcome) instead
       // of only appearing after a manual page refresh.
-      await smartfloApi.callLead(leadId);
-      message.success("Calling now");
+      await smartfloApi.callLead(leadId, override);
+      message.success(override ? `Calling ${override.contactName ?? override.phone}` : "Calling now");
       load();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to place the call"));
@@ -184,9 +197,9 @@ export default function CallCenterPage() {
                       >
                         {c.leadFullName ?? <Text type="secondary">—</Text>}
                       </Text>
-                      {c.leadPhone && (
+                      {(c.referenceLabel || c.category) && (
                         <Text type="secondary" style={{ fontSize: 11, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {c.leadPhone}
+                          {[c.referenceLabel, c.category].filter(Boolean).join(" · ")}
                         </Text>
                       )}
                     </div>
@@ -293,17 +306,58 @@ export default function CallCenterPage() {
                         {due ? ` · ${due.label}` : ""}
                       </Text>
                     </div>
-                    <Button
-                      size="small"
-                      type="primary"
-                      ghost
-                      icon={<PhoneOutlined />}
-                      loading={callingLeadId === c.leadId}
-                      disabled={!c.leadId}
-                      onClick={() => handleCall(c.leadId)}
-                    >
-                      Call
-                    </Button>
+                    {(() => {
+                      const contacts = c.customerId ? queueContacts[c.customerId] : undefined;
+                      // Only a real choice when this lead's converted customer
+                      // actually has contacts on file - otherwise there's
+                      // nothing to pick between and this stays a plain button,
+                      // same as before.
+                      if (!contacts || contacts.length === 0) {
+                        return (
+                          <Button
+                            size="small"
+                            type="primary"
+                            ghost
+                            icon={<PhoneOutlined />}
+                            loading={callingLeadId === c.leadId}
+                            disabled={!c.leadId}
+                            onClick={() => handleCall(c.leadId)}
+                          >
+                            Call
+                          </Button>
+                        );
+                      }
+                      return (
+                        <Dropdown
+                          menu={{
+                            items: [
+                              { key: "__lead__", label: `${c.leadFullName ?? "Lead"}'s own number${c.leadPhone ? ` (${c.leadPhone})` : ""}` },
+                              { type: "divider" },
+                              ...contacts.map((contact) => ({
+                                key: contact.id,
+                                label: `${contact.name}${contact.phone ? ` (${contact.phone})` : ""}`,
+                                disabled: !contact.phone,
+                              })),
+                            ],
+                            onClick: ({ key }) => {
+                              if (key === "__lead__") {
+                                handleCall(c.leadId);
+                                return;
+                              }
+                              const contact = contacts.find((ct) => ct.id === key);
+                              if (contact?.phone) {
+                                handleCall(c.leadId, { phone: contact.phone, contactName: contact.name });
+                              }
+                            },
+                          }}
+                          trigger={["click"]}
+                        >
+                          <Button size="small" type="primary" ghost icon={<PhoneOutlined />} loading={callingLeadId === c.leadId} disabled={!c.leadId}>
+                            Call <DownOutlined style={{ fontSize: 9 }} />
+                          </Button>
+                        </Dropdown>
+                      );
+                    })()}
                   </div>
                 );
               })

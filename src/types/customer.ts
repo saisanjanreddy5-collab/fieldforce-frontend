@@ -1,5 +1,7 @@
 export interface Customer {
   id: string;
+  customerNumber: number;
+  customerLabel: string;
   leadId: string;
   fullName: string;
   contactName: string | null;
@@ -10,6 +12,7 @@ export interface Customer {
   category: string | null;
   ownerId: string | null;
   ownerName: string | null;
+  city: string | null;
   zoneId: string | null;
   stateId: string | null;
   districtId: string | null;
