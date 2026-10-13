@@ -17,6 +17,7 @@ import {
   Skeleton,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import {
@@ -30,12 +31,14 @@ import {
   ShoppingOutlined,
   TagsOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import * as customerApi from "../../api/customer-api";
 import * as customerExtrasApi from "../../api/customer-extras-api";
 import * as userApi from "../../api/user-api";
 import * as salesTeamApi from "../../api/sales-team-api";
 import * as smartfloApi from "../../api/smartflo-api";
+import * as microsoftApi from "../../api/microsoft-api";
+import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import type { Customer } from "../../types/customer";
 import type { TeamMember } from "../../types/user";
 import type { State } from "../../types/sales-team";
@@ -50,7 +53,7 @@ import type {
   TimelineFeedItem,
   TransactionFeedItem,
 } from "../../types/customer-extras";
-import { WhatsAppLogo } from "../icons/BrandIcons";
+import { TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { avatarGradient, appTokens } from "../../utils/design-system";
@@ -201,6 +204,9 @@ function OverviewTab({
       <div>
         <SectionLabel>Account</SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {customer.companyName && customer.companyName !== customer.fullName && (
+            <Field label="Company" value={customer.companyName} />
+          )}
           <Field label="Category" value={customer.category} />
           <Field label="Territory" value={customer.territory} />
           <div>
@@ -226,7 +232,7 @@ function OverviewTab({
           <div style={{ gridColumn: "1 / -1" }}>
             <Field
               label="Address"
-              value={[customer.addressLine1, customer.addressLine2, stateName, customer.pincode].filter(Boolean).join(", ")}
+              value={[customer.addressLine1, customer.addressLine2, customer.city, stateName, customer.pincode].filter(Boolean).join(", ")}
             />
           </div>
         </div>
@@ -325,12 +331,14 @@ function AddAddressModal({ open, onClose, onCreated, customerId }: { open: boole
   );
 }
 
-function ContactsTab({ customerId, canUpdate }: { customerId: string; canUpdate: boolean }) {
+function ContactsTab({ customerId, leadId, canUpdate }: { customerId: string; leadId: string; canUpdate: boolean }) {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   const [contacts, setContacts] = useState<CustomerContact[] | null>(null);
   const [addresses, setAddresses] = useState<CustomerAddress[] | null>(null);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [callingId, setCallingId] = useState<string | null>(null);
 
   const load = () => {
     customerExtrasApi.listContacts(customerId).then(setContacts).catch(() => setContacts([]));
@@ -345,6 +353,22 @@ function ContactsTab({ customerId, canUpdate }: { customerId: string; canUpdate:
       load();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to remove contact"));
+    }
+  };
+
+  // Dials this contact's own number (not the customer's default phone) via
+  // the same real Smartflo integration, still logged against this lead -
+  // see smartflo-service.ts's optional overridePhone/contactName.
+  const handleCallContact = async (contact: CustomerContact) => {
+    if (!contact.phone) return;
+    setCallingId(contact.id);
+    try {
+      await smartfloApi.callLead(leadId, { phone: contact.phone, contactName: contact.name });
+      message.success(`Calling ${contact.name}`);
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to place the call"));
+    } finally {
+      setCallingId(null);
     }
   };
   const removeAddress = async (id: string) => {
@@ -388,12 +412,36 @@ function ContactsTab({ customerId, canUpdate }: { customerId: string; canUpdate:
                     </Text>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: 2, alignItems: "center", flexShrink: 0 }}>
                   {c.isPrimary && (
-                    <Tag color={appTokens.primary} style={{ margin: 0 }}>
+                    <Tag color={appTokens.primary} style={{ margin: "0 6px 0 0" }}>
                       Primary
                     </Tag>
                   )}
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<PhoneOutlined />}
+                    disabled={!c.phone}
+                    loading={callingId === c.id}
+                    onClick={() => handleCallContact(c)}
+                    title={c.phone ? `Call ${c.name}` : "No phone on file"}
+                  />
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<MailOutlined />}
+                    disabled={!c.email}
+                    onClick={() => c.email && (window.location.href = `mailto:${c.email}`)}
+                    title={c.email ? `Email ${c.name}` : "No email on file"}
+                  />
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<WhatsAppLogo size={13} />}
+                    onClick={() => navigate(`/leads?leadId=${leadId}&tab=whatsapp`)}
+                    title="WhatsApp (shared thread with this account's registered number)"
+                  />
                   {canUpdate && (
                     <Popconfirm title="Remove this contact?" onConfirm={() => removeContact(c.id)}>
                       <Button size="small" type="text" icon={<DeleteOutlined />} danger />
@@ -689,16 +737,28 @@ function ActivityTimelineTab({ customerId }: { customerId: string }) {
   );
 }
 
+interface MeetingFormValues {
+  subject: string;
+  startTime: Dayjs;
+  durationMinutes: number;
+}
+
 export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPanelProps) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
   const canUpdate = hasPermission("customers.update");
+  const { connected: microsoftConnected } = useMicrosoftConnection();
 
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [states, setStates] = useState<State[]>([]);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [creatingMeeting, setCreatingMeeting] = useState(false);
+  const [meetingForm] = Form.useForm<MeetingFormValues>();
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [txRefreshKey, setTxRefreshKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("overview");
   const [calling, setCalling] = useState(false);
@@ -760,6 +820,37 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
     }
   };
 
+  // Same real Microsoft Graph flow as LeadDetail.tsx's own Teams button -
+  // called against the customer's own leadId (every customer traces back
+  // to exactly one lead), which is also why the resulting activity (logged
+  // server-side against that same leadId) already shows up in this
+  // customer's Activity tab for free: getCustomerTimeline already merges
+  // the underlying lead's activities, nothing new to wire up there.
+  const handleCreateMeeting = async (values: MeetingFormValues) => {
+    if (!customer?.leadId) return;
+    setCreatingMeeting(true);
+    try {
+      const startTime = values.startTime.toISOString();
+      const endTime = values.startTime.add(values.durationMinutes, "minute").toISOString();
+      const { joinUrl } = await microsoftApi.createTeamsMeeting(customer.leadId, values.subject, startTime, endTime);
+      message.success("Teams meeting created");
+      meetingForm.resetFields();
+      setMeetingOpen(false);
+      Modal.success({
+        title: "Teams meeting created",
+        content: (
+          <a href={joinUrl} target="_blank" rel="noreferrer">
+            {joinUrl}
+          </a>
+        ),
+      });
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to create Teams meeting"));
+    } finally {
+      setCreatingMeeting(false);
+    }
+  };
+
   if (!customerId) {
     return (
       <div style={{ minHeight: 420, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
@@ -792,7 +883,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
                 {customer.fullName}
               </Title>
               <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>
-                {customer.companyName ?? "No company on file"}
+                {customer.customerLabel}
                 {customer.ownerName ? ` · owner ${customer.ownerName}` : ""}
               </Text>
             </div>
@@ -833,6 +924,35 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
           >
             WhatsApp
           </Button>
+          <Tooltip
+            title={
+              !microsoftConnected
+                ? "Connect your Microsoft 365 account from your profile (top right) first"
+                : !customer.email
+                  ? "This customer has no email address on file"
+                  : "Teams meeting"
+            }
+          >
+            <Button
+              size="small"
+              icon={<TeamsLogo size={13} />}
+              disabled={!microsoftConnected || !customer.email}
+              onClick={() => setMeetingOpen(true)}
+            >
+              Teams
+            </Button>
+          </Tooltip>
+          <Button
+            size="small"
+            icon={<ShoppingOutlined />}
+            disabled={!canUpdate}
+            onClick={() => {
+              setTab("transactions");
+              setOrderModalOpen(true);
+            }}
+          >
+            New order
+          </Button>
           <Button size="small" icon={<TagsOutlined />} onClick={() => navigate("/support-tickets")}>
             Tickets{customer.openTicketCount !== undefined ? ` (${customer.openTicketCount})` : ""}
           </Button>
@@ -858,8 +978,10 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
           {tab === "overview" && (
             <OverviewTab customer={customer} canUpdate={canUpdate} users={users} stateName={stateName} saving={saving} onUpdate={applyUpdate} />
           )}
-          {tab === "contacts" && <ContactsTab customerId={customer.id} canUpdate={canUpdate} />}
-          {tab === "transactions" && <TransactionsTab customerId={customer.id} canUpdate={canUpdate} onDataChanged={load} />}
+          {tab === "contacts" && <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} />}
+          {tab === "transactions" && (
+            <TransactionsTab key={txRefreshKey} customerId={customer.id} canUpdate={canUpdate} onDataChanged={load} />
+          )}
           {tab === "activity" && <ActivityTimelineTab customerId={customer.id} />}
         </div>
       </div>
@@ -876,6 +998,57 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
           />
         </div>
       )}
+
+      <Modal
+        title={`Schedule Teams meeting with ${customer.fullName}`}
+        open={meetingOpen}
+        onCancel={() => setMeetingOpen(false)}
+        onOk={() => meetingForm.submit()}
+        okText="Create meeting"
+        confirmLoading={creatingMeeting}
+      >
+        <Text type="secondary">Inviting: {customer.email}</Text>
+        <Form
+          form={meetingForm}
+          layout="vertical"
+          onFinish={handleCreateMeeting}
+          initialValues={{ startTime: dayjs().add(1, "hour").minute(0), durationMinutes: 30 }}
+          style={{ marginTop: 12 }}
+        >
+          <Form.Item name="subject" label="Subject" rules={[{ required: true, message: "Subject is required" }]}>
+            <Input placeholder={`Call with ${customer.fullName}`} />
+          </Form.Item>
+          <Form.Item name="startTime" label="Start time" rules={[{ required: true, message: "Start time is required" }]}>
+            <DatePicker showTime style={{ width: "100%" }} styles={{ popup: { body: { maxHeight: 200, overflowY: "auto" } } }} />
+          </Form.Item>
+          <Form.Item name="durationMinutes" label="Duration">
+            <Select
+              options={[
+                { value: 15, label: "15 minutes" },
+                { value: 30, label: "30 minutes" },
+                { value: 60, label: "1 hour" },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Standalone from TransactionsTab's own "Add" dropdown (which stays
+          untouched) - this is the header's "New order" shortcut, fixed to
+          kind="sales_order". txRefreshKey forces TransactionsTab to remount
+          and reload afterward, covering the case where it was already
+          mounted (tab already open) when the header button was used. */}
+      <AddTransactionModal
+        kind="sales_order"
+        open={orderModalOpen}
+        onClose={() => setOrderModalOpen(false)}
+        onCreated={() => {
+          setOrderModalOpen(false);
+          setTxRefreshKey((k) => k + 1);
+          load();
+        }}
+        customerId={customer.id}
+      />
     </div>
   );
 }

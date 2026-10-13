@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { App, Avatar, Button, Input, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as customerApi from "../api/customer-api";
+import * as salesTeamApi from "../api/sales-team-api";
 import type { Customer } from "../types/customer";
+import type { State } from "../types/sales-team";
 import { useHasPermission } from "../hooks/use-permission";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
@@ -15,6 +17,7 @@ export default function CustomersPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [states, setStates] = useState<State[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -32,6 +35,9 @@ export default function CustomersPage() {
   };
 
   useEffect(load, []);
+  useEffect(() => {
+    salesTeamApi.listStates().then(setStates).catch(() => setStates([]));
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -137,7 +143,7 @@ export default function CustomersPage() {
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div
           style={{
-            flex: "1 1 58%",
+            flex: "1 1 50%",
             minWidth: 0,
             border: `1px solid ${appTokens.border}`,
             borderRadius: appTokens.radius,
@@ -177,11 +183,12 @@ export default function CustomersPage() {
                   key: "customer",
                   width: "34%",
                   render: (_, c) => {
-                    // Territory is the useful second line - company name is
-                    // dropped here when it's just a repeat of the person's
-                    // own name (common for proprietorships), since Category
-                    // already carries real classification info of its own.
-                    const subtitle = c.territory ?? (c.companyName && c.companyName !== c.fullName ? c.companyName : undefined);
+                    // City, state, and the real customer code - city is
+                    // either the lead's own store_city (FOFO onboarding) or
+                    // the district name as an honest fallback (see
+                    // customer-service.ts), never fabricated.
+                    const stateName = c.stateId ? states.find((s) => s.id === c.stateId)?.name : undefined;
+                    const subtitle = [[c.city, stateName].filter(Boolean).join(", "), c.customerLabel].filter(Boolean).join(" · ");
                     return (
                       <div style={{ display: "flex", gap: 7, alignItems: "center", overflow: "hidden" }}>
                         <Avatar size={24} style={{ background: avatarGradient(c.fullName), fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
@@ -259,7 +266,7 @@ export default function CustomersPage() {
 
         <div
           style={{
-            flex: "1 1 42%",
+            flex: "1 1 50%",
             minWidth: 320,
             border: `1px solid ${appTokens.border}`,
             borderRadius: appTokens.radius,

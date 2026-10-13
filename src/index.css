@@ -80,6 +80,15 @@ body {
      the same below-floor dimness the design-system.ts token fix corrected
      everywhere else; this rule predates that fix and was never updated. */
   color: #6b7280;
+  /* Header titles are plain strings, not custom render functions like most
+     body cells already are - without this, a column narrow enough (e.g. a
+     master-detail split-pane list) wraps "CATEGORY"/"SALESPERSON" mid-word
+     onto two lines instead of just not fitting. Shared here, not per-page,
+     since every tableLayout="fixed" percentage-width table (Customers,
+     Call Center, Quotes, Support Tickets, etc.) can hit this the same way. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Leads workspace: dense list row hover state. */

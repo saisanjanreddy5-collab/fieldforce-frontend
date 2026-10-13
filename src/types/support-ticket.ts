@@ -9,6 +9,8 @@ export interface SupportTicket {
   frappeTicketName: string | null;
   createdBy: string | null;
   createdByName: string | null;
+  assignedTo: string | null;
+  assignedToName: string | null;
   createdAt: string;
   updatedAt: string;
 }
