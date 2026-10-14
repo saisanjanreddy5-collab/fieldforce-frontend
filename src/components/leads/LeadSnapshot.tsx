@@ -156,29 +156,38 @@ export function LeadSnapshot({
             <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>{contactLine || "-"}</Text>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>{actionButtons}</div>
-      </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
-        <Tag
-          style={{
-            margin: 0,
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: "4px 10px",
-            background: `${LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary}17`,
-            color: LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary,
-            border: "none",
-          }}
-        >
-          {lead.status}
-        </Tag>
-        <Text strong style={{ fontSize: 16, color: appTokens.textPrimary }}>
-          {formatCompactCurrency(lead.expectedValue)}
-        </Text>
-        {showOwner && (
-          <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>Owner: {lead.ownerName ?? "Unassigned"}</Text>
-        )}
+        {/* Status/value/owner - shares this row with the name block and the
+            action buttons instead of sitting on its own line below, which
+            used to leave a large blank gap here once the page had enough
+            width (list rail collapsed). Measured against real leads first:
+            comfortably fits alongside the icons at that width (~1000px of
+            ~1076px available); at the narrower default width the name block
+            and icons already wrap onto separate lines regardless, same as
+            before this change. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", flexShrink: 0 }}>
+          <Tag
+            style={{
+              margin: 0,
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: "4px 10px",
+              background: `${LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary}17`,
+              color: LEAD_STATUS_COLORS[lead.status] ?? appTokens.textSecondary,
+              border: "none",
+            }}
+          >
+            {lead.status}
+          </Tag>
+          <Text strong style={{ fontSize: 16, color: appTokens.textPrimary }}>
+            {formatCompactCurrency(lead.expectedValue)}
+          </Text>
+          {showOwner && (
+            <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>Owner: {lead.ownerName ?? "Unassigned"}</Text>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>{actionButtons}</div>
       </div>
     </div>
   );

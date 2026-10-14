@@ -200,7 +200,13 @@ export function WhatsAppTab({ leadId, fullName, phone }: WhatsAppTabProps) {
       style={{
         display: "flex",
         flexDirection: "column",
-        maxWidth: 760,
+        // No outer cap here - individual message bubbles already self-limit
+        // to 66% of this panel's width (see Bubble below), which is what
+        // actually keeps a conversation readable. A second, fixed cap on
+        // top of that just left a large blank gap next to the whole panel
+        // whenever its container got wider (e.g. the list rail collapsed) -
+        // confirmed at a real 1280px screen, this cap alone wasted over
+        // 150px of reclaimed width doing nothing.
         borderRadius: appTokens.radiusLg,
         boxShadow: appTokens.shadowMd,
         border: `1px solid ${appTokens.borderLight}`,

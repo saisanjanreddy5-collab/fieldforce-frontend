@@ -400,8 +400,17 @@ export default function LeadsPage() {
               // Capped, not flex-stretched - on a wide monitor the detail
               // pane would otherwise keep expanding indefinitely while the
               // list rail stays a fixed width, which is exactly what read as
-              // "the list is too small and the detail is too big."
-              <div style={{ maxWidth: 960 }}>
+              // "the list is too small and the detail is too big." But that
+              // reasoning only holds while the rail really is a fixed width -
+              // once the user collapses it themselves (down to 44px,
+              // deliberately trading the list for more detail room), keeping
+              // this cap just leaves a large dead strip of blank page to the
+              // right instead (confirmed: up to ~480px wasted at 1600px wide,
+              // ~160px at a real 1280px screen, worse still once the app's
+              // own sidebar is also collapsed) - exactly the opposite of what
+              // collapsing was for. So the cap only applies while the rail is
+              // still taking its normal fixed width.
+              <div style={{ maxWidth: railCollapsed ? undefined : 960 }}>
                 <LeadDetail
                   lead={selectedLead}
                   showOwner={showOwner}

@@ -26,7 +26,6 @@ import {
   DownOutlined,
   EditOutlined,
   FileTextOutlined,
-  MailOutlined,
   PhoneOutlined,
   PlusOutlined,
   ShoppingOutlined,
@@ -56,7 +55,7 @@ import type {
   TimelineFeedItem,
   TransactionFeedItem,
 } from "../../types/customer-extras";
-import { TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
+import { OutlookLogo, TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
 import { WhatsAppTab } from "../leads/tabs/WhatsAppTab";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
@@ -481,7 +480,7 @@ function ContactsTab({
                   <Button
                     size="small"
                     type="text"
-                    icon={<MailOutlined />}
+                    icon={<OutlookLogo size={13} />}
                     disabled={!c.email || !microsoftConnected}
                     onClick={() => c.email && setEmailContact(c)}
                     title={c.email ? `Email ${c.name}` : "No email on file"}
@@ -1014,7 +1013,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
                   : "Email"
             }
           >
-            <Button size="small" icon={<MailOutlined />} disabled={!microsoftConnected || !customer.email} onClick={() => setEmailOpen(true)}>
+            <Button size="small" icon={<OutlookLogo size={13} />} disabled={!microsoftConnected || !customer.email} onClick={() => setEmailOpen(true)}>
               Email
             </Button>
           </Tooltip>
