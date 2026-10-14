@@ -21,10 +21,17 @@ export async function disconnect(): Promise<void> {
   await apiClient.delete("/integrations/microsoft/disconnect");
 }
 
-export async function sendLeadEmail(leadId: string, subject: string, body: string, attachments: File[] = []): Promise<void> {
+export async function sendLeadEmail(
+  leadId: string,
+  subject: string,
+  body: string,
+  attachments: File[] = [],
+  toEmail?: string
+): Promise<void> {
   const formData = new FormData();
   formData.append("subject", subject);
   formData.append("body", body);
+  if (toEmail) formData.append("toEmail", toEmail);
   attachments.forEach((file) => formData.append("attachments", file));
   await apiClient.post(`/leads/${leadId}/microsoft/email`, formData, {
     headers: { "Content-Type": "multipart/form-data" },

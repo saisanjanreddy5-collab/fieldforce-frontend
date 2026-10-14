@@ -24,6 +24,7 @@ import {
   BankOutlined,
   DeleteOutlined,
   DownOutlined,
+  EditOutlined,
   FileTextOutlined,
   MailOutlined,
   PhoneOutlined,
@@ -244,27 +245,62 @@ function OverviewTab({
   );
 }
 
-function AddContactModal({ open, onClose, onCreated, customerId }: { open: boolean; onClose: () => void; onCreated: () => void; customerId: string }) {
+// Shared by both Add and Edit - same fields either way, only the submit
+// action and initial values differ. editingContact being set is what
+// switches this into edit mode (title, prefilled values, PATCH instead of
+// POST) rather than a separate near-duplicate modal.
+function ContactFormModal({
+  open,
+  onClose,
+  onSaved,
+  customerId,
+  editingContact,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  customerId: string;
+  editingContact: CustomerContact | null;
+}) {
   const { message } = App.useApp();
   const [form] = Form.useForm<ContactPayload>();
   const [submitting, setSubmitting] = useState(false);
+  const isEdit = Boolean(editingContact);
+
+  useEffect(() => {
+    if (!open) return;
+    form.resetFields();
+    if (editingContact) {
+      form.setFieldsValue({
+        name: editingContact.name,
+        role: editingContact.role ?? undefined,
+        phone: editingContact.phone ?? undefined,
+        email: editingContact.email ?? undefined,
+        isPrimary: editingContact.isPrimary,
+      });
+    }
+  }, [open, editingContact, form]);
 
   const handleSubmit = async (values: ContactPayload) => {
     setSubmitting(true);
     try {
-      await customerExtrasApi.createContact(customerId, values);
-      message.success("Contact added");
-      form.resetFields();
-      onCreated();
+      if (editingContact) {
+        await customerExtrasApi.updateContact(editingContact.id, values);
+        message.success("Contact updated");
+      } else {
+        await customerExtrasApi.createContact(customerId, values);
+        message.success("Contact added");
+      }
+      onSaved();
     } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to add contact"));
+      message.error(errorMessageFrom(err, isEdit ? "Failed to update contact" : "Failed to add contact"));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal title="Add contact" open={open} onCancel={onClose} onOk={() => form.submit()} confirmLoading={submitting} destroyOnHidden>
+    <Modal title={isEdit ? "Edit contact" : "Add contact"} open={open} onCancel={onClose} onOk={() => form.submit()} confirmLoading={submitting} destroyOnHidden>
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item name="name" label="Name" rules={[{ required: true, message: "Name is required" }]}>
           <Input placeholder="e.g. Sunil Meena" />
@@ -349,8 +385,11 @@ function ContactsTab({
   const [contacts, setContacts] = useState<CustomerContact[] | null>(null);
   const [addresses, setAddresses] = useState<CustomerAddress[] | null>(null);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<CustomerContact | null>(null);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [callingId, setCallingId] = useState<string | null>(null);
+  const [emailContact, setEmailContact] = useState<CustomerContact | null>(null);
+  const { connected: microsoftConnected } = useMicrosoftConnection();
 
   const load = () => {
     customerExtrasApi.listContacts(customerId).then(setContacts).catch(() => setContacts([]));
@@ -400,7 +439,7 @@ function ContactsTab({
         <SectionLabel
           action={
             canUpdate && (
-              <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => setContactModalOpen(true)}>
+              <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => { setEditingContact(null); setContactModalOpen(true); }}>
                 Add
               </Button>
             )
@@ -443,8 +482,8 @@ function ContactsTab({
                     size="small"
                     type="text"
                     icon={<MailOutlined />}
-                    disabled={!c.email}
-                    onClick={() => c.email && (window.location.href = `mailto:${c.email}`)}
+                    disabled={!c.email || !microsoftConnected}
+                    onClick={() => c.email && setEmailContact(c)}
                     title={c.email ? `Email ${c.name}` : "No email on file"}
                   />
                   <Button
@@ -454,6 +493,15 @@ function ContactsTab({
                     onClick={onOpenWhatsApp}
                     title="WhatsApp (shared thread with this account's registered number)"
                   />
+                  {canUpdate && (
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={() => { setEditingContact(c); setContactModalOpen(true); }}
+                      title={`Edit ${c.name}`}
+                    />
+                  )}
                   {canUpdate && (
                     <Popconfirm title="Remove this contact?" onConfirm={() => removeContact(c.id)}>
                       <Button size="small" type="text" icon={<DeleteOutlined />} danger />
@@ -508,8 +556,23 @@ function ContactsTab({
         )}
       </div>
 
-      <AddContactModal open={contactModalOpen} onClose={() => setContactModalOpen(false)} onCreated={() => { setContactModalOpen(false); load(); }} customerId={customerId} />
+      <ContactFormModal
+        open={contactModalOpen}
+        onClose={() => { setContactModalOpen(false); setEditingContact(null); }}
+        onSaved={() => { setContactModalOpen(false); setEditingContact(null); load(); }}
+        customerId={customerId}
+        editingContact={editingContact}
+      />
       <AddAddressModal open={addressModalOpen} onClose={() => setAddressModalOpen(false)} onCreated={() => { setAddressModalOpen(false); load(); }} customerId={customerId} />
+      <EmailComposeDrawer
+        open={Boolean(emailContact)}
+        onClose={() => setEmailContact(null)}
+        leadId={leadId}
+        activityDueDate={null}
+        onSent={() => setEmailContact(null)}
+        overrideEmail={emailContact?.email}
+        overrideName={emailContact?.name}
+      />
     </div>
   );
 }

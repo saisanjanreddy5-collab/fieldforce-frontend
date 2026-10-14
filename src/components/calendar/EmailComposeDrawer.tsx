@@ -33,13 +33,22 @@ interface EmailComposeDrawerProps {
   leadId: string;
   activityDueDate: string | null;
   onSent: () => void;
+  // When set, targets this specific address (e.g. one of a customer's own
+  // contacts) instead of the lead's own email on file - sendMailForLead
+  // (backend) now accepts this as an explicit override, still logged
+  // against the same lead either way. overrideName is display-only, shown
+  // alongside the address in the read-only "To" field below.
+  overrideEmail?: string | null;
+  overrideName?: string | null;
 }
 
-// Always sends to the lead's own email on file - sendMailForLead (backend)
-// has no "to" override, it looks up lead.email itself. The To field here is
-// shown read-only for exactly that reason: an editable field the backend
-// would silently ignore would be a real, deceptive bug, not a convenience.
-export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onSent }: EmailComposeDrawerProps) {
+// Without an override, this always sends to the lead's own email on file -
+// sendMailForLead only uses something else when explicitly told to via
+// overrideEmail. The To field here is shown read-only either way: an
+// editable field the backend would silently ignore (or silently send
+// somewhere the field doesn't show) would be a real, deceptive bug, not a
+// convenience - what's displayed must always be exactly what's used.
+export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onSent, overrideEmail, overrideName }: EmailComposeDrawerProps) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [msStatus, setMsStatus] = useState<MicrosoftConnectionStatus | null>(null);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -86,12 +95,13 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     setBody(applyTemplateTokens(template.body, tokens));
   };
 
-  const canSend = Boolean(msStatus?.connected) && Boolean(lead?.email) && subject.trim().length > 0 && body.trim().length > 0;
+  const recipient = overrideEmail ?? lead?.email ?? null;
+  const canSend = Boolean(msStatus?.connected) && Boolean(recipient) && subject.trim().length > 0 && body.trim().length > 0;
 
   const handleSend = async () => {
     setSending(true);
     try {
-      await microsoftApi.sendLeadEmail(leadId, subject.trim(), body, attachments);
+      await microsoftApi.sendLeadEmail(leadId, subject.trim(), body, attachments, overrideEmail ?? undefined);
       message.success("Email sent");
       onSent();
     } catch (err) {
@@ -232,10 +242,10 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                     background: appTokens.surfaceMuted,
                     border: `1px solid ${appTokens.borderLight}`,
                     fontSize: 14,
-                    color: lead?.email ? appTokens.textPrimary : appTokens.textTertiary,
+                    color: recipient ? appTokens.textPrimary : appTokens.textTertiary,
                   }}
                 >
-                  {lead?.email ?? "No email on file for this lead"}
+                  {recipient ? (overrideName ? `${overrideName} <${recipient}>` : recipient) : "No email on file for this lead"}
                 </div>
               </div>
               <div style={{ flexShrink: 0 }}>
