@@ -15,6 +15,17 @@ body {
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* The Customer detail panel's own tab row (Overview/Contacts/Transactions/
+   WhatsApp/Activity) - 5 tabs at antd's default ~32px inter-tab margin
+   overflows the panel's real width at 1280px (confirmed: "Activity"
+   silently collapses into antd's own "more" overflow dropdown instead of
+   showing like the other 4), even though it fits fine at wider widths.
+   Tightening the gap reclaims enough room without needing to shrink the
+   panel itself or abbreviate any label. */
+.customer-detail-tabs .ant-tabs-tab + .ant-tabs-tab {
+  margin-left: 14px !important;
+}
+
 /* Keeps horizontally-scrollable rows (e.g. filter tab chips) usable by
    touch/drag/wheel without showing a bulky native scrollbar track. */
 .scrollbar-hidden {
