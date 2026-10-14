@@ -231,7 +231,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
           )}
-          {activeTabKey === "whatsapp" && <WhatsAppTab lead={lead} />}
+          {activeTabKey === "whatsapp" && <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} />}
           {activeTabKey === "logs" && <LogsTab activities={activities} loading={activitiesLoading} />}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
           {activeTabKey === "approvals" && (

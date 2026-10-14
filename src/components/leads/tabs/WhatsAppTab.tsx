@@ -4,7 +4,6 @@ import { CheckOutlined, PaperClipOutlined, SendOutlined, WhatsAppOutlined } from
 import { WhatsAppLogo } from "../../icons/BrandIcons";
 import * as whatsappApi from "../../../api/whatsapp-api";
 import type { WhatsappMessage } from "../../../types/whatsapp";
-import type { Lead } from "../../../types/lead";
 import { errorMessageFrom } from "../../../utils/api-error";
 import { avatarGradient, appTokens } from "../../../utils/design-system";
 import { initials } from "../../../utils/lead-format";
@@ -12,7 +11,14 @@ import { initials } from "../../../utils/lead-format";
 const { Text } = Typography;
 
 interface WhatsAppTabProps {
-  lead: Lead;
+  // Primitive props, not a full Lead - WhatsApp is genuinely one-thread-
+  // per-lead (not per-contact, not customer-specific), so this tab is
+  // reused as-is from Customers (every customer traces back to exactly
+  // one lead) without that caller needing to fetch a full Lead object just
+  // to satisfy this component's old prop shape.
+  leadId: string;
+  fullName: string;
+  phone: string | null;
 }
 
 // The outbound bubble reuses the app's own primary gradient (same one
@@ -117,7 +123,7 @@ function EmptyState() {
   );
 }
 
-export function WhatsAppTab({ lead }: WhatsAppTabProps) {
+export function WhatsAppTab({ leadId, fullName, phone }: WhatsAppTabProps) {
   const [messages, setMessages] = useState<WhatsappMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -127,7 +133,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
   const load = () => {
     setLoading(true);
     whatsappApi
-      .listMessagesForLead(lead.id)
+      .listMessagesForLead(leadId)
       .then(setMessages)
       .catch((err) => message.error(errorMessageFrom(err, "Failed to load WhatsApp messages")))
       .finally(() => setLoading(false));
@@ -136,7 +142,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lead.id]);
+  }, [leadId]);
 
   // Inbound messages arrive via a server-side webhook, not anything this tab
   // triggered itself - without this, a real reply from the lead only ever
@@ -150,7 +156,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       whatsappApi
-        .listMessagesForLead(lead.id)
+        .listMessagesForLead(leadId)
         .then((fresh) => {
           setMessages((prev) => {
             const samePrevLast = prev[prev.length - 1]?.id;
@@ -161,7 +167,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
         .catch(() => undefined);
     }, 5000);
     return () => clearInterval(interval);
-  }, [lead.id]);
+  }, [leadId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -172,7 +178,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
     if (!body) return;
     setSending(true);
     try {
-      const sent = await whatsappApi.sendMessage(lead.id, body);
+      const sent = await whatsappApi.sendMessage(leadId, body);
       setMessages((prev) => [...prev, sent]);
       setDraft("");
     } catch (err) {
@@ -218,13 +224,13 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
           borderTopRightRadius: appTokens.radiusLg,
         }}
       >
-        <Avatar shape="square" size={40} style={{ background: avatarGradient(lead.fullName), borderRadius: appTokens.radiusSm, fontWeight: 600, fontSize: 14 }}>
-          {initials(lead.fullName)}
+        <Avatar shape="square" size={40} style={{ background: avatarGradient(fullName), borderRadius: appTokens.radiusSm, fontWeight: 600, fontSize: 14 }}>
+          {initials(fullName)}
         </Avatar>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <Text strong style={{ fontSize: 14, color: appTokens.textPrimary }}>
-              {lead.fullName}
+              {fullName}
             </Text>
             <span
               style={{
@@ -243,7 +249,7 @@ export function WhatsAppTab({ lead }: WhatsAppTabProps) {
               WhatsApp
             </span>
           </div>
-          <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{formatPhone(lead.phone)}</Text>
+          <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{formatPhone(phone)}</Text>
         </div>
       </div>
 

@@ -39,6 +39,8 @@ import * as salesTeamApi from "../../api/sales-team-api";
 import * as smartfloApi from "../../api/smartflo-api";
 import * as microsoftApi from "../../api/microsoft-api";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
+import { useAuth } from "../../context/AuthContext";
+import { EmailComposeDrawer } from "../calendar/EmailComposeDrawer";
 import type { Customer } from "../../types/customer";
 import type { TeamMember } from "../../types/user";
 import type { State } from "../../types/sales-team";
@@ -54,6 +56,7 @@ import type {
   TransactionFeedItem,
 } from "../../types/customer-extras";
 import { TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
+import { WhatsAppTab } from "../leads/tabs/WhatsAppTab";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { avatarGradient, appTokens } from "../../utils/design-system";
@@ -331,9 +334,18 @@ function AddAddressModal({ open, onClose, onCreated, customerId }: { open: boole
   );
 }
 
-function ContactsTab({ customerId, leadId, canUpdate }: { customerId: string; leadId: string; canUpdate: boolean }) {
+function ContactsTab({
+  customerId,
+  leadId,
+  canUpdate,
+  onOpenWhatsApp,
+}: {
+  customerId: string;
+  leadId: string;
+  canUpdate: boolean;
+  onOpenWhatsApp: () => void;
+}) {
   const { message } = App.useApp();
-  const navigate = useNavigate();
   const [contacts, setContacts] = useState<CustomerContact[] | null>(null);
   const [addresses, setAddresses] = useState<CustomerAddress[] | null>(null);
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -439,7 +451,7 @@ function ContactsTab({ customerId, leadId, canUpdate }: { customerId: string; le
                     size="small"
                     type="text"
                     icon={<WhatsAppLogo size={13} />}
-                    onClick={() => navigate(`/leads?leadId=${leadId}&tab=whatsapp`)}
+                    onClick={onOpenWhatsApp}
                     title="WhatsApp (shared thread with this account's registered number)"
                   />
                   {canUpdate && (
@@ -749,6 +761,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const hasPermission = useHasPermission();
   const canUpdate = hasPermission("customers.update");
   const { connected: microsoftConnected } = useMicrosoftConnection();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -762,6 +775,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("overview");
   const [calling, setCalling] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const load = () => {
     if (!customerId) return;
@@ -807,17 +821,34 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
     }
   };
 
-  const handleCall = async () => {
+  // Same real checks and confirmation step as LeadDetail.tsx's own
+  // handleCall - this used to skip both (no smartfloAgentNumber guard, no
+  // confirm dialog), which wasn't a deliberate simplification, it was a gap:
+  // clicking Call here placed a real phone call with no heads-up and no
+  // guidance when the only thing actually missing was the caller's own
+  // Smartflo number.
+  const handleCall = () => {
     if (!customer?.leadId) return;
-    setCalling(true);
-    try {
-      await smartfloApi.callLead(customer.leadId);
-      message.success("Calling now");
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to place the call"));
-    } finally {
-      setCalling(false);
+    if (!user?.smartfloAgentNumber) {
+      message.error("Set your calling number from your profile (top right) first");
+      return;
     }
+    Modal.confirm({
+      title: `Call ${customer.fullName}?`,
+      content: `Calling from ${user.smartfloAgentNumber} to ${customer.phone}. Your phone rings first - answer it to connect.`,
+      okText: "Call now",
+      onOk: async () => {
+        setCalling(true);
+        try {
+          await smartfloApi.callLead(customer.leadId);
+          message.success("Call started - answer your phone to connect");
+        } catch (err) {
+          message.error(errorMessageFrom(err, "Failed to start call"));
+        } finally {
+          setCalling(false);
+        }
+      },
+    });
   };
 
   // Same real Microsoft Graph flow as LeadDetail.tsx's own Teams button -
@@ -906,22 +937,25 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-          <Button size="small" icon={<PhoneOutlined />} loading={calling} disabled={!customer.leadId} onClick={handleCall}>
-            Call
-          </Button>
-          <Button
-            size="small"
-            icon={<MailOutlined />}
-            disabled={!customer.email}
-            onClick={() => customer.email && (window.location.href = `mailto:${customer.email}`)}
+          <Tooltip title={!customer.phone ? "This customer has no phone number on file" : "Call"}>
+            <Button size="small" icon={<PhoneOutlined />} loading={calling} disabled={!customer.phone} onClick={handleCall}>
+              Call
+            </Button>
+          </Tooltip>
+          <Tooltip
+            title={
+              !microsoftConnected
+                ? "Connect your Microsoft 365 account from your profile (top right) first"
+                : !customer.email
+                  ? "This customer has no email address on file"
+                  : "Email"
+            }
           >
-            Email
-          </Button>
-          <Button
-            size="small"
-            icon={<WhatsAppLogo size={13} />}
-            onClick={() => navigate(`/leads?leadId=${customer.leadId}&tab=whatsapp`)}
-          >
+            <Button size="small" icon={<MailOutlined />} disabled={!microsoftConnected || !customer.email} onClick={() => setEmailOpen(true)}>
+              Email
+            </Button>
+          </Tooltip>
+          <Button size="small" icon={<WhatsAppLogo size={13} />} onClick={() => setTab("whatsapp")}>
             WhatsApp
           </Button>
           <Tooltip
@@ -967,10 +1001,12 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
           activeKey={tab}
           onChange={setTab}
           size="small"
+          className="customer-detail-tabs"
           items={[
             { key: "overview", label: "Overview" },
             { key: "contacts", label: "Contacts" },
             { key: "transactions", label: "Transactions" },
+            { key: "whatsapp", label: "WhatsApp" },
             { key: "activity", label: "Activity" },
           ]}
         />
@@ -978,10 +1014,13 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
           {tab === "overview" && (
             <OverviewTab customer={customer} canUpdate={canUpdate} users={users} stateName={stateName} saving={saving} onUpdate={applyUpdate} />
           )}
-          {tab === "contacts" && <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} />}
+          {tab === "contacts" && (
+            <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={() => setTab("whatsapp")} />
+          )}
           {tab === "transactions" && (
             <TransactionsTab key={txRefreshKey} customerId={customer.id} canUpdate={canUpdate} onDataChanged={load} />
           )}
+          {tab === "whatsapp" && <WhatsAppTab leadId={customer.leadId} fullName={customer.fullName} phone={customer.phone} />}
           {tab === "activity" && <ActivityTimelineTab customerId={customer.id} />}
         </div>
       </div>
@@ -1049,6 +1088,17 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
         }}
         customerId={customer.id}
       />
+
+      {/* Same real Microsoft Graph compose drawer LeadDetail.tsx's own Email
+          button opens - real templates, real attachments, same leadId-keyed
+          backend endpoint (sendLeadEmail has no customer-specific variant,
+          and doesn't need one: every customer traces back to exactly one
+          lead). Replaces a plain mailto: link, which just handed off to
+          whatever desktop mail app happened to be installed with a blank,
+          template-less compose window - not a real send, not logged
+          anywhere, and not consistent with how every other communication
+          button here already works. */}
+      <EmailComposeDrawer open={emailOpen} onClose={() => setEmailOpen(false)} leadId={customer.leadId} activityDueDate={null} onSent={() => setEmailOpen(false)} />
     </div>
   );
 }
