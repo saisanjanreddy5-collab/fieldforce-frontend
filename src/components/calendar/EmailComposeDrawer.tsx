@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Drawer, Input, Typography, message } from "antd";
+import { Button, Drawer, Input, Select, Typography, message } from "antd";
 import { CloseOutlined, PaperClipOutlined } from "@ant-design/icons";
 import { OutlookLogo } from "../icons/BrandIcons";
 import * as leadApi from "../../api/lead-api";
@@ -56,6 +56,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
   const [templateKey, setTemplateKey] = useState(BLANK_TEMPLATE_KEY);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [cc, setCc] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
@@ -66,6 +67,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     setTemplateKey(BLANK_TEMPLATE_KEY);
     setSubject("");
     setBody("");
+    setCc([]);
     setAttachments([]);
     Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus(), messageTemplateApi.listMessageTemplates("email")])
       .then(([leadResult, statusResult, templatesResult]) => {
@@ -96,13 +98,16 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
   };
 
   const recipient = overrideEmail ?? lead?.email ?? null;
-  const canSend = Boolean(msStatus?.connected) && Boolean(recipient) && subject.trim().length > 0 && body.trim().length > 0;
+  const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const ccAllValid = cc.every((e) => EMAIL_SHAPE.test(e));
+  const canSend =
+    Boolean(msStatus?.connected) && Boolean(recipient) && subject.trim().length > 0 && body.trim().length > 0 && ccAllValid;
 
   const handleSend = async () => {
     setSending(true);
     try {
-      await microsoftApi.sendLeadEmail(leadId, subject.trim(), body, attachments, overrideEmail ?? undefined);
-      message.success("Email sent");
+      await microsoftApi.sendLeadEmail(leadId, subject.trim(), body, attachments, overrideEmail ?? undefined, cc);
+      message.success(cc.length > 0 ? `Email sent (cc: ${cc.length})` : "Email sent");
       onSent();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to send email"));
@@ -247,6 +252,27 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                 >
                   {recipient ? (overrideName ? `${overrideName} <${recipient}>` : recipient) : "No email on file for this lead"}
                 </div>
+              </div>
+              <div style={{ flexShrink: 0 }}>
+                <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  Cc
+                </Text>
+                <Select
+                  mode="tags"
+                  style={{ width: "100%", marginTop: 5 }}
+                  value={cc}
+                  onChange={setCc}
+                  tokenSeparators={[",", ";", " "]}
+                  placeholder="Add a CC address and press Enter"
+                  suffixIcon={null}
+                  dropdownStyle={{ display: "none" }}
+                  status={!ccAllValid ? "error" : undefined}
+                />
+                {!ccAllValid && (
+                  <Text style={{ fontSize: 11.5, color: appTokens.danger, display: "block", marginTop: 3 }}>
+                    One of these doesn't look like a valid email address
+                  </Text>
+                )}
               </div>
               <div style={{ flexShrink: 0 }}>
                 <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>

@@ -5,7 +5,7 @@ import { MenuOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
-import { NAV_GROUPS } from "./nav-config";
+import { ALL_NAV_LEAVES, NAV_GROUPS } from "./nav-config";
 import { SoftphoneWidget } from "./SoftphoneWidget";
 import { GlobalSearch } from "./GlobalSearch";
 import { ProfileDrawer } from "./ProfileDrawer";
@@ -88,6 +88,14 @@ export function AppLayout() {
           })),
       })).filter((group) => group.children.length > 0),
     [hasPermission]
+  );
+
+  // Whichever module the current route belongs to - falls back to "CRM"
+  // only for a path with no matching nav leaf (shouldn't normally happen,
+  // since every real route is listed in nav-config.tsx).
+  const currentModuleLabel = useMemo(
+    () => ALL_NAV_LEAVES.find((item) => item.path === location.pathname)?.label ?? "CRM",
+    [location.pathname]
   );
 
   // The Microsoft OAuth round-trip lands back here (the app root) regardless
@@ -175,10 +183,14 @@ export function AppLayout() {
               icon={<MenuOutlined />}
               onClick={() => (isMobile ? setMobileNavOpen(true) : setDesktopCollapsed(!desktopCollapsed))}
             />
-            {/* A single, static label rather than a Sales/Onboarding/Support-style
-                tab switcher - this app is just the one CRM module, there's
-                nothing else to switch between. */}
+            {/* Names the current module instead of a static "CRM" label - the
+                page's own on-screen title moved up here (see LeadsPage/
+                OpportunitiesPage), so this is now the one place that shows
+                it. maxWidth+ellipsis handles a long module name (e.g. "Sales
+                force management") without breaking the pill's shape or
+                wrapping. */}
             <div
+              title={currentModuleLabel}
               style={{
                 background: appTokens.primarySoft,
                 color: appTokens.primary,
@@ -189,9 +201,13 @@ export function AppLayout() {
                 borderRadius: 999,
                 border: `1px solid ${appTokens.primarySoftBorder}`,
                 letterSpacing: 0.3,
+                maxWidth: 170,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              CRM
+              {currentModuleLabel}
             </div>
           </div>
 

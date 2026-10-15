@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Empty, Grid, Typography, message } from "antd";
-import { ArrowLeftOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Empty, Grid, Popover, Typography, message } from "antd";
+import { ArrowLeftOutlined, DownOutlined, PlusOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import * as leadApi from "../api/lead-api";
 import type { Lead, LeadListFilters } from "../types/lead";
@@ -8,17 +8,16 @@ import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { LeadQueue } from "../components/leads/LeadQueue";
 import { LeadFilterToolbar } from "../components/leads/LeadFilterToolbar";
-import type { QuickFilterKey } from "../components/leads/LeadFilterBar";
+import { LeadFilterBar, QUICK_FILTERS, type QuickFilterKey } from "../components/leads/LeadFilterBar";
 import type { AdvancedFilters } from "../components/leads/LeadFilters";
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
-import { LeadMiningModal } from "../components/leads/LeadMiningModal";
 import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 
-const { Title } = Typography;
 const { useBreakpoint } = Grid;
+const { Text } = Typography;
 
 const PAGE_SIZE = 30;
 
@@ -54,8 +53,8 @@ export default function LeadsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [miningOpen, setMiningOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [quickFilterOpen, setQuickFilterOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [deepLinkedLead, setDeepLinkedLead] = useState<Lead | null>(null);
   const [deepLinkedTab, setDeepLinkedTab] = useState<string | undefined>();
@@ -254,24 +253,31 @@ export default function LeadsPage() {
         ...(isMobile ? {} : { height: "100%", display: "flex", flexDirection: "column" }),
       }}
     >
-      {!showDetailOnMobile && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
-          <div>
-            <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
-              Leads
-            </Title>
-            <Typography.Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
-              {total} lead{total === 1 ? "" : "s"} · Franchise enquiries and inbound interest
-            </Typography.Text>
-          </div>
+      {/* Mobile only - a real, narrow single column already wraps this
+          however many times it needs to regardless of how it's grouped, so
+          it keeps the one simple combined row. Desktop gets a different,
+          deliberate split (see the list rail below): shrinking this to just
+          its first few chips, moving the rest + these buttons down into the
+          rail's own column, is what lets the detail pane on the right start
+          a full row higher instead of waiting for this to clear first. */}
+      {isMobile && !showDetailOnMobile && (
+        <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+          <LeadFilterBar value={quickFilter} onChange={setQuickFilter} counts={counts} />
+          <div style={{ width: 1, height: 22, background: appTokens.border, flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {hasPermission("leads.export") && <Button onClick={handleExportLeads}>Export</Button>}
-            <Button onClick={() => setImportOpen(true)}>Import</Button>
-            <Button onClick={() => setMiningOpen(true)}>Lead mining</Button>
+            {hasPermission("leads.export") && (
+              <Button style={{ paddingInline: 10 }} onClick={handleExportLeads}>
+                Export
+              </Button>
+            )}
+            <Button style={{ paddingInline: 10 }} onClick={() => setImportOpen(true)}>
+              Import
+            </Button>
             {hasPermission("leads.create") && (
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
+                style={{ paddingInline: 12 }}
                 onClick={() => {
                   setEditingLead(null);
                   setDrawerOpen(true);
@@ -284,18 +290,7 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {!showDetailOnMobile && (
-        <LeadFilterToolbar
-          quickFilter={quickFilter}
-          onQuickFilterChange={setQuickFilter}
-          advancedFilters={advancedFilters}
-          onAdvancedFiltersChange={setAdvancedFilters}
-          activeFilterTags={activeFilterTags}
-          counts={counts}
-          total={total}
-          loading={loading}
-        />
-      )}
+      {!showDetailOnMobile && <LeadFilterToolbar activeFilterTags={activeFilterTags} />}
 
       {isMobile ? (
         <div style={{ display: "flex" }}>
@@ -323,6 +318,8 @@ export default function LeadsPage() {
                 onSearchChange={setSearch}
                 collapsed={false}
                 onToggleCollapsed={() => undefined}
+                advancedFilters={advancedFilters}
+                onAdvancedFiltersChange={setAdvancedFilters}
               />
             </div>
           )}
@@ -376,23 +373,145 @@ export default function LeadsPage() {
               flexShrink: 0,
               borderRight: `1px solid ${appTokens.borderLight}`,
               height: "100%",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <LeadQueue
-              leads={leads}
-              total={total}
-              loading={loading}
-              loadingMore={loadingMore}
-              hasMore={hasMore}
-              onLoadMore={loadMore}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              showOwner={showOwner}
-              search={search}
-              onSearchChange={setSearch}
-              collapsed={railCollapsed}
-              onToggleCollapsed={() => setRailCollapsed((v) => !v)}
-            />
+            {/* The quick filters + Export/Import/+New lead, scoped to this
+                column's own width instead of the full page - this is what
+                lets the detail pane on the right start flush at the top of
+                the shared box instead of waiting for a full-width row to
+                clear above it first. The filters themselves use the "list"
+                layout (a compact facet list: dot + label + count, no pill
+                border) rather than stretched chip-pills - stretching a
+                small toggle like "Unassigned" to fill half this narrow
+                column read as bloated, and made filters look like the same
+                kind of control as the real action buttons below them. A
+                plain vertical list is both more information-dense and a
+                clearer visual break from those buttons. New lead - the one
+                genuinely primary action here - gets its own full-width row
+                rather than sharing one with Export/Import, so it reads as a
+                deliberate "finishing" button. Hidden alongside the rest of
+                this column's own content when collapsed, same as the
+                search bar below. */}
+            {!railCollapsed && (
+              <div style={{ padding: "14px 20px 0", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
+                {/* Collapsed to one compact row by default - showing all 6 as
+                    an always-open list pushed the actual lead rows below the
+                    fold, so only 1-2 were visible without scrolling first.
+                    Clicking this trigger opens the exact same list (still
+                    "list" layout, same component) in a popover instead - same
+                    options, same counts, one click away, but costs nothing
+                    in the common case of not actively switching filters. */}
+                <Popover
+                  open={quickFilterOpen}
+                  onOpenChange={setQuickFilterOpen}
+                  trigger="click"
+                  placement="bottomLeft"
+                  overlayInnerStyle={{ padding: 6, width: 220 }}
+                  content={
+                    <LeadFilterBar
+                      value={quickFilter}
+                      onChange={(v) => {
+                        setQuickFilter(v);
+                        setQuickFilterOpen(false);
+                      }}
+                      counts={counts}
+                      layout="list"
+                    />
+                  }
+                >
+                  <button
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      padding: "7px 10px",
+                      borderRadius: appTokens.radiusSm,
+                      border: `1px solid ${appTokens.border}`,
+                      background: appTokens.surface,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontFamily: appTokens.font,
+                      boxShadow: appTokens.shadowXs,
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      {(() => {
+                        const activeFilter = QUICK_FILTERS.find((f) => f.key === quickFilter) ?? QUICK_FILTERS[0];
+                        return (
+                          <>
+                            <span
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: "50%",
+                                background: activeFilter.dotColor ?? appTokens.border,
+                                display: "inline-block",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Text strong style={{ fontSize: 13 }}>
+                              {activeFilter.label}
+                            </Text>
+                            {counts && (
+                              <Text style={{ fontSize: 11, fontWeight: 700, color: appTokens.textTertiary }}>
+                                {activeFilter.count(counts)}
+                              </Text>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </span>
+                    <DownOutlined style={{ fontSize: 10, color: appTokens.textTertiary }} />
+                  </button>
+                </Popover>
+                <div style={{ height: 1, background: appTokens.borderLight, margin: "2px 0" }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  {hasPermission("leads.export") && (
+                    <Button style={{ flex: 1 }} onClick={handleExportLeads}>
+                      Export
+                    </Button>
+                  )}
+                  <Button style={{ flex: 1 }} onClick={() => setImportOpen(true)}>
+                    Import
+                  </Button>
+                </div>
+                {hasPermission("leads.create") && (
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    block
+                    onClick={() => {
+                      setEditingLead(null);
+                      setDrawerOpen(true);
+                    }}
+                  >
+                    New lead
+                  </Button>
+                )}
+              </div>
+            )}
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <LeadQueue
+                leads={leads}
+                total={total}
+                loading={loading}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                showOwner={showOwner}
+                search={search}
+                onSearchChange={setSearch}
+                collapsed={railCollapsed}
+                onToggleCollapsed={() => setRailCollapsed((v) => !v)}
+                advancedFilters={advancedFilters}
+                onAdvancedFiltersChange={setAdvancedFilters}
+              />
+            </div>
           </div>
 
           <div style={{ flex: 1, minWidth: 0, padding: 20, overflowY: "auto" }}>
@@ -438,7 +557,6 @@ export default function LeadsPage() {
         onSaved={handleSaved}
       />
       <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load(1, false)} />
-      <LeadMiningModal open={miningOpen} onClose={() => setMiningOpen(false)} />
     </div>
   );
 }
