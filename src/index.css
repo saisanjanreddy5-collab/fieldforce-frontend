@@ -107,6 +107,12 @@ body {
   background: #f7f8fa;
 }
 
+/* Leads list rail: quick-filter facet list row hover (the inactive rows
+   only - an active row keeps its own highlighted background instead). */
+.quick-filter-row:hover {
+  background: #f7f8fa;
+}
+
 /* Generic AntD Table row hover treatment - used by any list view table
    across the app (Opportunities, FOFO onboarding, ...) instead of each
    module duplicating the same rule under its own name. */

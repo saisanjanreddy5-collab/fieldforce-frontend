@@ -23,7 +23,7 @@ import { useHasPermission } from "../hooks/use-permission";
 import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS).map((c) => ({ value: c, label: c }));
 
@@ -210,13 +210,9 @@ export default function OpportunitiesPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
-            Opportunity pipeline
-          </Title>
-          <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Drag a card to move it between stages. Lost reasons are captured on exit.</Text>
-        </div>
+      {/* No page title/caption here - the current module name now shows
+          once, in the top app header, instead of twice. */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           {hasPermission("opportunities.export") && <Button onClick={handleExportOpportunities}>Export</Button>}
           <Segmented
@@ -282,14 +278,17 @@ export default function OpportunitiesPage() {
       )}
 
       <div style={{ marginBottom: 10 }}>
-        {/* Widths tightened (was 140-180px each, ~1180px total) so all 7
-            filters fit on a single row at a real 1280px screen (~1000px
-            available after the sidebar) instead of the last 2 wrapping onto
-            their own second line. */}
+        {/* A guessed fixed pixel width per dropdown (115-145px) used to
+            force early "..." truncation on some labels while leaving
+            trailing dead padding before the arrow on others - the width a
+            label actually needs and the width it was assigned didn't match.
+            minWidth, not width: each one now sizes to its own real content
+            (antd's own default Select sizing), so nothing truncates or
+            leaves a gap that doesn't belong there. */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 115, flexShrink: 0 }}
+            style={{ minWidth: 110, flexShrink: 0 }}
             value={zoneFilter ?? "all"}
             onChange={(v) => setZoneFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All regions" }, ...zones.map((z) => ({ value: z.id, label: z.name }))]}
@@ -298,14 +297,14 @@ export default function OpportunitiesPage() {
             prefix={FILTER_DOT}
             showSearch
             optionFilterProp="label"
-            style={{ width: 130, flexShrink: 0 }}
+            style={{ minWidth: 120, flexShrink: 0 }}
             value={territoryFilter ?? "all"}
             onChange={(v) => setTerritoryFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All territories" }, ...territories.map((t) => ({ value: t, label: t }))]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 130, flexShrink: 0 }}
+            style={{ minWidth: 130, flexShrink: 0 }}
             value={salesTeamFilter ?? "all"}
             onChange={(v) => setSalesTeamFilter(v === "all" ? undefined : v)}
             options={[
@@ -315,28 +314,28 @@ export default function OpportunitiesPage() {
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 130, flexShrink: 0 }}
+            style={{ minWidth: 125, flexShrink: 0 }}
             value={managerFilter ?? "all"}
             onChange={(v) => setManagerFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All managers" }, ...managerOptions.map((u) => ({ value: u.id, label: u.name }))]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 145, flexShrink: 0 }}
+            style={{ minWidth: 140, flexShrink: 0 }}
             value={ownerFilter ?? "all"}
             onChange={(v) => setOwnerFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All salespersons" }, ...users.map((u) => ({ value: u.id, label: u.name }))]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 130, flexShrink: 0 }}
+            style={{ minWidth: 120, flexShrink: 0 }}
             value={stageFilter ?? "all"}
             onChange={(v) => setStageFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All stages" }, ...STAGE_OPTIONS]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 130, flexShrink: 0 }}
+            style={{ minWidth: 130, flexShrink: 0 }}
             value={categoryFilter ?? "all"}
             onChange={(v) => setCategoryFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All categories" }, ...CATEGORY_OPTIONS]}

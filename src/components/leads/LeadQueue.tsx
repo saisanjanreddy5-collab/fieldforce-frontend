@@ -4,6 +4,7 @@ import { DoubleLeftOutlined, DoubleRightOutlined, SearchOutlined } from "@ant-de
 import type { Lead } from "../../types/lead";
 import { appTokens } from "../../utils/design-system";
 import { LeadRow } from "./LeadRow";
+import { LeadFilters, type AdvancedFilters } from "./LeadFilters";
 
 const { Text } = Typography;
 
@@ -21,15 +22,16 @@ interface LeadQueueProps {
   onSearchChange: (value: string) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  advancedFilters: AdvancedFilters;
+  onAdvancedFiltersChange: (value: AdvancedFilters) => void;
 }
 
-// The narrow list rail: search + collapse control, then the row list
-// itself. Quick filters, the Filters popover, active-filter tags and the
-// result count all live in the full-width LeadFilterToolbar above the
-// list/detail split instead - this column is too narrow for them. No border
-// of its own - the caller (LeadsPage) wraps this and LeadDetail in one
-// shared card with a single internal divider, instead of two separate
-// floating boxes with a gap between them.
+// The narrow list rail: search + Filters + collapse control, then the row
+// list itself. Quick filters and active-filter tags live in the full-width
+// header/toolbar above the list/detail split instead - this column is too
+// narrow for those. No border of its own - the caller (LeadsPage) wraps
+// this and LeadDetail in one shared card with a single internal divider,
+// instead of two separate floating boxes with a gap between them.
 export function LeadQueue({
   leads,
   total,
@@ -44,6 +46,8 @@ export function LeadQueue({
   onSearchChange,
   collapsed,
   onToggleCollapsed,
+  advancedFilters,
+  onAdvancedFiltersChange,
 }: LeadQueueProps) {
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -72,7 +76,9 @@ export function LeadQueue({
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           allowClear
+          style={{ flex: 1, minWidth: 0 }}
         />
+        <LeadFilters value={advancedFilters} onChange={onAdvancedFiltersChange} />
         <Button icon={<DoubleLeftOutlined />} onClick={onToggleCollapsed} title="Collapse list" />
       </div>
 

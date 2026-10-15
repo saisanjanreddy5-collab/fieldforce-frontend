@@ -26,12 +26,14 @@ export async function sendLeadEmail(
   subject: string,
   body: string,
   attachments: File[] = [],
-  toEmail?: string
+  toEmail?: string,
+  ccEmails?: string[]
 ): Promise<void> {
   const formData = new FormData();
   formData.append("subject", subject);
   formData.append("body", body);
   if (toEmail) formData.append("toEmail", toEmail);
+  if (ccEmails && ccEmails.length > 0) formData.append("ccEmails", ccEmails.join(","));
   attachments.forEach((file) => formData.append("attachments", file));
   await apiClient.post(`/leads/${leadId}/microsoft/email`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
