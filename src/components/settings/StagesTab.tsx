@@ -116,7 +116,7 @@ export function StagesTab() {
                   textAlign: "center",
                   fontWeight: 600,
                   border: "none",
-                  color: stage.isActive ? appTokens.success : appTokens.textTertiary,
+                  color: stage.isActive ? appTokens.successStrong : appTokens.textTertiary,
                   background: stage.isActive ? `${appTokens.success}17` : appTokens.surfaceMuted,
                   flexShrink: 0,
                 }}

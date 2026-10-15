@@ -1,10 +1,17 @@
 import dayjs from "dayjs";
+import { appTokens } from "./design-system";
 
+// Measured against white: the old literal hexes here (bypassing the shared
+// design tokens entirely) ranged from borderline to severely failing as
+// text color - the 40-69 amber band (#eda100) was only 2.17:1, and the
+// null/no-score gray (#c3c2b7) just 1.79:1, against a 4.5:1 floor. Reusing
+// the same *Strong tokens the Settings status pills use keeps this one
+// real, accessible set of colors instead of a second, uncoordinated one.
 export function scoreColor(score: number | null): string {
-  if (score === null) return "#c3c2b7";
-  if (score >= 70) return "#0ca30c";
-  if (score >= 40) return "#eda100";
-  return "#e34948";
+  if (score === null) return appTokens.textTertiary;
+  if (score >= 70) return appTokens.successStrong;
+  if (score >= 40) return appTokens.warningStrong;
+  return appTokens.danger;
 }
 
 export function initials(name: string): string {

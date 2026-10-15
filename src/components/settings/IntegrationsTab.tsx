@@ -95,7 +95,7 @@ export function IntegrationsTab() {
               textAlign: "center",
               fontWeight: 600,
               border: "none",
-              color: row.status === "not_connected" ? appTokens.textTertiary : appTokens.success,
+              color: row.status === "not_connected" ? appTokens.textTertiary : appTokens.successStrong,
               background: row.status === "not_connected" ? appTokens.surfaceMuted : `${appTokens.success}17`,
               flexShrink: 0,
             }}

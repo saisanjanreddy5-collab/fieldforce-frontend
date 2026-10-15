@@ -42,11 +42,16 @@ export const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: "exited", label: "Exited" },
 ];
 
-export const STATUS_COLORS: Record<string, string> = {
-  active: "green",
-  on_leave: "orange",
-  onboarding: "blue",
-  exited: "default",
+// Custom {bg, color} pairs, not antd's preset Tag color="green"/"orange"/
+// "blue" strings - those presets measured only ~3.0-3.4:1 for their own
+// text-on-background pairing when audited, below the 4.5:1 floor for small
+// bold text. The *Strong design tokens exist specifically for this: the
+// same hue, deepened enough to pass against its own pale tint.
+export const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  active: { bg: `${appTokens.success}17`, color: appTokens.successStrong },
+  on_leave: { bg: `${appTokens.warning}17`, color: appTokens.warningStrong },
+  onboarding: { bg: `${appTokens.primary}17`, color: appTokens.infoStrong },
+  exited: { bg: appTokens.surfaceMuted, color: appTokens.textTertiary },
 };
 
 interface FormValues {
@@ -297,13 +302,20 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
   }, [open, zoneId, form, offices]);
 
   const selectedLevel = levels.find((l) => l.id === levelId);
+  // Someone with login access disabled shouldn't be newly assignable as a
+  // manager - same reasoning offices/levels already apply to their own
+  // isActive candidates elsewhere in this wizard. Doesn't affect anyone
+  // already assigned as a manager before being disabled - that's read from
+  // `users` directly (the collapsed summary above), not from this filtered
+  // candidate list.
   const managerCandidates = selectedLevel
     ? users.filter((u) => {
         if (user && u.id === user.id) return false;
+        if (!u.isActive) return false;
         const uLevel = levels.find((l) => l.id === u.levelId);
         return uLevel ? uLevel.sortOrder < selectedLevel.sortOrder : false;
       })
-    : users.filter((u) => !user || u.id !== user.id);
+    : users.filter((u) => u.isActive && (!user || u.id !== user.id));
   const directReportCounts = new Map<string, number>();
   for (const u of users) {
     if (!u.managerId) continue;
@@ -621,7 +633,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       <Form.Item
                         name="levelId"
                         label="Level"
-                        tooltip="Ladder position (or Administrator/Finance) - also determines their real backend access tier"
+                        tooltip="Ladder position (or Admin/Finance) - also determines their real backend access tier"
                         // Only required when creating - the backend itself requires a Level
                         // (or a role) on every new account, with no frontend role picker as a
                         // fallback, so skipping this here would let a brand-new user submit

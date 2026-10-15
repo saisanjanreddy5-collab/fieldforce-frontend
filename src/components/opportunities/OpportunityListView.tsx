@@ -58,7 +58,15 @@ export function OpportunityListView({ opportunities, loading, onEdit }: Opportun
           key: "opportunity",
           render: (_, o) => (
             <div>
-              <Text strong>{o.name ?? o.leadFullName ?? "Untitled"}</Text>
+              <Text strong>{o.name ?? "Untitled opportunity"}</Text>
+              {/* Always shown, not a fallback for the name above - same fix
+                  as the Kanban card, so the originating lead is never hidden
+                  just because the opportunity has its own name. */}
+              {o.leadFullName && (
+                <div>
+                  <Text style={{ fontSize: 12, color: appTokens.textSecondary }}>Lead: {o.leadFullName}</Text>
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   {[o.leadStoreCity, o.leadStoreState].filter(Boolean).join(", ")}

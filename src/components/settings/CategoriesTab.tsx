@@ -111,7 +111,7 @@ export function CategoriesTab() {
                   textAlign: "center",
                   fontWeight: 600,
                   border: "none",
-                  color: category.isActive ? appTokens.success : appTokens.textTertiary,
+                  color: category.isActive ? appTokens.successStrong : appTokens.textTertiary,
                   background: category.isActive ? `${appTokens.success}17` : appTokens.surfaceMuted,
                   flexShrink: 0,
                 }}

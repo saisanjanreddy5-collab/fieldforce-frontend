@@ -69,4 +69,5 @@ export interface UpdateUserPayload {
   officeId?: string;
   divisionChannelId?: string;
   customerCategoryId?: string;
+  isActive?: boolean;
 }
