@@ -7,6 +7,7 @@ import type { Level } from "../types/level";
 import type { StructureAxis } from "../types/structure-axis";
 import { useHasPermission } from "../hooks/use-permission";
 import { formatCompactCurrency } from "../utils/lead-format";
+import { ladderIndex } from "../utils/level-format";
 import { appTokens } from "../utils/design-system";
 import { LevelDrawer } from "./LevelDrawer";
 
@@ -154,7 +155,7 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
                   {canReorder && <HolderOutlined style={{ marginTop: 4, color: appTokens.textTertiary }} />}
                   <div style={{ minWidth: 0 }}>
                     <Text strong>
-                      L{idx + 1} · {level.name}
+                      L{ladderIndex(level, levels)} · {level.name}
                     </Text>
                     <div>
                       <Text type="secondary" style={{ fontSize: 12 }}>

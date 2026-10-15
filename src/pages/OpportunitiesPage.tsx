@@ -282,10 +282,14 @@ export default function OpportunitiesPage() {
       )}
 
       <div style={{ marginBottom: 10 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        {/* Widths tightened (was 140-180px each, ~1180px total) so all 7
+            filters fit on a single row at a real 1280px screen (~1000px
+            available after the sidebar) instead of the last 2 wrapping onto
+            their own second line. */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 140, flexShrink: 0 }}
+            style={{ width: 115, flexShrink: 0 }}
             value={zoneFilter ?? "all"}
             onChange={(v) => setZoneFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All regions" }, ...zones.map((z) => ({ value: z.id, label: z.name }))]}
@@ -294,14 +298,14 @@ export default function OpportunitiesPage() {
             prefix={FILTER_DOT}
             showSearch
             optionFilterProp="label"
-            style={{ width: 160, flexShrink: 0 }}
+            style={{ width: 130, flexShrink: 0 }}
             value={territoryFilter ?? "all"}
             onChange={(v) => setTerritoryFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All territories" }, ...territories.map((t) => ({ value: t, label: t }))]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 160, flexShrink: 0 }}
+            style={{ width: 130, flexShrink: 0 }}
             value={salesTeamFilter ?? "all"}
             onChange={(v) => setSalesTeamFilter(v === "all" ? undefined : v)}
             options={[
@@ -311,28 +315,28 @@ export default function OpportunitiesPage() {
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 160, flexShrink: 0 }}
+            style={{ width: 130, flexShrink: 0 }}
             value={managerFilter ?? "all"}
             onChange={(v) => setManagerFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All managers" }, ...managerOptions.map((u) => ({ value: u.id, label: u.name }))]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 180, flexShrink: 0 }}
+            style={{ width: 145, flexShrink: 0 }}
             value={ownerFilter ?? "all"}
             onChange={(v) => setOwnerFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All salespersons" }, ...users.map((u) => ({ value: u.id, label: u.name }))]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 160, flexShrink: 0 }}
+            style={{ width: 130, flexShrink: 0 }}
             value={stageFilter ?? "all"}
             onChange={(v) => setStageFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All stages" }, ...STAGE_OPTIONS]}
           />
           <Select
             prefix={FILTER_DOT}
-            style={{ width: 160, flexShrink: 0 }}
+            style={{ width: 130, flexShrink: 0 }}
             value={categoryFilter ?? "all"}
             onChange={(v) => setCategoryFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All categories" }, ...CATEGORY_OPTIONS]}

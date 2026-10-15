@@ -37,11 +37,16 @@ function dueLabel(closeDate: string | null): { text: string; overdue: boolean } 
 // Colors the progress bar by how healthy the deal actually is (probability
 // tier) rather than repeating the same stage color the left stripe and
 // column dot already show - a second, genuinely different signal instead
-// of redundant color.
+// of redundant color. The lowest tier used to fall back to textTertiary (a
+// body-text gray meant for secondary labels, not a data-viz fill) - against
+// the track's own light gray that made a low-probability deal's bar read as
+// almost blank, the one card most worth flagging at a glance ended up the
+// least visible thing on the whole board. danger (red) is a real, visible
+// color at every tier, same as success/warning above it.
 function probabilityColor(percent: number): string {
   if (percent >= 70) return appTokens.success;
   if (percent >= 40) return appTokens.warning;
-  return appTokens.textTertiary;
+  return appTokens.danger;
 }
 
 interface OpportunityCardProps {
@@ -55,7 +60,7 @@ interface OpportunityCardProps {
 export function OpportunityCard({ opportunity, onClick, onDragStart, onDragEnd, dragging }: OpportunityCardProps) {
   const hasPermission = useHasPermission();
   const canDrag = hasPermission("opportunities.update");
-  const title = opportunity.name ?? opportunity.leadFullName ?? "Untitled";
+  const title = opportunity.name ?? "Untitled opportunity";
   const cityState = [opportunity.leadStoreCity, opportunity.leadStoreState].filter(Boolean).join(", ");
   const location = [cityState, opportunity.ownerName ?? "Unassigned"].filter(Boolean).join(" · ");
   const probability = opportunity.probability ?? STAGE_DEFAULT_PROBABILITY[opportunity.stage] ?? null;
@@ -100,6 +105,14 @@ export function OpportunityCard({ opportunity, onClick, onDragStart, onDragEnd, 
             </Tag>
           )}
         </div>
+        {/* Always shown, never a fallback for the title above it - the
+            opportunity's own name used to hide which lead it was converted
+            from entirely whenever a name was set, which is nearly always. */}
+        {opportunity.leadFullName && (
+          <Text style={{ fontSize: 12, color: appTokens.textSecondary, display: "block", marginTop: 1 }}>
+            Lead: {opportunity.leadFullName}
+          </Text>
+        )}
         {location && (
           <Text style={{ fontSize: 12, color: appTokens.textTertiary, display: "block", marginTop: 1 }}>{location}</Text>
         )}

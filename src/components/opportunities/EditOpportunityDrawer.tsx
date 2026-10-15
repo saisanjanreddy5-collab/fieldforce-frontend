@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
-import { App, Button, Drawer, Empty, Form, Input, InputNumber, Select, Space, Spin, Tag, Typography } from "antd";
-import { FileDoneOutlined } from "@ant-design/icons";
+import { App, Button, Drawer, Empty, Form, Input, InputNumber, Select, Skeleton, Space, Spin, Tag, Typography } from "antd";
+import { FileDoneOutlined, SwapOutlined } from "@ant-design/icons";
 import * as opportunityApi from "../../api/opportunity-api";
 import * as quoteApi from "../../api/quote-api";
 import type { Opportunity } from "../../types/opportunity";
 import type { QuoteListItem } from "../../types/quote";
+import type { AuditEvent } from "../../types/audit-consent";
 import { useHasPermission } from "../../hooks/use-permission";
-import { formatDate } from "../../utils/lead-format";
+import { formatDate, formatDateTime } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
 import { QUOTE_STATUS_COLORS, QUOTE_STATUS_LABELS } from "../quotes/quote-constants";
 import { NewQuoteModal } from "../quotes/NewQuoteModal";
 import { QuoteDetailDrawer } from "../quotes/QuoteDetailDrawer";
-import { STAGE_OPTIONS } from "./stages";
+import { STAGE_OPTIONS, STAGES } from "./stages";
 
 const { Text, Title } = Typography;
+
+const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
 
 interface EditOpportunityDrawerProps {
   opportunity: Opportunity | null;
@@ -41,6 +44,8 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const [openQuoteId, setOpenQuoteId] = useState<string | null>(null);
 
+  const [history, setHistory] = useState<AuditEvent[] | null>(null);
+
   const loadQuotes = () => {
     if (!opportunity) return;
     setQuotesLoading(true);
@@ -49,6 +54,15 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
       .then(setQuotes)
       .catch(() => message.error("Failed to load quotes"))
       .finally(() => setQuotesLoading(false));
+  };
+
+  const loadHistory = () => {
+    if (!opportunity) return;
+    setHistory(null);
+    opportunityApi
+      .getOpportunityHistory(opportunity.id)
+      .then(setHistory)
+      .catch(() => setHistory([]));
   };
 
   useEffect(() => {
@@ -62,6 +76,7 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
       notes: opportunity.notes ?? undefined,
     });
     loadQuotes();
+    loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity, form]);
 
@@ -81,7 +96,22 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
 
   return (
     <Drawer
-      title={opportunity?.name ?? opportunity?.leadFullName ?? "Opportunity"}
+      title={
+        <div>
+          <Title level={5} style={{ margin: 0 }}>
+            {opportunity?.name ?? "Untitled opportunity"}
+          </Title>
+          {/* Always shown, never a fallback for the line above - an
+              opportunity with its own name used to hide which lead it came
+              from entirely; this is the one place in the drawer that's
+              guaranteed to show it regardless of whether a name is set. */}
+          {opportunity?.leadFullName && (
+            <Text style={{ fontSize: 12, fontWeight: 400, color: appTokens.textTertiary }}>
+              Lead: {opportunity.leadFullName}
+            </Text>
+          )}
+        </div>
+      }
       open={!!opportunity}
       onClose={onClose}
       extra={
@@ -163,6 +193,55 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 8, paddingTop: 16, borderTop: `1px solid ${appTokens.borderLight}` }}>
+        <Title level={5} style={{ margin: "0 0 12px" }}>
+          History
+        </Title>
+        {history === null ? (
+          <Skeleton active paragraph={{ rows: 2 }} />
+        ) : history.length === 0 ? (
+          <Empty description="No stage moves yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {history.map((event) => {
+              const fromLabel = STAGE_LABEL[event.oldValue ?? ""] ?? event.oldValue ?? "?";
+              const toLabel = STAGE_LABEL[event.newValue ?? ""] ?? event.newValue ?? "?";
+              return (
+                <div key={event.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      background: appTokens.surfaceMuted,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      fontSize: 12,
+                      color: appTokens.textSecondary,
+                    }}
+                  >
+                    <SwapOutlined />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <Text strong style={{ fontSize: 13.5 }}>
+                      {fromLabel} → {toLabel}
+                    </Text>
+                    <div>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {formatDateTime(event.createdAt)}
+                        {event.actorName ? ` · by ${event.actorName}` : ""}
+                      </Text>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

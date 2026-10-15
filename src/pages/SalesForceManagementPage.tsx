@@ -30,6 +30,7 @@ import type { IncentivePlan } from "../types/incentive-plan";
 import type { UserIncentivePlan } from "../types/user-incentive-plan";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { resolveCurrentTarget } from "../utils/target-format";
+import { errorMessageFrom } from "../utils/api-error";
 import dayjs from "dayjs";
 import { useHasPermission } from "../hooks/use-permission";
 import { SalesTeamsCard } from "../components/SalesTeamsCard";
@@ -209,6 +210,21 @@ export default function SalesForceManagementPage() {
   const openEditDrawer = (user: TeamMember) => {
     setEditingUser(user);
     setDrawerOpen(true);
+  };
+
+  // Login access toggle - same Activate/Deactivate convention Offices,
+  // Incentive Plans, Commission Rules etc. already use (toggleActive calls,
+  // isActive flag). The backend enforces the two real guardrails here (can't
+  // disable your own account, can't disable the last active Administrator)
+  // so a rejected call surfaces that specific reason, not a generic failure.
+  const toggleAccess = async (user: TeamMember) => {
+    try {
+      await userApi.updateUser(user.id, { isActive: !user.isActive });
+      message.success(user.isActive ? "Login access disabled" : "Login access enabled");
+      load();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to update login access"));
+    }
   };
 
   const closeDrawer = () => {
@@ -403,11 +419,28 @@ export default function SalesForceManagementPage() {
                             {user.name}
                           </Text>
                           <Tag
-                            color={STATUS_COLORS[user.status]}
-                            style={{ fontSize: 10, lineHeight: "16px", padding: "0 6px", margin: 0, flexShrink: 0 }}
+                            style={{
+                              fontSize: 10,
+                              lineHeight: "16px",
+                              padding: "0 6px",
+                              margin: 0,
+                              flexShrink: 0,
+                              border: "none",
+                              background: STATUS_COLORS[user.status]?.bg,
+                              color: STATUS_COLORS[user.status]?.color,
+                            }}
                           >
                             {STATUS_OPTIONS.find((s) => s.value === user.status)?.label ?? user.status}
                           </Tag>
+                          {/* Separate from the status tag above - this is
+                              whether they can log in at all, not their HR
+                              status. Only shown when it's actually off, so a
+                              normal row stays uncluttered. */}
+                          {!user.isActive && (
+                            <Tag color="default" style={{ fontSize: 10, lineHeight: "16px", padding: "0 6px", margin: 0, flexShrink: 0 }}>
+                              Login disabled
+                            </Tag>
+                          )}
                         </div>
                         <Text
                           type="secondary"
@@ -446,13 +479,6 @@ export default function SalesForceManagementPage() {
                     </Text>
                   </div>
                 ),
-              },
-              {
-                title: "Office",
-                dataIndex: "officeId",
-                width: 100,
-                ellipsis: true,
-                render: (officeId: string | null) => offices.find((o) => o.id === officeId)?.name ?? "-",
               },
               {
                 title: "Target vs achieved",
@@ -508,27 +534,19 @@ export default function SalesForceManagementPage() {
                 },
               },
               {
-                title: "Performance",
-                key: "performance",
-                width: 110,
-                render: (_, user) => {
-                  const current = resolveCurrentTarget(user.id, targets);
-                  if (!current) return "-";
-                  const tierColor =
-                    current.achievementPercent >= 100 ? appTokens.success : current.achievementPercent >= BELOW_TARGET_THRESHOLD ? appTokens.primary : appTokens.danger;
-                  const tierLabel = current.achievementPercent >= 100 ? "Exceeds" : current.achievementPercent >= BELOW_TARGET_THRESHOLD ? "On track" : "Below target";
-                  return <Tag style={{ color: tierColor, background: `${tierColor}14`, border: "none", fontWeight: 600 }}>{tierLabel}</Tag>;
-                },
-              },
-              {
                 title: "",
                 key: "action",
-                width: 55,
+                width: 150,
                 render: (_, user) =>
                   hasPermission("users.update") ? (
-                    <Button type="link" size="small" onClick={() => openEditDrawer(user)}>
-                      Edit
-                    </Button>
+                    <Space size={4}>
+                      <Button type="link" size="small" onClick={() => openEditDrawer(user)}>
+                        Edit
+                      </Button>
+                      <Button type="link" size="small" onClick={() => toggleAccess(user)}>
+                        {user.isActive ? "Disable login" : "Enable login"}
+                      </Button>
+                    </Space>
                   ) : null,
               },
             ]}

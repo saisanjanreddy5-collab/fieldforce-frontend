@@ -1,6 +1,7 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { CreateOpportunityPayload, ListOpportunitiesFilters, Opportunity } from "../types/opportunity";
+import type { AuditEvent } from "../types/audit-consent";
 
 export async function listOpportunitiesForLead(leadId: string): Promise<Opportunity[]> {
   const response = await apiClient.get<ApiSuccess<Opportunity[]>>(`/leads/${leadId}/opportunities`);
@@ -58,5 +59,12 @@ export async function convertLead(leadId: string, payload: CreateOpportunityPayl
 
 export async function updateOpportunity(id: string, payload: Partial<CreateOpportunityPayload>): Promise<Opportunity> {
   const response = await apiClient.patch<ApiSuccess<Opportunity>>(`/opportunities/${id}`, payload);
+  return response.data.data;
+}
+
+// Every real stage move on this opportunity, newest first - powers the
+// detail drawer's "History" section.
+export async function getOpportunityHistory(id: string): Promise<AuditEvent[]> {
+  const response = await apiClient.get<ApiSuccess<AuditEvent[]>>(`/opportunities/${id}/history`);
   return response.data.data;
 }

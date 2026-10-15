@@ -33,8 +33,22 @@ export const appTokens = {
   shadowLg: "0 12px 32px rgba(16,24,40,0.12)",
   success: "#12a150",
   warning: "#dc8a00",
-  danger: "#e0393e",
+  // Was #e0393e (4.35:1 against white) - measured below the 4.5:1 floor for
+  // normal text, the same category of bug the textSecondary/textTertiary
+  // fix above addressed, just never caught here since this token is its own
+  // independent value. Used as plain text (e.g. the Integrations "Disconnect"
+  // link) often enough that it needed the same real-contrast treatment.
+  danger: "#d32f2f",
   purple: "#6d4ecf",
+  // success/warning themselves are fine as a progress-bar fill or an icon
+  // next to white space, but fail badly as small bold TEXT sitting on their
+  // own pale tinted background (e.g. a `${success}17` pill) - measured
+  // 3.04-3.37:1 in the Settings Stages/Categories/Integrations tabs and the
+  // People table's status tag. These are the same hue, deepened enough to
+  // clear 4.5:1 in that specific pairing, for exactly that use.
+  successStrong: "#166534",
+  warningStrong: "#92400e",
+  infoStrong: "#1e40af",
   sidebarBg: "#0b1120",
   sidebarBgActive: "#1354e0",
 };

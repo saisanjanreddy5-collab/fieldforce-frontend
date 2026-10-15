@@ -20,7 +20,7 @@ interface FormValues {
 }
 
 const SECURITY_TIER_OPTIONS: { value: Role; label: string }[] = [
-  { value: "admin", label: "Administrator tier - full system access" },
+  { value: "admin", label: "Admin tier - full system access" },
   { value: "manager", label: "Manager tier - sees own + everyone below" },
   { value: "agent", label: "Agent tier - sees own records only" },
 ];
@@ -133,7 +133,7 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
           name="isCrossCutting"
           label="Cross-cutting role"
           valuePropName="checked"
-          tooltip="On for roles like Administrator or Finance that sit outside the reporting ladder - they won't appear in the Org chart or the Designation ladder's drag-to-reorder list"
+          tooltip="On for roles like Admin or Finance that sit outside the reporting ladder - they won't appear in the Org chart or the Designation ladder's drag-to-reorder list"
         >
           <Switch />
         </Form.Item>

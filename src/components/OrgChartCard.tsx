@@ -4,7 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import type { TeamMember } from "../types/user";
 import type { Level } from "../types/level";
 import { appTokens } from "../utils/design-system";
-import { SPAN_WARNING_THRESHOLD } from "../utils/level-format";
+import { SPAN_WARNING_THRESHOLD, ladderIndex } from "../utils/level-format";
 
 const { Text } = Typography;
 
@@ -47,10 +47,19 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
     return { positions, levelsUsed: levels.filter((l) => l.currentHeadcount > 0).length, vacant, spanWarnings, dottedLines };
   }, [activeUsers, levels, directReportCounts]);
 
+  // Every real level gets a section, even one with nobody in it and no
+  // finite headcount to show as an "open position" card (e.g. Chief
+  // Executive Officer, typically 0 people + unlimited) - this used to drop
+  // that section entirely, which silently removed the top of the org chart
+  // and then renumbered everything below it starting from L1, disagreeing
+  // with the exact same level's number on the Permissions and Levels & axes
+  // tabs.
   const byLevel = useMemo(() => {
-    return levels
-      .map((level) => ({ level, people: activeUsers.filter((u) => u.levelId === level.id) }))
-      .filter((group) => group.people.length > 0 || group.level.headcountLimit !== null);
+    // Keeps the same order `levels` already arrives in (the admin's own
+    // drag-arranged sequence from the Levels & axes tab) - not re-sorted by
+    // sortOrder here, since a cross-cutting level's sortOrder (e.g.
+    // Administrator's -1) doesn't reflect where it's meant to visually sit.
+    return levels.map((level) => ({ level, people: activeUsers.filter((u) => u.levelId === level.id) }));
   }, [levels, activeUsers]);
 
   const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? "Unknown" : null);
@@ -122,14 +131,14 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
         </div>
       </div>
 
-      {byLevel.map(({ level, people }, idx) => {
+      {byLevel.map(({ level, people }) => {
         const openCount = level.headcountLimit !== null ? Math.max(0, level.headcountLimit - level.currentHeadcount) : 0;
         const positionCount = people.length + openCount;
         return (
           <div key={level.id} style={{ marginBottom: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <Text style={{ fontSize: 11, fontWeight: 700, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                L{idx + 1} · {level.name}
+                L{ladderIndex(level, levels)} · {level.name}
               </Text>
               {positionCount > 0 && (
                 <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>
@@ -137,6 +146,9 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
                 </Text>
               )}
             </div>
+            {positionCount === 0 && (
+              <Text style={{ fontSize: 12, color: appTokens.textTertiary, fontStyle: "italic" }}>No one in this role yet</Text>
+            )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
               {people.map((person) => {
                 const reportCount = directReportCounts.get(person.id) ?? 0;
