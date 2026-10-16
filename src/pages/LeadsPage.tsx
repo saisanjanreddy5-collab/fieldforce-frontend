@@ -345,6 +345,7 @@ export default function LeadsPage() {
                     setDrawerOpen(true);
                   }}
                   initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
+                  onLeadUpdated={() => load(1, false)}
                 />
               </div>
             </div>
@@ -538,6 +539,7 @@ export default function LeadsPage() {
                     setDrawerOpen(true);
                   }}
                   initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
+                  onLeadUpdated={() => load(1, false)}
                 />
               </div>
             ) : (

@@ -1,17 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Dropdown, Input, Table, Tag, Typography } from "antd";
+import { App, Avatar, Button, Dropdown, Input, Select, Table, Tabs, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import * as callCenterApi from "../api/call-center-api";
 import * as smartfloApi from "../api/smartflo-api";
 import * as customerExtrasApi from "../api/customer-extras-api";
+import * as leadApi from "../api/lead-api";
+import { CALL_DISPOSITIONS, type CallDisposition } from "../api/lead-api";
 import type { Call } from "../types/call";
 import type { CustomerContact } from "../types/customer-extras";
+import type { Lead } from "../types/lead";
 import { useHasPermission } from "../hooks/use-permission";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
 
 const { Title, Text } = Typography;
+
+// Red/neutral/green, roughly worst-to-best outcome, so a glance at the
+// queue shows which leads need another push without reading every label.
+const DISPOSITION_COLORS: Record<string, string> = {
+  Ringing: appTokens.textTertiary,
+  "Not Reachable": appTokens.warning,
+  "Switched Off": appTokens.warning,
+  Language: appTokens.warning,
+  "Call Back": appTokens.primary,
+  "Call Done And Interested": appTokens.success,
+  "Call Done And Not Interested": appTokens.danger,
+};
 
 const EMPTY_STATS: callCenterApi.CallCenterStats = {
   callsToday: 0,
@@ -102,19 +117,14 @@ export default function CallCenterPage() {
     );
   }
 
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
-            Call center
-          </Title>
-          <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
-            Every click-to-call made through Smartflo, written back to the lead automatically.
-          </Text>
-        </div>
-      </div>
+  // Whoever can log a call against a Call Center lead gets the queue tab -
+  // today that's call_center employees plus Admin/Manager, never a plain
+  // field agent (that work happens on their own leads via the lead detail
+  // page instead, not this queue).
+  const canWorkQueue = hasPermission("leads.call_log");
 
+  const dashboardPanel = (
+    <>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
         {[
           { label: "Calls today", value: String(stats.callsToday), subtitle: "placed today" },
@@ -365,6 +375,212 @@ export default function CallCenterPage() {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
+            Call center
+          </Title>
+          <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
+            {canWorkQueue
+              ? "Your assigned leads awaiting qualification, plus every call made through Smartflo."
+              : "Every click-to-call made through Smartflo, written back to the lead automatically."}
+          </Text>
+        </div>
+      </div>
+
+      {canWorkQueue ? (
+        <Tabs
+          defaultActiveKey="queue"
+          items={[
+            { key: "queue", label: "My queue", children: <MyQueueTab /> },
+            { key: "dashboard", label: "Dashboard", children: dashboardPanel },
+          ]}
+        />
+      ) : (
+        dashboardPanel
+      )}
+    </div>
+  );
+}
+
+function MyQueueTab() {
+  const { message } = App.useApp();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
+  const [dispositionFor, setDispositionFor] = useState<string | null>(null);
+  const [disposition, setDisposition] = useState<CallDisposition | undefined>(undefined);
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [qualifyingId, setQualifyingId] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    leadApi
+      .listLeads({ status: "Call Center", limit: 100 })
+      .then((result) => setLeads(result.leads))
+      .catch(() => message.error("Failed to load your queue"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  const handleCall = async (leadId: string) => {
+    setCallingLeadId(leadId);
+    try {
+      await smartfloApi.callLead(leadId);
+      message.success("Calling now");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to place the call"));
+    } finally {
+      setCallingLeadId(null);
+    }
+  };
+
+  const openDispositionForm = (leadId: string) => {
+    setDispositionFor(leadId);
+    setDisposition(undefined);
+    setNotes("");
+  };
+
+  const submitDisposition = async () => {
+    if (!dispositionFor || !disposition) return;
+    setSubmitting(true);
+    try {
+      await leadApi.logCallDisposition(dispositionFor, { disposition, notes: notes.trim() || undefined });
+      message.success("Call logged");
+      setDispositionFor(null);
+      load();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to log this call"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleQualify = async (leadId: string) => {
+    setQualifyingId(leadId);
+    try {
+      await leadApi.qualifyLead(leadId);
+      message.success("Marked Qualified - ready to send to Field Sales");
+      load();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to mark this lead Qualified"));
+    } finally {
+      setQualifyingId(null);
+    }
+  };
+
+  if (loading && leads.length === 0) {
+    return <Text type="secondary">Loading your queue...</Text>;
+  }
+
+  if (leads.length === 0) {
+    return (
+      <div style={{ padding: "40px 0", textAlign: "center" }}>
+        <Text type="secondary" style={{ fontSize: 13.5 }}>
+          Nothing in your queue right now - new marketing leads will land here automatically.
+        </Text>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {leads.map((lead) => {
+        const isOpen = dispositionFor === lead.id;
+        return (
+          <div
+            key={lead.id}
+            style={{
+              border: `1px solid ${appTokens.border}`,
+              borderRadius: appTokens.radius,
+              background: appTokens.surface,
+              boxShadow: appTokens.shadowXs,
+              padding: 14,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+                <Avatar size={34} style={{ background: avatarGradient(lead.fullName), fontWeight: 600, flexShrink: 0 }}>
+                  {initials(lead.fullName)}
+                </Avatar>
+                <div style={{ minWidth: 0 }}>
+                  <Text strong style={{ fontSize: 14, display: "block" }}>
+                    {lead.fullName}
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {[lead.phone, lead.pincode ? `PIN ${lead.pincode}` : null, lead.category].filter(Boolean).join(" · ")}
+                  </Text>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                {lead.lastCallOutcome && (
+                  <Tag color={DISPOSITION_COLORS[lead.lastCallOutcome] ?? "default"} style={{ margin: 0, fontSize: 11 }}>
+                    {lead.lastCallOutcome}
+                  </Tag>
+                )}
+                <Text type="secondary" style={{ fontSize: 11.5 }}>
+                  {lead.callAttemptCount} call{lead.callAttemptCount === 1 ? "" : "s"} so far
+                  {lead.lastCallAt ? ` · last ${formatDate(lead.lastCallAt)}` : ""}
+                </Text>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <Button size="small" type="primary" ghost icon={<PhoneOutlined />} loading={callingLeadId === lead.id} onClick={() => handleCall(lead.id)}>
+                Call
+              </Button>
+              <Button size="small" onClick={() => openDispositionForm(lead.id)}>
+                Log call outcome
+              </Button>
+              <Button size="small" type="primary" loading={qualifyingId === lead.id} onClick={() => handleQualify(lead.id)}>
+                Mark Qualified
+              </Button>
+            </div>
+
+            {isOpen && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  background: appTokens.surfaceMuted,
+                  borderRadius: appTokens.radiusSm,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <Select
+                  placeholder="What happened on this call?"
+                  value={disposition}
+                  onChange={setDisposition}
+                  options={CALL_DISPOSITIONS.map((d) => ({ value: d, label: d }))}
+                />
+                <Input.TextArea
+                  placeholder="Notes (optional) - e.g. asked to call back next week"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                />
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <Button size="small" onClick={() => setDispositionFor(null)}>
+                    Cancel
+                  </Button>
+                  <Button size="small" type="primary" loading={submitting} disabled={!disposition} onClick={submitDisposition}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

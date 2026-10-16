@@ -23,6 +23,7 @@ const SECURITY_TIER_OPTIONS: { value: Role; label: string }[] = [
   { value: "admin", label: "Admin tier - full system access" },
   { value: "manager", label: "Manager tier - sees own + everyone below" },
   { value: "agent", label: "Agent tier - sees own records only" },
+  { value: "call_center", label: "Call Center tier - own assigned leads only" },
 ];
 
 interface LevelDrawerProps {

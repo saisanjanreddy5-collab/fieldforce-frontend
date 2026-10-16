@@ -16,6 +16,11 @@ export const IMPORT_MAPPABLE_FIELDS: ImportMappableField[] = [
   { key: "email", label: "Email" },
   { key: "companyName", label: "Company name" },
   { key: "category", label: "Category" },
+  // Required so the Call Center -> Field Sales pincode-matching engine
+  // (lead-call-center-service.ts) has something to match against - without
+  // it, a marketing lead can reach Qualified but can never actually be sent
+  // to a field employee.
+  { key: "pincode", label: "Pincode", required: true },
   { key: "territory", label: "Territory" },
   { key: "source", label: "Source" },
   { key: "expectedValue", label: "Expected value" },
@@ -35,6 +40,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   email: ["email", "emailaddress", "mail"],
   companyName: ["companyname", "company", "business", "businessname", "firm", "firmname"],
   category: ["category", "leadcategory", "type"],
+  pincode: ["pincode", "pin", "zip", "zipcode", "postalcode"],
   territory: ["territory", "area", "region"],
   source: ["source", "leadsource"],
   expectedValue: ["expectedvalue", "value", "dealvalue", "amount"],

@@ -17,6 +17,7 @@ import { useAuth } from "../../context/AuthContext";
 import { errorMessageFrom } from "../../utils/api-error";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { LeadSnapshot } from "./LeadSnapshot";
+import { LeadAssignmentPanel } from "./LeadAssignmentPanel";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
@@ -35,6 +36,10 @@ interface LeadDetailProps {
   showOwner: boolean;
   onEdit: () => void;
   initialTab?: string;
+  // Re-fetches the lead list so this lead's owner/status reflect a change
+  // made right here (Send to Field Sales, Reassign) - optional since not
+  // every place that renders LeadDetail needs this (e.g. a read-only embed).
+  onLeadUpdated?: () => void;
 }
 
 const BASE_DETAIL_TABS = [
@@ -55,7 +60,7 @@ interface MeetingFormValues {
   durationMinutes: number;
 }
 
-export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailProps) {
+export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated }: LeadDetailProps) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
@@ -219,6 +224,8 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab }: LeadDetailPr
         onAddActivity={() => setActiveTabKey("activity")}
         onWhatsApp={() => setActiveTabKey("whatsapp")}
       />
+
+      <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />
 
       <div style={{ marginTop: 16 }}>
         <ScrollableTabBar items={detailTabs} activeKey={activeTabKey} onChange={setActiveTabKey} />
