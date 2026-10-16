@@ -20,19 +20,21 @@ import { UserCommissionSection } from "./UserCommissionSection";
 
 const { Text } = Typography;
 
-// Kept for the People table's role chip - accounts still get one of these 3
+// Kept for the People table's role chip - accounts still get one of these 4
 // real tiers, just derived from the selected Level now rather than picked
 // directly in this wizard (see level-service.ts's getLevelSecurityTier).
 export const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
   { value: "manager", label: "Manager" },
   { value: "agent", label: "Agent" },
+  { value: "call_center", label: "Call Center" },
 ];
 
 export const ROLE_COLORS: Record<string, string> = {
   admin: "purple",
   manager: "blue",
   agent: "default",
+  call_center: "gold",
 };
 
 export const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
@@ -74,6 +76,8 @@ interface FormValues {
   smartfloAgentNumber?: string;
   divisionChannelId?: string;
   customerCategoryId?: string;
+  operationType?: "COCO" | "FOFO" | "Both";
+  pincodes?: string[];
 }
 
 interface UserFormWizardProps {
@@ -260,6 +264,8 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
         smartfloAgentNumber: user.smartfloAgentNumber ?? undefined,
         divisionChannelId: user.divisionChannelId ?? undefined,
         customerCategoryId: user.customerCategoryId ?? undefined,
+        operationType: user.operationType ?? undefined,
+        pincodes: user.pincodes ?? [],
       });
     } else {
       form.resetFields();
@@ -356,6 +362,11 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
         officeId: values.officeId,
         divisionChannelId: values.divisionChannelId,
         customerCategoryId: values.customerCategoryId,
+        // Only meaningful for a field employee - the fields themselves are
+        // hidden for every other tier, so this is always empty/undefined
+        // for them regardless of what's left over from a previous selection.
+        operationType: selectedLevel?.securityTier === "agent" ? values.operationType : undefined,
+        pincodes: selectedLevel?.securityTier === "agent" ? values.pincodes : undefined,
       };
       if (user) {
         await userApi.updateUser(user.id, shared);
@@ -693,6 +704,32 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                         filterOption={(input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase())}
                       />
                     </Form.Item>
+                    {selectedLevel?.securityTier === "agent" && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                        <Form.Item
+                          name="pincodes"
+                          label="Serviceable pincodes"
+                          tooltip="Every pincode this field employee covers - a lead in any of these gets offered to them when sent to Field Sales. More than one person can cover the same pincode on purpose, so a lead can be swapped between them."
+                        >
+                          <Select mode="tags" placeholder="Type a pincode and press enter" tokenSeparators={[",", " "]} open={false} />
+                        </Form.Item>
+                        <Form.Item
+                          name="operationType"
+                          label="Operation type"
+                          tooltip="Which store type(s) this person handles - a lead's own category (COCO/FOFO) must match, or be set to Both, for it to be offered to them"
+                        >
+                          <Select
+                            allowClear
+                            placeholder="Select an operation type"
+                            options={[
+                              { value: "COCO", label: "COCO" },
+                              { value: "FOFO", label: "FOFO" },
+                              { value: "Both", label: "Both" },
+                            ]}
+                          />
+                        </Form.Item>
+                      </div>
+                    )}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
                       <Form.Item name="officeId" label="Office location">
                         <Select

@@ -59,7 +59,11 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
     });
   };
 
-  const canContinueMapping = Boolean(mapping.fullName);
+  // Generic over every field marked required (just fullName today, now also
+  // pincode) rather than a single hardcoded check - a field's `required`
+  // flag was otherwise only enforced visually (the red asterisk), not
+  // actually gating this step.
+  const canContinueMapping = IMPORT_MAPPABLE_FIELDS.filter((f) => f.required).every((f) => Boolean(mapping[f.key]));
 
   // One record per data row, keyed by our field names (not the file's
   // header names) - pulls each cell by looking up the mapped header's

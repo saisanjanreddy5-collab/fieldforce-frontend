@@ -288,7 +288,12 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
     return ladder.length === 0 ? null : Math.min(...ladder);
   }, [levels]);
 
-  const TIER_COLORS: Record<string, string> = { admin: appTokens.purple, manager: appTokens.primary, agent: appTokens.success };
+  const TIER_COLORS: Record<string, string> = {
+    admin: appTokens.purple,
+    manager: appTokens.primary,
+    agent: appTokens.success,
+    call_center: appTokens.textTertiary,
+  };
 
   const toggleRolePermission = async (permission: string, currentlyGranted: boolean) => {
     if (!selectedLevel) return;

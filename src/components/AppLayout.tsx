@@ -52,7 +52,12 @@ function Logo({ collapsed }: { collapsed: boolean }) {
 }
 
 function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  // "call_center" -> "Call Center", not "Call_center" - the only role with
+  // an underscore in it today, but this reads fine for any future one too.
+  return value
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 export function AppLayout() {

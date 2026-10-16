@@ -74,6 +74,12 @@ export interface Lead {
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  // Call Center qualification tracking - callAttemptCount/lastCallOutcome
+  // are a cached snapshot (the real per-attempt history lives on the
+  // activities timeline), kept in sync every time a disposition is logged.
+  callAttemptCount: number;
+  lastCallOutcome: string | null;
+  lastCallAt: string | null;
   /** Only present on list responses. */
   hasOverdueActivity?: boolean;
   /** Due date of the earliest not-yet-completed activity on this lead. Only present on list responses. */
