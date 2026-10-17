@@ -710,6 +710,13 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                           name="pincodes"
                           label="Serviceable pincodes"
                           tooltip="Every pincode this field employee covers - a lead in any of these gets offered to them when sent to Field Sales. More than one person can cover the same pincode on purpose, so a lead can be swapped between them."
+                          rules={[
+                            {
+                              required: true,
+                              message: "At least one pincode is required - a field employee with none can never be matched to a lead",
+                              type: "array",
+                            },
+                          ]}
                         >
                           <Select mode="tags" placeholder="Type a pincode and press enter" tokenSeparators={[",", " "]} open={false} />
                         </Form.Item>
