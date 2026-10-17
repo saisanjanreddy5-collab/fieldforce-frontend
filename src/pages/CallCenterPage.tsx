@@ -13,6 +13,7 @@ import { useHasPermission } from "../hooks/use-permission";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
+import { SendToFieldAction } from "../components/leads/SendToFieldAction";
 
 const { Title, Text } = Typography;
 
@@ -410,7 +411,14 @@ export default function CallCenterPage() {
 
 function MyQueueTab() {
   const { message } = App.useApp();
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const hasPermission = useHasPermission();
+  const canSendToField = hasPermission("leads.send_to_field");
+  // Two separate stages, two separate action sets - a lead vanishing from
+  // view the instant it's marked Qualified left no place to ever click
+  // Send to Field Sales, so both stages of this agent's own queue are
+  // fetched and shown (in their own section) rather than just "Call Center".
+  const [callingLeads, setCallingLeads] = useState<Lead[]>([]);
+  const [qualifiedLeads, setQualifiedLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   const [dispositionFor, setDispositionFor] = useState<string | null>(null);
@@ -421,14 +429,20 @@ function MyQueueTab() {
 
   const load = () => {
     setLoading(true);
-    leadApi
-      .listLeads({ status: "Call Center", limit: 100 })
-      .then((result) => setLeads(result.leads))
+    Promise.all([
+      leadApi.listLeads({ status: "Call Center", limit: 100 }),
+      leadApi.listLeads({ status: "Qualified", limit: 100 }),
+    ])
+      .then(([callCenter, qualified]) => {
+        setCallingLeads(callCenter.leads);
+        setQualifiedLeads(qualified.leads);
+      })
       .catch(() => message.error("Failed to load your queue"))
       .finally(() => setLoading(false));
   };
 
   useEffect(load, []);
+  const leads = [...callingLeads, ...qualifiedLeads];
 
   const handleCall = async (leadId: string) => {
     setCallingLeadId(leadId);
@@ -490,97 +504,126 @@ function MyQueueTab() {
     );
   }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {leads.map((lead) => {
-        const isOpen = dispositionFor === lead.id;
-        return (
+  // One card renderer for both sections - only the action row and whether
+  // the disposition form is reachable differ between a lead still being
+  // called and one already Qualified and waiting to be handed to Field
+  // Sales.
+  const renderCard = (lead: Lead, qualified: boolean) => {
+    const isOpen = dispositionFor === lead.id;
+    return (
+      <div
+        key={lead.id}
+        style={{
+          border: `1px solid ${appTokens.border}`,
+          borderRadius: appTokens.radius,
+          background: appTokens.surface,
+          boxShadow: appTokens.shadowXs,
+          padding: 14,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
+            <Avatar size={34} style={{ background: avatarGradient(lead.fullName), fontWeight: 600, flexShrink: 0 }}>
+              {initials(lead.fullName)}
+            </Avatar>
+            <div style={{ minWidth: 0 }}>
+              <Text strong style={{ fontSize: 14, display: "block" }}>
+                {lead.fullName}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {[lead.phone, lead.pincode ? `PIN ${lead.pincode}` : null, lead.category].filter(Boolean).join(" · ")}
+              </Text>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {lead.lastCallOutcome && (
+              <Tag color={DISPOSITION_COLORS[lead.lastCallOutcome] ?? "default"} style={{ margin: 0, fontSize: 11 }}>
+                {lead.lastCallOutcome}
+              </Tag>
+            )}
+            <Text type="secondary" style={{ fontSize: 11.5 }}>
+              {lead.callAttemptCount} call{lead.callAttemptCount === 1 ? "" : "s"} so far
+              {lead.lastCallAt ? ` · last ${formatDate(lead.lastCallAt)}` : ""}
+            </Text>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          <Button size="small" type="primary" ghost icon={<PhoneOutlined />} loading={callingLeadId === lead.id} onClick={() => handleCall(lead.id)}>
+            Call
+          </Button>
+          <Button size="small" onClick={() => openDispositionForm(lead.id)}>
+            Log call outcome
+          </Button>
+          {qualified ? (
+            canSendToField && <SendToFieldAction leadId={lead.id} size="small" onDone={load} />
+          ) : (
+            <Button size="small" type="primary" loading={qualifyingId === lead.id} onClick={() => handleQualify(lead.id)}>
+              Mark Qualified
+            </Button>
+          )}
+        </div>
+
+        {isOpen && (
           <div
-            key={lead.id}
             style={{
-              border: `1px solid ${appTokens.border}`,
-              borderRadius: appTokens.radius,
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-              padding: 14,
+              marginTop: 12,
+              padding: 12,
+              background: appTokens.surfaceMuted,
+              borderRadius: appTokens.radiusSm,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
-                <Avatar size={34} style={{ background: avatarGradient(lead.fullName), fontWeight: 600, flexShrink: 0 }}>
-                  {initials(lead.fullName)}
-                </Avatar>
-                <div style={{ minWidth: 0 }}>
-                  <Text strong style={{ fontSize: 14, display: "block" }}>
-                    {lead.fullName}
-                  </Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {[lead.phone, lead.pincode ? `PIN ${lead.pincode}` : null, lead.category].filter(Boolean).join(" · ")}
-                  </Text>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                {lead.lastCallOutcome && (
-                  <Tag color={DISPOSITION_COLORS[lead.lastCallOutcome] ?? "default"} style={{ margin: 0, fontSize: 11 }}>
-                    {lead.lastCallOutcome}
-                  </Tag>
-                )}
-                <Text type="secondary" style={{ fontSize: 11.5 }}>
-                  {lead.callAttemptCount} call{lead.callAttemptCount === 1 ? "" : "s"} so far
-                  {lead.lastCallAt ? ` · last ${formatDate(lead.lastCallAt)}` : ""}
-                </Text>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <Button size="small" type="primary" ghost icon={<PhoneOutlined />} loading={callingLeadId === lead.id} onClick={() => handleCall(lead.id)}>
-                Call
+            <Select
+              placeholder="What happened on this call?"
+              value={disposition}
+              onChange={setDisposition}
+              options={CALL_DISPOSITIONS.map((d) => ({ value: d, label: d }))}
+            />
+            <Input.TextArea
+              placeholder="Notes (optional) - e.g. asked to call back next week"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Button size="small" onClick={() => setDispositionFor(null)}>
+                Cancel
               </Button>
-              <Button size="small" onClick={() => openDispositionForm(lead.id)}>
-                Log call outcome
-              </Button>
-              <Button size="small" type="primary" loading={qualifyingId === lead.id} onClick={() => handleQualify(lead.id)}>
-                Mark Qualified
+              <Button size="small" type="primary" loading={submitting} disabled={!disposition} onClick={submitDisposition}>
+                Save
               </Button>
             </div>
-
-            {isOpen && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 12,
-                  background: appTokens.surfaceMuted,
-                  borderRadius: appTokens.radiusSm,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <Select
-                  placeholder="What happened on this call?"
-                  value={disposition}
-                  onChange={setDisposition}
-                  options={CALL_DISPOSITIONS.map((d) => ({ value: d, label: d }))}
-                />
-                <Input.TextArea
-                  placeholder="Notes (optional) - e.g. asked to call back next week"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                />
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <Button size="small" onClick={() => setDispositionFor(null)}>
-                    Cancel
-                  </Button>
-                  <Button size="small" type="primary" loading={submitting} disabled={!disposition} onClick={submitDisposition}>
-                    Save
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
-        );
-      })}
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {qualifiedLeads.length > 0 && (
+        <div>
+          <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
+            Qualified - ready for Field Sales ({qualifiedLeads.length})
+          </Text>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {qualifiedLeads.map((lead) => renderCard(lead, true))}
+          </div>
+        </div>
+      )}
+      {callingLeads.length > 0 && (
+        <div>
+          <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
+            Awaiting qualification ({callingLeads.length})
+          </Text>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {callingLeads.map((lead) => renderCard(lead, false))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

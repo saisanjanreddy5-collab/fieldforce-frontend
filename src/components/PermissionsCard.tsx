@@ -27,6 +27,7 @@ const { Text } = Typography;
 // the backend enforces.
 const ENFORCED_PERMISSIONS = new Set([
   "leads.view", "leads.create", "leads.update", "leads.delete", "leads.share",
+  "leads.queue_view", "leads.call_log", "leads.qualify", "leads.send_to_field", "leads.reassign",
   "opportunities.view", "opportunities.create", "opportunities.update", "opportunities.delete",
   "activities.view", "activities.create", "activities.update", "activities.delete",
   "role_permissions.view",
@@ -37,13 +38,27 @@ const ENFORCED_PERMISSIONS = new Set([
   "delegations.view", "delegations.create", "delegations.delete",
 ]);
 
-const VERB_ORDER = ["view", "create", "update", "delete", "share", "approve", "export", "view_own", "view_team"];
+// queue_view/call_log/qualify/send_to_field/reassign are leads-only, same as
+// share - the Call Center workflow's own verbs, deliberately kept separate
+// from leads.view (see lead-routes.ts's GET / route and its requireAnyPermission
+// check) so an admin can grant/revoke the generic Leads module independently
+// of a call_center employee's own queue.
+const VERB_ORDER = [
+  "view", "create", "update", "delete", "share",
+  "queue_view", "call_log", "qualify", "send_to_field", "reassign",
+  "approve", "export", "view_own", "view_team",
+];
 const VERB_LABELS: Record<string, string> = {
   view: "View",
   create: "Create",
   update: "Edit",
   delete: "Delete",
   share: "Share",
+  queue_view: "View queue",
+  call_log: "Log calls",
+  qualify: "Qualify",
+  send_to_field: "Send to field",
+  reassign: "Reassign",
   approve: "Approve",
   export: "Export",
   view_own: "View own",
