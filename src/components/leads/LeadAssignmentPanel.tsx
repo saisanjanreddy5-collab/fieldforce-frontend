@@ -112,43 +112,24 @@ export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProp
 
   return (
     <>
-      <div
-        style={{
-          marginTop: 12,
-          border: `1px solid ${appTokens.border}`,
-          borderRadius: appTokens.radius,
-          background: appTokens.surface,
-          boxShadow: appTokens.shadowXs,
-          padding: "10px 14px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 10,
-        }}
-      >
-        <Text style={{ fontSize: 13 }}>
-          <Text strong>Owner:</Text> {lead.ownerName ?? "Unassigned"}
-        </Text>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {canSendToField && lead.status === "Qualified" && <SendToFieldAction leadId={lead.id} size="small" onDone={onChanged} />}
-          {canReassign && (
-            <Popover
-              content={reassignContent}
-              open={reassignOpen}
-              onOpenChange={openReassign}
-              trigger="click"
-              placement="bottomRight"
-            >
-              <Button size="small" icon={<UserSwitchOutlined />}>
-                Reassign
-              </Button>
-            </Popover>
-          )}
-          <Button size="small" type="link" onClick={openHistory}>
-            History
-          </Button>
-        </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {canSendToField && lead.status === "Qualified" && <SendToFieldAction leadId={lead.id} size="small" onDone={onChanged} />}
+        {canReassign && (
+          <Popover
+            content={reassignContent}
+            open={reassignOpen}
+            onOpenChange={openReassign}
+            trigger="click"
+            placement="bottomRight"
+          >
+            <Button size="small" icon={<UserSwitchOutlined />}>
+              Reassign
+            </Button>
+          </Popover>
+        )}
+        <Button size="small" type="link" onClick={openHistory} style={{ paddingLeft: 0, paddingRight: 0 }}>
+          History
+        </Button>
       </div>
 
       <Drawer title={`History - ${lead.fullName}`} open={historyOpen} onClose={() => setHistoryOpen(false)} size="default">

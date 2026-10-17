@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Avatar, Button, Progress, Tag, Tooltip, Typography } from "antd";
 import { CloudUploadOutlined, EditOutlined, PhoneOutlined, PlusOutlined } from "@ant-design/icons";
 import { OutlookLogo, TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
@@ -20,6 +21,13 @@ const PRIMARY_ICON = {
 interface LeadSnapshotProps {
   lead: Lead;
   showOwner: boolean;
+  // Send to Field Sales / Reassign / History - rendered by LeadAssignmentPanel,
+  // which owns all of that logic/state. Taken as a slot here (not imported
+  // directly) so this component stays purely presentational, per its own
+  // contract - it just places the result next to the owner's name instead of
+  // giving it a separate full-width row, which used to duplicate "Owner: X"
+  // a second time for no new information.
+  assignmentActions?: ReactNode;
   availability: LeadActionAvailability;
   calling: boolean;
   microsoftConnected: boolean;
@@ -40,6 +48,7 @@ interface LeadSnapshotProps {
 export function LeadSnapshot({
   lead,
   showOwner,
+  assignmentActions,
   availability,
   calling,
   microsoftConnected,
@@ -165,7 +174,7 @@ export function LeadSnapshot({
             ~1076px available); at the narrower default width the name block
             and icons already wrap onto separate lines regardless, same as
             before this change. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", minWidth: 0 }}>
           <Tag
             style={{
               margin: 0,
@@ -185,6 +194,7 @@ export function LeadSnapshot({
           {showOwner && (
             <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>Owner: {lead.ownerName ?? "Unassigned"}</Text>
           )}
+          {assignmentActions}
         </div>
 
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>{actionButtons}</div>

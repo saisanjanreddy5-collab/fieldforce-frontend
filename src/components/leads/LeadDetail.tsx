@@ -207,6 +207,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       <LeadSnapshot
         lead={lead}
         showOwner={showOwner}
+        assignmentActions={<LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />}
         availability={{
           canOnboard,
           hasOpenOpportunity,
@@ -224,8 +225,6 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         onAddActivity={() => setActiveTabKey("activity")}
         onWhatsApp={() => setActiveTabKey("whatsapp")}
       />
-
-      <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />
 
       <div style={{ marginTop: 16 }}>
         <ScrollableTabBar items={detailTabs} activeKey={activeTabKey} onChange={setActiveTabKey} />
