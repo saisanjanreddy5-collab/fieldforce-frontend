@@ -13,6 +13,10 @@ export interface Lead {
   category: string | null;
   ownerId: string | null;
   ownerName: string | null;
+  // Security tier of the current owner - lets the UI tell "already with
+  // Field Sales" apart from "still with Call Center" without guessing from
+  // status alone (sendToField never changes status, only ownerId).
+  ownerRole: string | null;
   salesTeamId: string | null;
   leadScore: number | null;
   phone: string | null;

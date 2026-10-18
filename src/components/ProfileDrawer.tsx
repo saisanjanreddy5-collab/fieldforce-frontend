@@ -29,6 +29,7 @@ function capitalize(value: string): string {
 // isOnlineMeeting:true instead, which only needs Calendars.ReadWrite.
 const GRANTED_SCOPES = [
   { scope: "Mail.Send", description: "send email on leads as you" },
+  { scope: "Mail.Read", description: "sync a lead's replies into their activity history" },
   { scope: "Calendars.ReadWrite", description: "create Teams meetings on your calendar" },
   { scope: "User.Read", description: "read your basic profile" },
   { scope: "offline_access", description: "stay connected without signing in again" },
