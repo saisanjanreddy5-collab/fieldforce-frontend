@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Drawer, Dropdown, Empty, Input, Table, Tabs, Tag, Typography } from "antd";
-import { DownOutlined, PhoneOutlined, PlayCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Select, Table, Tabs, Tag, Typography } from "antd";
+import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import * as callCenterApi from "../api/call-center-api";
 import * as smartfloApi from "../api/smartflo-api";
 import * as customerExtrasApi from "../api/customer-extras-api";
@@ -9,6 +9,7 @@ import type { Call } from "../types/call";
 import type { CustomerContact } from "../types/customer-extras";
 import type { Lead } from "../types/lead";
 import { useHasPermission } from "../hooks/use-permission";
+import { useLeadCategories } from "../hooks/use-lead-categories";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
@@ -409,8 +410,85 @@ export default function CallCenterPage() {
   );
 }
 
+interface AddLeadFormValues {
+  fullName: string;
+  phone?: string;
+  email?: string;
+  pincode?: string;
+  category?: string;
+}
+
+// The one gap left once a Call Center agent could only ever work leads that
+// landed in their queue automatically (bulk import, website form, QR
+// campaign) - someone calling the business number directly had nowhere to
+// be logged at all. Deliberately a short, mid-call-friendly form: only the
+// name is required, since the agent is often still asking the rest of these
+// while filling it in - the rest (pincode especially, since that's what
+// Send to Field Sales matches on) can be filled in later from the lead's own
+// Edit screen once qualified.
+function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+  const { message } = App.useApp();
+  const { categories } = useLeadCategories();
+  const [form] = Form.useForm<AddLeadFormValues>();
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (values: AddLeadFormValues) => {
+    setSubmitting(true);
+    try {
+      await leadApi.createOwnQueueLead(values);
+      message.success("Lead added to your queue");
+      form.resetFields();
+      onAdded();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to add this lead"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Add lead to your queue"
+      open={open}
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      okText="Add lead"
+      confirmLoading={submitting}
+      destroyOnClose
+    >
+      <Form form={form} layout="vertical" onFinish={submit} style={{ marginTop: 8 }}>
+        <Form.Item name="fullName" label="Full name" rules={[{ required: true, message: "Full name is required" }]}>
+          <Input placeholder="Who are you speaking with?" />
+        </Form.Item>
+        <Form.Item name="phone" label="Phone">
+          <Input placeholder="10-digit mobile number" />
+        </Form.Item>
+        <Form.Item name="email" label="Email">
+          <Input placeholder="Optional" />
+        </Form.Item>
+        <Form.Item name="pincode" label="Pincode" extra="Needed later to auto-match the right field employee - fine to leave blank for now and add it once you have it.">
+          <Input placeholder="Optional for now" />
+        </Form.Item>
+        <Form.Item name="category" label="Category">
+          <Select
+            allowClear
+            placeholder="Optional"
+            options={categories.filter((c) => c.isActive).map((c) => ({ value: c.key, label: c.label }))}
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+}
+
 function MyQueueTab() {
   const { message } = App.useApp();
+  const hasPermission = useHasPermission();
+  // Checked on its own, not assumed to come bundled with leads.call_log -
+  // an admin can revoke permissions independently per employee from the
+  // Permissions screen, so this button must only show when its own specific
+  // permission is actually granted.
+  const canAddToQueue = hasPermission("leads.queue_create");
   // Two separate stages shown as two sections - a lead vanishing from view
   // the instant it's marked Qualified left no place to ever click Send to
   // Field Sales, so both stages of this agent's own queue are fetched.
@@ -421,6 +499,7 @@ function MyQueueTab() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -456,20 +535,6 @@ function MyQueueTab() {
       setCallingLeadId(null);
     }
   };
-
-  if (loading && leads.length === 0) {
-    return <Text type="secondary">Loading your queue...</Text>;
-  }
-
-  if (leads.length === 0) {
-    return (
-      <div style={{ padding: "40px 0", textAlign: "center" }}>
-        <Text type="secondary" style={{ fontSize: 13.5 }}>
-          Nothing in your queue right now - new marketing leads will land here automatically.
-        </Text>
-      </div>
-    );
-  }
 
   // A scannable summary row per lead - full detail (edit customer info,
   // Call/Email/Teams/WhatsApp, call history and comments, Log call outcome/
@@ -537,6 +602,25 @@ function MyQueueTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {canAddToQueue && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddLeadOpen(true)}>
+            Add lead
+          </Button>
+        </div>
+      )}
+
+      {loading && leads.length === 0 && <Text type="secondary">Loading your queue...</Text>}
+
+      {!loading && leads.length === 0 && (
+        <div style={{ padding: "40px 0", textAlign: "center" }}>
+          <Text type="secondary" style={{ fontSize: 13.5 }}>
+            Nothing in your queue right now - new marketing leads will land here automatically
+            {canAddToQueue && ', or use "Add lead" above for someone who called in directly'}.
+          </Text>
+        </div>
+      )}
+
       {qualifiedLeads.length > 0 && (
         <div>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
@@ -553,6 +637,8 @@ function MyQueueTab() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{callingLeads.map(renderRow)}</div>
         </div>
       )}
+
+      <AddLeadModal open={addLeadOpen} onClose={() => setAddLeadOpen(false)} onAdded={() => { setAddLeadOpen(false); load(); }} />
 
       <Drawer
         title={selectedLead?.fullName ?? ""}
