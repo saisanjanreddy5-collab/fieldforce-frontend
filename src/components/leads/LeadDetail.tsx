@@ -18,6 +18,7 @@ import { errorMessageFrom } from "../../utils/api-error";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { LeadSnapshot } from "./LeadSnapshot";
 import { LeadAssignmentPanel } from "./LeadAssignmentPanel";
+import { CallCenterStageActions } from "./CallCenterStageActions";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
@@ -54,6 +55,22 @@ const BASE_DETAIL_TABS = [
   { key: "documents", label: "Documents" },
 ];
 
+// Which permission a tab actually needs, matching the real route guard
+// behind it (see lead-routes.ts) - null means every authenticated viewer of
+// this lead can see it. Without this, a role missing one of these (Call
+// Center holds neither opportunities.view nor quotes.view nor leads.view,
+// by design - see role-permission-service.ts) would still see the tab,
+// click it, and get a 403 toast instead of the tab just not being there.
+// Approvals/Documents aren't listed here - they're already gated inline via
+// canViewOnboarding below, which the same fofo_onboarding.view permission
+// backs.
+const TAB_PERMISSION: Partial<Record<string, string>> = {
+  opportunities: "opportunities.view",
+  quotes: "quotes.view",
+  whatsapp: "whatsapp.view",
+  consent: "leads.view",
+};
+
 interface MeetingFormValues {
   subject: string;
   startTime: Dayjs;
@@ -66,6 +83,19 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   const hasPermission = useHasPermission();
   const { user } = useAuth();
   const { connected: microsoftConnected } = useMicrosoftConnection();
+
+  // Shared with detailTabs below - the one place that decides whether a tab
+  // key is actually reachable. Without this, initialTab coming straight from
+  // a URL's ?tab= query param (see LeadsPage.tsx's deep-link handling) could
+  // seed activeTabKey with a tab the viewer has no permission for, bypassing
+  // the tab bar's own filtering entirely and landing them on a tab whose
+  // content fetches and 403s on mount - exactly what that filtering exists
+  // to prevent.
+  const isTabAllowed = (key: string): boolean => {
+    const required = TAB_PERMISSION[key];
+    return !required || hasPermission(required);
+  };
+
   // A lazy initializer, not a prop read directly in the effect below - this
   // only ever seeds the very first mount (e.g. a fresh deep link from the
   // Activity calendar's WhatsApp button landing straight on that tab).
@@ -73,7 +103,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   // which always resets to "overview" regardless of this prop's value -
   // otherwise a stale initialTab would keep pulling every later lead
   // selection back to the same tab instead of behaving normally.
-  const [activeTabKey, setActiveTabKey] = useState(initialTab ?? "overview");
+  const [activeTabKey, setActiveTabKey] = useState(initialTab && isTabAllowed(initialTab) ? initialTab : "overview");
   const [emailOpen, setEmailOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [creatingMeeting, setCreatingMeeting] = useState(false);
@@ -87,7 +117,16 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(true);
 
+  const canViewOpportunities = hasPermission("opportunities.view");
   const loadOpportunities = () => {
+    // Call Center holds neither opportunities.view nor quotes.view by design
+    // (see role-permission-service.ts) - fetching this anyway, just to feed
+    // a tab they'll never see, was exactly what produced a "Failed to load
+    // opportunities" toast on every single lead they opened.
+    if (!canViewOpportunities) {
+      setOpportunitiesLoading(false);
+      return;
+    }
     setOpportunitiesLoading(true);
     opportunityApi
       .listOpportunitiesForLead(lead.id)
@@ -198,7 +237,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   const hasOpenOpportunity = opportunities.some((o) => o.stage !== "won" && o.stage !== "lost");
 
   const pendingActivityCount = activities.filter((a) => a.status !== "completed").length;
-  const detailTabs = BASE_DETAIL_TABS.map((tab) =>
+  const detailTabs = BASE_DETAIL_TABS.filter((tab) => isTabAllowed(tab.key)).map((tab) =>
     tab.key === "activity" && pendingActivityCount > 0 ? { ...tab, badge: String(pendingActivityCount) } : tab
   );
 
@@ -207,7 +246,12 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       <LeadSnapshot
         lead={lead}
         showOwner={showOwner}
-        assignmentActions={<LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />}
+        assignmentActions={
+          <>
+            <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} />
+            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />
+          </>
+        }
         availability={{
           canOnboard,
           hasOpenOpportunity,

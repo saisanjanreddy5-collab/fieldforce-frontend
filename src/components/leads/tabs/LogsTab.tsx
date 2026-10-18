@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, Dropdown, Empty, Input, Tooltip, Typography, message } from "antd";
+import { Button, Checkbox, Dropdown, Empty, Input, Tag, Tooltip, Typography, message } from "antd";
 import { DownOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import * as activityApi from "../../../api/activity-api";
 import type { Activity, ActivityComment, ActivityType } from "../../../types/activity";
@@ -84,6 +84,11 @@ function LoggedInteractionCard({ activity }: { activity: Activity }) {
   const transcriptUrl = typeof activity.details.transcriptUrl === "string" ? activity.details.transcriptUrl : undefined;
   const emailBody = typeof activity.details.body === "string" ? activity.details.body : undefined;
   const joinUrl = typeof activity.details.joinUrl === "string" ? activity.details.joinUrl : undefined;
+  // Only emails carry a direction today - outbound rows (sent from this app,
+  // always most of an email thread's history) never set it, so they render
+  // exactly as before; only a reply synced in by microsoft-mail-sync-service
+  // gets the "Received" tag.
+  const isInboundEmail = activity.type === "email" && activity.details.direction === "inbound";
 
   return (
     <div style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 12 }}>
@@ -92,6 +97,11 @@ function LoggedInteractionCard({ activity }: { activity: Activity }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
             <Text strong>{activity.subject ?? TYPE_LABEL[activity.type]}</Text>
+            {isInboundEmail && (
+              <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>
+                Received
+              </Tag>
+            )}
             <Text type="secondary" style={{ fontSize: 12 }}>
               {TYPE_LABEL[activity.type]} · {formatDateTime(activity.updatedAt)}
             </Text>

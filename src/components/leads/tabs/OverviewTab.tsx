@@ -4,6 +4,7 @@ import type { Lead, LeadConsent } from "../../../types/lead";
 import * as leadApi from "../../../api/lead-api";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
 import { appTokens } from "../../../utils/design-system";
+import { useHasPermission } from "../../../hooks/use-permission";
 import { ConsentTab } from "./ConsentTab";
 
 const { Text } = Typography;
@@ -114,19 +115,28 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ lead }: OverviewTabProps) {
+  const hasPermission = useHasPermission();
+  // Consent lives behind leads.view (see ConsentTab/lead-routes.ts's own
+  // GET /:id/consent) - Call Center holds leads.queue_view instead, by
+  // design, so fetching this unconditionally was the one thing still
+  // producing a "Failed to load consent" toast on every lead they opened,
+  // even after the rest of this page learned to ask first.
+  const canViewConsent = hasPermission("leads.view");
   const [activeSection, setActiveSection] = useState<string>("customer");
   const [consent, setConsent] = useState<LeadConsent | null>(null);
-  const [consentLoaded, setConsentLoaded] = useState(false);
+  const [consentLoaded, setConsentLoaded] = useState(!canViewConsent);
 
   // Fetched once here (not inside ConsentTab) so the synopsis count and the
   // Consent section itself share the same data - see ConsentTab's `consent`
   // prop, which skips its own fetch when given this.
   useEffect(() => {
+    if (!canViewConsent) return;
     leadApi
       .getLeadConsent(lead.id)
       .then(setConsent)
       .catch(() => message.error("Failed to load consent"))
       .finally(() => setConsentLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
 
   const sectionProgress = useMemo(() => {
@@ -136,11 +146,12 @@ export function OverviewTab({ lead }: OverviewTabProps) {
       filled: countFilled(lead, fields),
       total: fields.length,
     }));
+    if (!canViewConsent) return fromLead;
     return [
       ...fromLead,
       { key: "consent", label: SECTION_LABELS.consent, filled: countConsentFilled(consent), total: CONSENT_FIELD_COUNT },
     ];
-  }, [lead, consent]);
+  }, [lead, consent, canViewConsent]);
 
   return (
     <Row gutter={16}>

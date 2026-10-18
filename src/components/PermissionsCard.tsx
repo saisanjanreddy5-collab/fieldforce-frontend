@@ -28,6 +28,7 @@ const { Text } = Typography;
 const ENFORCED_PERMISSIONS = new Set([
   "leads.view", "leads.create", "leads.update", "leads.delete", "leads.share",
   "leads.queue_view", "leads.call_log", "leads.qualify", "leads.send_to_field", "leads.reassign",
+  "whatsapp.view", "whatsapp.send",
   "opportunities.view", "opportunities.create", "opportunities.update", "opportunities.delete",
   "activities.view", "activities.create", "activities.update", "activities.delete",
   "role_permissions.view",
@@ -44,7 +45,7 @@ const ENFORCED_PERMISSIONS = new Set([
 // check) so an admin can grant/revoke the generic Leads module independently
 // of a call_center employee's own queue.
 const VERB_ORDER = [
-  "view", "create", "update", "delete", "share",
+  "view", "create", "update", "delete", "share", "send",
   "queue_view", "call_log", "qualify", "send_to_field", "reassign",
   "approve", "export", "view_own", "view_team",
 ];
@@ -54,6 +55,7 @@ const VERB_LABELS: Record<string, string> = {
   update: "Edit",
   delete: "Delete",
   share: "Share",
+  send: "Send",
   queue_view: "View queue",
   call_log: "Log calls",
   qualify: "Qualify",

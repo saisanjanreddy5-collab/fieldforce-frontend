@@ -113,7 +113,9 @@ export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProp
   return (
     <>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        {canSendToField && lead.status === "Qualified" && <SendToFieldAction leadId={lead.id} size="small" onDone={onChanged} />}
+        {canSendToField && lead.status === "Qualified" && lead.ownerRole !== "agent" && (
+          <SendToFieldAction leadId={lead.id} size="small" onDone={onChanged} />
+        )}
         {canReassign && (
           <Popover
             content={reassignContent}
