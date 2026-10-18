@@ -37,6 +37,15 @@ export async function createLead(payload: CreateLeadPayload): Promise<Lead> {
   return response.data.data;
 }
 
+// Call Center's own "Add lead" action - a contact who called in directly,
+// not from a marketing import. Always lands in the caller's own Call Center
+// queue (owner/status are decided server-side, never taken from this
+// payload - see lead-call-center-service.ts's createOwnQueueLead).
+export async function createOwnQueueLead(payload: CreateLeadPayload): Promise<Lead> {
+  const response = await apiClient.post<ApiSuccess<Lead>>("/leads/queue", payload);
+  return response.data.data;
+}
+
 export async function updateLead(id: string, payload: Partial<CreateLeadPayload>): Promise<Lead> {
   const response = await apiClient.patch<ApiSuccess<Lead>>(`/leads/${id}`, payload);
   return response.data.data;
