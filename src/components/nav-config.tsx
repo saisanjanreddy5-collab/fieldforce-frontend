@@ -107,11 +107,17 @@ export const NAV_GROUPS: NavGroup[] = [
         built: true,
         // Every tab Settings actually has: stages, categories, assignment
         // rules, approval bands, app settings, templates, leave types, QR
-        // capture, WhatsApp, users & access.
+        // capture, users & access. whatsapp.view is deliberately NOT here -
+        // Call Center holds it purely to see WhatsApp messages on their own
+        // leads (a completely different, lead-scoped concern - see
+        // lead-routes.ts's GET /:id/whatsapp-messages), not to configure the
+        // WhatsApp API integration this module's own tab exposes. Including
+        // it here was what let a Call Center account land on Settings at
+        // all and hit a 403 on every tab it actually opened.
         permissions: [
           "pipeline_stages.view", "lead_categories.view", "assignment_rules.view", "approval_bands.view",
           "app_settings.view", "message_templates.view", "leave_types.view", "qr_campaigns.view",
-          "whatsapp.view", "users.view",
+          "users.view",
         ],
       },
     ],
