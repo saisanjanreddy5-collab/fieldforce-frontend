@@ -15,3 +15,7 @@ export async function fetchMe(): Promise<AuthUser> {
 export async function logout(refreshToken: string): Promise<void> {
   await apiClient.post("/auth/logout", { refreshToken });
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await apiClient.post("/auth/change-password", { currentPassword, newPassword });
+}

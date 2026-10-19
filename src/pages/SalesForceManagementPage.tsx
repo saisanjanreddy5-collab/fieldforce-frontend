@@ -44,6 +44,7 @@ import { ReportingLinesCard } from "../components/ReportingLinesCard";
 import { ApprovalBandsCard } from "../components/ApprovalBandsCard";
 import { TerritoryTargetsCard } from "../components/TerritoryTargetsCard";
 import { TestAccessAsModal } from "../components/TestAccessAsModal";
+import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { STATUS_COLORS, STATUS_OPTIONS, UserFormWizard } from "../components/UserFormWizard";
 import { appTokens, avatarGradient } from "../utils/design-system";
 
@@ -86,6 +87,7 @@ export default function SalesForceManagementPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [testAccessOpen, setTestAccessOpen] = useState(false);
+  const [resettingPasswordUser, setResettingPasswordUser] = useState<TeamMember | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -537,17 +539,25 @@ export default function SalesForceManagementPage() {
                 title: "",
                 key: "action",
                 width: 150,
-                render: (_, user) =>
-                  hasPermission("users.update") ? (
-                    <Space size={4}>
-                      <Button type="link" size="small" onClick={() => openEditDrawer(user)}>
-                        Edit
+                render: (_, user) => (
+                  <Space size={4}>
+                    {hasPermission("users.update") && (
+                      <>
+                        <Button type="link" size="small" onClick={() => openEditDrawer(user)}>
+                          Edit
+                        </Button>
+                        <Button type="link" size="small" onClick={() => toggleAccess(user)}>
+                          {user.isActive ? "Disable login" : "Enable login"}
+                        </Button>
+                      </>
+                    )}
+                    {hasPermission("users.reset_password") && (
+                      <Button type="link" size="small" onClick={() => setResettingPasswordUser(user)}>
+                        Reset password
                       </Button>
-                      <Button type="link" size="small" onClick={() => toggleAccess(user)}>
-                        {user.isActive ? "Disable login" : "Enable login"}
-                      </Button>
-                    </Space>
-                  ) : null,
+                    )}
+                  </Space>
+                ),
               },
             ]}
           />
@@ -581,6 +591,7 @@ export default function SalesForceManagementPage() {
       />
 
       <TestAccessAsModal open={testAccessOpen} onClose={() => setTestAccessOpen(false)} users={users} />
+      <ResetPasswordModal user={resettingPasswordUser} onClose={() => setResettingPasswordUser(null)} />
     </div>
   );
 }

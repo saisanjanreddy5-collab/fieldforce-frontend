@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Button, Drawer, Input, Typography, message } from "antd";
-import { CheckCircleFilled, EditOutlined, LogoutOutlined } from "@ant-design/icons";
+import { Button, Drawer, Form, Input, Modal, Typography, message } from "antd";
+import { CheckCircleFilled, EditOutlined, LockOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useAuth } from "../context/AuthContext";
 import { useMicrosoftConnection } from "../hooks/use-microsoft-connection";
 import * as userApi from "../api/user-api";
+import * as authApi from "../api/auth-api";
+import { errorMessageFrom } from "../utils/api-error";
 import { appTokens, avatarGradient } from "../utils/design-system";
 
 const { Text, Title } = Typography;
@@ -44,6 +46,9 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
   const [editingNumber, setEditingNumber] = useState(false);
   const [numberDraft, setNumberDraft] = useState("");
   const [savingNumber, setSavingNumber] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordForm] = Form.useForm<{ currentPassword: string; newPassword: string; confirmPassword: string }>();
 
   useEffect(() => {
     if (open) {
@@ -70,6 +75,25 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
       message.error("Failed to update calling number");
     } finally {
       setSavingNumber(false);
+    }
+  };
+
+  const handleChangePassword = async (values: { currentPassword: string; newPassword: string }) => {
+    setChangingPassword(true);
+    try {
+      await authApi.changePassword(values.currentPassword, values.newPassword);
+      setPasswordModalOpen(false);
+      passwordForm.resetFields();
+      // Changing your own password logs you out everywhere, including this
+      // session - matches what the backend already did server-side
+      // (revoked every refresh token for this account), so there's nothing
+      // left to keep this session alive with anyway.
+      message.success("Password changed - please log in again");
+      logout();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to change password"));
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -198,12 +222,66 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
           This is your own calling number, used when you click Call on a lead. You can change it yourself any time - no need to ask an admin.
         </Text>
 
-        <div style={{ marginTop: 24, paddingTop: 16, paddingBottom: 20, borderTop: `1px solid ${appTokens.borderLight}` }}>
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${appTokens.borderLight}` }}>
+          <Button icon={<LockOutlined />} onClick={() => setPasswordModalOpen(true)} block>
+            Change password
+          </Button>
+        </div>
+
+        <div style={{ marginTop: 10, paddingBottom: 20 }}>
           <Button icon={<LogoutOutlined />} onClick={logout} block>
             Log out
           </Button>
         </div>
       </div>
+
+      <Modal
+        title="Change password"
+        open={passwordModalOpen}
+        onCancel={() => {
+          setPasswordModalOpen(false);
+          passwordForm.resetFields();
+        }}
+        onOk={() => passwordForm.submit()}
+        okText="Change password"
+        confirmLoading={changingPassword}
+        destroyOnClose
+      >
+        <Text type="secondary" style={{ fontSize: 12.5 }}>
+          This will log you out everywhere, including this session - you'll need to log back in with your new password.
+        </Text>
+        <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword} style={{ marginTop: 16 }}>
+          <Form.Item name="currentPassword" label="Current password" rules={[{ required: true, message: "Enter your current password" }]}>
+            <Input.Password autoComplete="current-password" />
+          </Form.Item>
+          <Form.Item
+            name="newPassword"
+            label="New password"
+            rules={[
+              { required: true, message: "Enter a new password" },
+              { min: 8, message: "At least 8 characters" },
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label="Confirm new password"
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: "Confirm your new password" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || value === getFieldValue("newPassword")) return Promise.resolve();
+                  return Promise.reject(new Error("Passwords don't match"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Drawer>
   );
 }
