@@ -26,6 +26,7 @@ const { Text } = Typography;
 // so toggling those here only changes what this screen displays, not what
 // the backend enforces.
 const ENFORCED_PERMISSIONS = new Set([
+  "users.reset_password",
   "leads.view", "leads.create", "leads.update", "leads.delete", "leads.share",
   "leads.queue_view", "leads.queue_create", "leads.call_log", "leads.qualify", "leads.send_to_field", "leads.reassign",
   "whatsapp.view", "whatsapp.send",
@@ -45,7 +46,7 @@ const ENFORCED_PERMISSIONS = new Set([
 // check) so an admin can grant/revoke the generic Leads module independently
 // of a call_center employee's own queue.
 const VERB_ORDER = [
-  "view", "create", "update", "delete", "share", "send",
+  "view", "create", "update", "delete", "share", "send", "reset_password",
   "queue_view", "queue_create", "call_log", "qualify", "send_to_field", "reassign",
   "approve", "export", "view_own", "view_team",
 ];
@@ -56,6 +57,7 @@ const VERB_LABELS: Record<string, string> = {
   delete: "Delete",
   share: "Share",
   send: "Send",
+  reset_password: "Reset password",
   queue_view: "View queue",
   queue_create: "Add to queue",
   call_log: "Log calls",

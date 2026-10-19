@@ -27,6 +27,14 @@ export async function updateUser(id: string, payload: UpdateUserPayload): Promis
   return response.data.data;
 }
 
+// Admin-only - sets someone else's password directly (no current-password
+// proof, since the admin's own session is the proof here) and logs them out
+// everywhere. See user-routes.ts's own comment on why this is a separate
+// permission from the general users.update above.
+export async function resetPassword(id: string, newPassword: string): Promise<void> {
+  await apiClient.post(`/users/${id}/reset-password`, { newPassword });
+}
+
 export interface UpdateOwnProfilePayload {
   smartfloAgentNumber: string;
 }
