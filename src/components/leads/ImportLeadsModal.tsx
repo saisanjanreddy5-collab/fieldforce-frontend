@@ -129,6 +129,45 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
     },
   };
 
+  // Rendered via Modal's own `footer` prop (not inlined at the bottom of
+  // each step's content) so the action buttons sit in a fixed footer strip
+  // that's always visible, even when the body itself has to scroll (a short
+  // browser window + the 13-field mapping list previously pushed Back/
+  // Continue below the fold, with no visible cue that the modal scrolled at
+  // all).
+  const footer =
+    step === 0 ? (
+      <Button type="primary" disabled={!parsed} onClick={() => setStep(1)}>
+        Continue to mapping
+      </Button>
+    ) : step === 1 ? (
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button onClick={() => setStep(0)}>Back</Button>
+        <Button type="primary" disabled={!canContinueMapping} onClick={() => setStep(2)}>
+          Continue to review
+        </Button>
+      </div>
+    ) : result ? (
+      <Button
+        type="primary"
+        onClick={() => {
+          onClose();
+          reset();
+        }}
+      >
+        Done
+      </Button>
+    ) : (
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button onClick={() => setStep(1)} disabled={importing}>
+          Back
+        </Button>
+        <Button type="primary" loading={importing} onClick={handleImport}>
+          Import {parsed?.rows.length ?? 0} lead{(parsed?.rows.length ?? 0) === 1 ? "" : "s"}
+        </Button>
+      </div>
+    );
+
   return (
     <Modal
       title="Import leads"
@@ -137,8 +176,9 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
         onClose();
         reset();
       }}
-      footer={null}
+      footer={footer}
       width={560}
+      styles={{ body: { maxHeight: "60vh", overflowY: "auto" } }}
     >
       <Text type="secondary">CSV or XLSX. Column mapping is remembered for next time.</Text>
       <Steps
@@ -173,11 +213,6 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
             Need the format?{" "}
             <Link onClick={handleDownloadTemplate}>Download the lead import template</Link>
           </Text>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-            <Button type="primary" disabled={!parsed} onClick={() => setStep(1)}>
-              Continue to mapping
-            </Button>
-          </div>
         </>
       )}
 
@@ -186,7 +221,7 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           <Text type="secondary">
             Match each field to a column from your file. Your choices are remembered for next time.
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16, maxHeight: 360, overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
             {IMPORT_MAPPABLE_FIELDS.map((field) => (
               <div key={field.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Text style={{ width: 150, flexShrink: 0 }}>
@@ -204,12 +239,6 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
-            <Button onClick={() => setStep(0)}>Back</Button>
-            <Button type="primary" disabled={!canContinueMapping} onClick={() => setStep(2)}>
-              Continue to review
-            </Button>
-          </div>
         </>
       )}
 
@@ -226,14 +255,6 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
               </Text>
             ))}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
-            <Button onClick={() => setStep(1)} disabled={importing}>
-              Back
-            </Button>
-            <Button type="primary" loading={importing} onClick={handleImport}>
-              Import {parsed.rows.length} lead{parsed.rows.length === 1 ? "" : "s"}
-            </Button>
-          </div>
         </>
       )}
 
@@ -245,7 +266,7 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           {result.skipped.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <Text type="secondary">{result.skipped.length} skipped as duplicates:</Text>
-              <div style={{ maxHeight: 140, overflowY: "auto", marginTop: 4 }}>
+              <div style={{ marginTop: 4 }}>
                 {result.skipped.map((s, i) => (
                   <Text key={i} style={{ display: "block", fontSize: 12.5 }}>
                     Row {s.row}: {s.reason}
@@ -257,7 +278,7 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           {result.errors.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <Text type="danger">{result.errors.length} row{result.errors.length === 1 ? "" : "s"} couldn't be imported:</Text>
-              <div style={{ maxHeight: 140, overflowY: "auto", marginTop: 4 }}>
+              <div style={{ marginTop: 4 }}>
                 {result.errors.map((e, i) => (
                   <Text key={i} type="danger" style={{ display: "block", fontSize: 12.5 }}>
                     Row {e.row}: {e.message}
@@ -266,17 +287,6 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
               </div>
             </div>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-            <Button
-              type="primary"
-              onClick={() => {
-                onClose();
-                reset();
-              }}
-            >
-              Done
-            </Button>
-          </div>
         </>
       )}
     </Modal>
