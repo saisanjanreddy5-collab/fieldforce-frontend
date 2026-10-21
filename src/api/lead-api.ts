@@ -13,6 +13,11 @@ export async function listTerritories(): Promise<string[]> {
   return response.data.data;
 }
 
+export async function listLeadSources(): Promise<string[]> {
+  const response = await apiClient.get<ApiSuccess<string[]>>("/leads/sources");
+  return response.data.data;
+}
+
 export interface LeadQuickFilterCounts {
   all: number;
   myLeads: number;

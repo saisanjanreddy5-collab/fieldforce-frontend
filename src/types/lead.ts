@@ -108,6 +108,7 @@ export interface LeadListFilters {
   ownerId?: string;
   search?: string;
   category?: string;
+  source?: string;
   overdueOnly?: boolean;
   highScoreOnly?: boolean;
   consentPending?: boolean;

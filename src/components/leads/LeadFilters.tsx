@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Badge, Button, Popover, Select, Space, Switch, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
+import { useLeadSources } from "../../hooks/use-lead-sources";
 import { appTokens } from "../../utils/design-system";
 
 const { Text } = Typography;
@@ -9,6 +11,7 @@ const { Text } = Typography;
 export interface AdvancedFilters {
   category?: string;
   status?: string;
+  source?: string;
   consentPending?: boolean;
 }
 
@@ -25,7 +28,9 @@ const activeCount = (value: AdvancedFilters) => Object.values(value).filter((v) 
 export function LeadFilters({ value, onChange }: LeadFiltersProps) {
   const { stages } = usePipelineStages();
   const { categories } = useLeadCategories();
+  const { sources, refetch: refetchSources } = useLeadSources();
   const count = activeCount(value);
+  const [open, setOpen] = useState(false);
 
   const content = (
     <div style={{ width: 260 }}>
@@ -55,6 +60,17 @@ export function LeadFilters({ value, onChange }: LeadFiltersProps) {
             options={stages.filter((s) => s.isActive).map((s) => ({ value: s.key, label: s.label }))}
           />
         </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, letterSpacing: 0.3, marginBottom: 6 }}>SOURCE</div>
+          <Select
+            allowClear
+            style={{ width: "100%" }}
+            placeholder="All sources"
+            value={value.source}
+            onChange={(source) => onChange({ ...value, source })}
+            options={sources.map((s) => ({ value: s, label: s }))}
+          />
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 0" }}>
           <span style={{ fontSize: 13 }}>Consent pending</span>
           <Switch
@@ -73,7 +89,17 @@ export function LeadFilters({ value, onChange }: LeadFiltersProps) {
   );
 
   return (
-    <Popover content={content} trigger="click" placement="bottomRight" styles={{ content: { padding: 16, borderRadius: 12 } }}>
+    <Popover
+      content={content}
+      trigger="click"
+      placement="bottomRight"
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) refetchSources();
+      }}
+      styles={{ content: { padding: 16, borderRadius: 12 } }}
+    >
       <Badge count={count} size="small" offset={[-4, 4]} color={appTokens.primary}>
         <Button
           icon={<FilterOutlined />}

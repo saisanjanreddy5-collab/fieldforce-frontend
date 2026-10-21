@@ -97,6 +97,7 @@ export default function LeadsPage() {
       highScoreOnly: quickFilter === "highScore" || undefined,
       category: quickFilter === "fofo" ? "FOFO" : advancedFilters.category,
       status: advancedFilters.status,
+      source: advancedFilters.source,
       consentPending: advancedFilters.consentPending || undefined,
     }),
     [search, quickFilter, advancedFilters]
@@ -206,6 +207,11 @@ export default function LeadsPage() {
       key: "status",
       label: `Stage: ${advancedFilters.status}`,
       onRemove: () => setAdvancedFilters((v) => ({ ...v, status: undefined })),
+    },
+    advancedFilters.source && {
+      key: "source",
+      label: `Source: ${advancedFilters.source}`,
+      onRemove: () => setAdvancedFilters((v) => ({ ...v, source: undefined })),
     },
     advancedFilters.consentPending && {
       key: "consentPending",
