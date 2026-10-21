@@ -17,3 +17,11 @@ export async function resetRoleToDefault(role: Role): Promise<RolePermissionMatr
   const response = await apiClient.post<ApiSuccess<RolePermissionMatrix>>("/role-permissions/reset", { role });
   return response.data.data;
 }
+
+// Temporary, reversible elevation - mirrors Admin's current live
+// permissions onto this role. Pair with resetRoleToDefault above to put the
+// role back once a review/demo is done.
+export async function grantAdminAccess(role: Role): Promise<RolePermissionMatrix> {
+  const response = await apiClient.post<ApiSuccess<RolePermissionMatrix>>("/role-permissions/grant-admin-access", { role });
+  return response.data.data;
+}

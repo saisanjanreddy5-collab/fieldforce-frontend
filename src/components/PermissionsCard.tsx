@@ -521,6 +521,38 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
               { value: "employee", label: "By employee" },
             ]}
           />
+          {mode === "role" && selectedLevel?.securityTier !== "admin" && (
+            <Tag
+              color="gold"
+              style={{
+                cursor: !selectedLevel || !canManageRoles ? "not-allowed" : "pointer",
+                opacity: !selectedLevel || !canManageRoles ? 0.5 : 1,
+              }}
+              onClick={() => {
+                if (!selectedLevel || !canManageRoles) return;
+                const tier = selectedLevel.securityTier;
+                Modal.confirm({
+                  title: `Give the ${tier} tier full Administrator access?`,
+                  width: 480,
+                  content:
+                    "A temporary, reversible elevation - every real permission Admin currently has, copied onto this whole tier. Use “Reset role to default” right after to put it back once your review is done.",
+                  okText: "Grant access",
+                  cancelText: "Cancel",
+                  onOk: async () => {
+                    try {
+                      const updated = await rolePermissionApi.grantAdminAccess(tier);
+                      setMatrix(updated);
+                      message.success(`${tier} tier now has full Administrator access`);
+                    } catch {
+                      message.error("Failed to grant Administrator access");
+                    }
+                  },
+                });
+              }}
+            >
+              Grant full Administrator access
+            </Tag>
+          )}
           {mode === "role" && (
             <Popconfirm
               title={`Reset ${selectedLevel?.securityTier ?? "this"} tier to its default permissions?`}
