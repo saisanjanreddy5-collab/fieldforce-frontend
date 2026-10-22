@@ -460,7 +460,14 @@ function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () =
         <Form.Item name="fullName" label="Full name" rules={[{ required: true, message: "Full name is required" }]}>
           <Input placeholder="Who are you speaking with?" />
         </Form.Item>
-        <Form.Item name="phone" label="Phone">
+        <Form.Item
+          name="phone"
+          label="Phone"
+          rules={[
+            { required: true, message: "Phone is required" },
+            { pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" },
+          ]}
+        >
           <Input placeholder="10-digit mobile number" />
         </Form.Item>
         <Form.Item name="email" label="Email">
