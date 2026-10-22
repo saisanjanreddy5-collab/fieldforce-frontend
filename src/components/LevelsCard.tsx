@@ -135,7 +135,15 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
               <div
                 key={level.id}
                 draggable={canReorder}
-                onDragStart={() => setDragIndex(idx)}
+                onDragStart={(e) => {
+                  // Some browsers (Firefox in particular) refuse to start a
+                  // real HTML5 drag at all unless dataTransfer carries data -
+                  // without this, dragging here did nothing, silently.
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", level.id);
+                  setDragIndex(idx);
+                }}
+                onDragEnd={() => setDragIndex(null)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleDrop(idx)}
                 style={{
@@ -149,6 +157,12 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
                   marginBottom: 6,
                   cursor: canReorder ? "grab" : "default",
                   background: appTokens.surface,
+                  // The row is mostly plain text (the level name/description) -
+                  // without this, starting the drag gesture over that text
+                  // kicks off a browser text selection instead of a real
+                  // HTML5 drag, which is exactly why dragging appeared to do
+                  // nothing at all.
+                  userSelect: canReorder ? "none" : undefined,
                 }}
               >
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", minWidth: 0 }}>
