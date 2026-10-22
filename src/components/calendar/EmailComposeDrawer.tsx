@@ -69,14 +69,26 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     setBody("");
     setCc([]);
     setAttachments([]);
-    Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus(), messageTemplateApi.listMessageTemplates("email")])
-      .then(([leadResult, statusResult, templatesResult]) => {
+    // Templates are a nice-to-have (a role without message_templates.view -
+    // e.g. Call Center - simply gets a blank-email-only compose panel), not
+    // essential like the lead/recipient itself - fetched separately so a
+    // 403 on that one call can't take down the whole drawer the way a
+    // single combined Promise.all did (that failure mode is exactly what
+    // made "No email on file for this lead" show up for a lead that
+    // actually had an email on file - the lead fetch had succeeded, its
+    // result just never reached state because Promise.all rejects as soon
+    // as any one of its promises does).
+    Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus()])
+      .then(([leadResult, statusResult]) => {
         setLead(leadResult);
         setMsStatus(statusResult);
-        setTemplates(templatesResult.filter((t) => t.status === "active"));
       })
       .catch(() => message.error("Failed to load lead details"))
       .finally(() => setLoading(false));
+    messageTemplateApi
+      .listMessageTemplates("email")
+      .then((templatesResult) => setTemplates(templatesResult.filter((t) => t.status === "active")))
+      .catch(() => setTemplates([]));
   }, [open, leadId]);
 
   const applyTemplate = (key: string) => {
