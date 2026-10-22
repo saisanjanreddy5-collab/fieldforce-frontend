@@ -79,6 +79,16 @@ function CommentThread({ activityId }: { activityId: string }) {
 
 function LoggedInteractionCard({ activity }: { activity: Activity }) {
   const outcome = typeof activity.details.outcome === "string" ? activity.details.outcome : undefined;
+  // The human-entered call disposition (Ringing/Not Reachable/Call Back/.../
+  // Call Done And Not Interested - see CALL_DISPOSITIONS) - a deliberately
+  // separate field from `outcome` above, which is Smartflo's own
+  // auto-generated connection string (answered/no-answer/etc.). Without
+  // reading this, a Call Center rep's actual "what happened on this call"
+  // never showed up anywhere once a second call pushed it out of the lead
+  // header's own "Last: X (N calls)" summary - it was saved, just never
+  // displayed.
+  const disposition = typeof activity.details.disposition === "string" ? activity.details.disposition : undefined;
+  const dispositionNotes = typeof activity.details.notes === "string" ? activity.details.notes : undefined;
   const recordingUrl = typeof activity.details.recordingUrl === "string" ? activity.details.recordingUrl : undefined;
   const durationSeconds = typeof activity.details.durationSeconds === "number" ? activity.details.durationSeconds : undefined;
   const transcriptUrl = typeof activity.details.transcriptUrl === "string" ? activity.details.transcriptUrl : undefined;
@@ -111,6 +121,16 @@ function LoggedInteractionCard({ activity }: { activity: Activity }) {
             <Text type="secondary" style={{ fontSize: 13, display: "block", marginTop: 4 }}>
               {outcome}
             </Text>
+          )}
+
+          {disposition && (
+            <Tag color="blue" style={{ margin: "4px 0 0" }}>
+              {disposition}
+            </Tag>
+          )}
+
+          {dispositionNotes && (
+            <Text style={{ fontSize: 13, display: "block", marginTop: 4 }}>{dispositionNotes}</Text>
           )}
 
           {activity.type === "call" && (
