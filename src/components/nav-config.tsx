@@ -105,18 +105,25 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Settings",
         icon: <SettingOutlined />,
         built: true,
-        // Every tab Settings actually has: stages, categories, assignment
-        // rules, approval bands, app settings, templates, leave types, QR
-        // capture, users & access. whatsapp.view is deliberately NOT here -
-        // Call Center holds it purely to see WhatsApp messages on their own
-        // leads (a completely different, lead-scoped concern - see
-        // lead-routes.ts's GET /:id/whatsapp-messages), not to configure the
-        // WhatsApp API integration this module's own tab exposes. Including
-        // it here was what let a Call Center account land on Settings at
-        // all and hit a 403 on every tab it actually opened.
+        // Settings' own tabs, gated on the permission that actually means
+        // "can configure this," not just "can read this." whatsapp.view,
+        // pipeline_stages.view, lead_categories.view, message_templates.view
+        // and leave_types.view are all deliberately NOT here even though
+        // Settings has tabs for each of those areas - every one of those
+        // five `.view` permissions is also held broadly for a completely
+        // ordinary, unrelated reason (seeing WhatsApp messages on your own
+        // leads, Stage/Category labels shown throughout the Leads UI,
+        // picking a message template when messaging a lead, reading leave
+        // types to populate your own leave request's dropdown) - so Call
+        // Center and Field Sales Executive both ended up landing on
+        // Settings and hitting a 403 on every tab they opened, same root
+        // cause each time. Nothing here is reachable by holding only a read
+        // permission needed for normal app usage - only the remaining
+        // permissions below are safe because nothing outside Settings
+        // itself ever needs them.
         permissions: [
-          "pipeline_stages.view", "lead_categories.view", "assignment_rules.view", "approval_bands.view",
-          "app_settings.view", "message_templates.view", "leave_types.view", "qr_campaigns.view",
+          "assignment_rules.view", "approval_bands.view",
+          "app_settings.view", "qr_campaigns.view",
           "users.view",
         ],
       },
