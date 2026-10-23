@@ -366,8 +366,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item name="prospectStatus" label="Prospect Status">
                       <Select allowClear options={["Hot", "Warm", "Cold"].map((value) => ({ value, label: value }))} />
                     </Form.Item>
-                    <Form.Item name="category" label="Category" rules={[{ required: true, message: "Required" }]}>
-                      <Select options={categories.filter((c) => c.isActive).map((c) => ({ value: c.key, label: c.label }))} />
+                    <Form.Item name="category" label="Category">
+                      <Select
+                        allowClear
+                        placeholder="Optional"
+                        options={categories.filter((c) => c.isActive).map((c) => ({ value: c.key, label: c.label }))}
+                      />
                     </Form.Item>
                     <Form.Item name="leadScore" label="Lead Score (%)">
                       <InputNumber min={0} max={100} style={{ width: "100%" }} />
