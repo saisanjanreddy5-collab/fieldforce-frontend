@@ -501,6 +501,11 @@ function MyQueueTab() {
   // Field Sales, so both stages of this agent's own queue are fetched.
   const [callingLeads, setCallingLeads] = useState<Lead[]>([]);
   const [qualifiedLeads, setQualifiedLeads] = useState<Lead[]>([]);
+  // Leads this person used to own and has since sent to Field Sales -
+  // without this, the queue going empty read as the work having vanished
+  // rather than finished (see leadApi.listHandedOffLeads's own comment).
+  // Read-only: renderRow hides the inline Call button for these.
+  const [handedOffLeads, setHandedOffLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -513,17 +518,26 @@ function MyQueueTab() {
     Promise.all([
       leadApi.listLeads({ status: "Call Center", limit: 100 }),
       leadApi.listLeads({ status: "Qualified", limit: 100 }),
+      leadApi.listHandedOffLeads(),
     ])
-      .then(([callCenter, qualified]) => {
-        setCallingLeads(callCenter.leads);
-        setQualifiedLeads(qualified.leads);
+      .then(([callCenter, qualified, handedOff]) => {
+        // status alone can't tell "I still own this" apart from "I used to
+        // own this" - sendToField never changes status (see
+        // lead-call-center-service.ts's own comment on that), so a leftover
+        // lead_shares grant on an already-handed-off lead that happens to
+        // still read "Qualified" would otherwise show up here too, with its
+        // full Call button, duplicating (and contradicting) its real place
+        // in "Already sent" below. inOwnerScope is the real signal.
+        setCallingLeads(callCenter.leads.filter((l) => l.inOwnerScope));
+        setQualifiedLeads(qualified.leads.filter((l) => l.inOwnerScope));
+        setHandedOffLeads(handedOff);
       })
       .catch(() => message.error("Failed to load your queue"))
       .finally(() => setLoading(false));
   };
 
   useEffect(load, []);
-  const leads = [...callingLeads, ...qualifiedLeads];
+  const leads = [...callingLeads, ...qualifiedLeads, ...handedOffLeads];
   // Derived, not stored - once a lead leaves this agent's queue entirely
   // (sent to field, no longer theirs), it drops out of `leads` on the next
   // reload and this naturally resolves to undefined, which closes the
@@ -549,7 +563,7 @@ function MyQueueTab() {
   // below, reusing the exact same LeadDetail a field rep or admin sees
   // elsewhere, so there's one real workspace for a lead, not a second
   // parallel one just for Call Center.
-  const renderRow = (lead: Lead) => (
+  const renderRow = (lead: Lead, options?: { showCallButton?: boolean }) => (
     <div
       key={lead.id}
       onClick={() => setSelectedLeadId(lead.id)}
@@ -590,19 +604,21 @@ function MyQueueTab() {
           {lead.callAttemptCount} call{lead.callAttemptCount === 1 ? "" : "s"} so far
           {lead.lastCallAt ? ` · last ${formatDate(lead.lastCallAt)}` : ""}
         </Text>
-        <Button
-          size="small"
-          type="primary"
-          ghost
-          icon={<PhoneOutlined />}
-          loading={callingLeadId === lead.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCall(lead.id);
-          }}
-        >
-          Call
-        </Button>
+        {(options?.showCallButton ?? true) && (
+          <Button
+            size="small"
+            type="primary"
+            ghost
+            icon={<PhoneOutlined />}
+            loading={callingLeadId === lead.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCall(lead.id);
+            }}
+          >
+            Call
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -633,7 +649,7 @@ function MyQueueTab() {
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
             Qualified - ready for Field Sales ({qualifiedLeads.length})
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{qualifiedLeads.map(renderRow)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{qualifiedLeads.map((l) => renderRow(l))}</div>
         </div>
       )}
       {callingLeads.length > 0 && (
@@ -641,7 +657,17 @@ function MyQueueTab() {
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
             Awaiting qualification ({callingLeads.length})
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{callingLeads.map(renderRow)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{callingLeads.map((l) => renderRow(l))}</div>
+        </div>
+      )}
+      {handedOffLeads.length > 0 && (
+        <div>
+          <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
+            Already sent to Field Sales ({handedOffLeads.length})
+          </Text>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {handedOffLeads.map((l) => renderRow(l, { showCallButton: false }))}
+          </div>
         </div>
       )}
 
