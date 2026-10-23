@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { App, Button, Input, Popover, Select, Typography } from "antd";
+import { App, Button, DatePicker, Input, Popover, Select, Typography } from "antd";
 import { PhoneOutlined } from "@ant-design/icons";
+import dayjs, { type Dayjs } from "dayjs";
 import * as leadApi from "../../api/lead-api";
 import { CALL_DISPOSITIONS, type CallDisposition } from "../../api/lead-api";
 import type { Lead } from "../../types/lead";
@@ -31,25 +32,34 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [disposition, setDisposition] = useState<CallDisposition | undefined>(undefined);
   const [notes, setNotes] = useState("");
+  const [callbackAt, setCallbackAt] = useState<Dayjs | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [qualifying, setQualifying] = useState(false);
 
   if ((!canLogCalls && !canQualify) || lead.status !== "Call Center") return null;
+
+  const isCallBack = disposition === "Call Back";
 
   const openDisposition = (open: boolean) => {
     setDispositionOpen(open);
     if (open) {
       setDisposition(undefined);
       setNotes("");
+      setCallbackAt(undefined);
     }
   };
 
   const submitDisposition = async () => {
     if (!disposition) return;
+    if (isCallBack && !callbackAt) return;
     setSubmitting(true);
     try {
-      await leadApi.logCallDisposition(lead.id, { disposition, notes: notes.trim() || undefined });
-      message.success("Call logged");
+      await leadApi.logCallDisposition(lead.id, {
+        disposition,
+        notes: notes.trim() || undefined,
+        callbackAt: isCallBack ? callbackAt!.toISOString() : undefined,
+      });
+      message.success(isCallBack ? `Call logged - callback scheduled for ${callbackAt!.format("D MMM, h:mm A")}` : "Call logged");
       setDispositionOpen(false);
       onChanged();
     } catch (err) {
@@ -78,9 +88,31 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
         size="small"
         placeholder="What happened on this call?"
         value={disposition}
-        onChange={setDisposition}
+        onChange={(value) => {
+          setDisposition(value);
+          if (value !== "Call Back") setCallbackAt(undefined);
+        }}
         options={CALL_DISPOSITIONS.map((d) => ({ value: d, label: d }))}
       />
+      {isCallBack && (
+        <div>
+          <DatePicker
+            size="small"
+            showTime
+            style={{ width: "100%" }}
+            placeholder="Call back on..."
+            value={callbackAt}
+            onChange={(value) => setCallbackAt(value ?? undefined)}
+            disabledDate={(d) => d.isBefore(dayjs(), "day")}
+            status={!callbackAt ? "error" : undefined}
+          />
+          {!callbackAt && (
+            <Text type="danger" style={{ fontSize: 11, display: "block", marginTop: 2 }}>
+              Pick when to call back
+            </Text>
+          )}
+        </div>
+      )}
       <Input.TextArea
         placeholder="Notes (optional) - e.g. asked to call back next week"
         value={notes}
@@ -91,7 +123,13 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
         <Button size="small" onClick={() => setDispositionOpen(false)}>
           Cancel
         </Button>
-        <Button size="small" type="primary" loading={submitting} disabled={!disposition} onClick={submitDisposition}>
+        <Button
+          size="small"
+          type="primary"
+          loading={submitting}
+          disabled={!disposition || (isCallBack && !callbackAt)}
+          onClick={submitDisposition}
+        >
           Save
         </Button>
       </div>

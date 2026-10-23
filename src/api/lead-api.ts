@@ -91,7 +91,10 @@ export interface SwapCandidate {
   email: string;
 }
 
-export async function logCallDisposition(id: string, payload: { disposition: CallDisposition; notes?: string }): Promise<Lead> {
+export async function logCallDisposition(
+  id: string,
+  payload: { disposition: CallDisposition; notes?: string; callbackAt?: string }
+): Promise<Lead> {
   const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/call-dispositions`, payload);
   return response.data.data;
 }
