@@ -18,6 +18,14 @@ export async function listLeadSources(): Promise<string[]> {
   return response.data.data;
 }
 
+// "My queue"'s own second section - leads this person used to own and has
+// since handed off via Send to Field. Read-only (inOwnerScope: false on
+// every one), same as reopening one directly.
+export async function listHandedOffLeads(): Promise<Lead[]> {
+  const response = await apiClient.get<ApiSuccess<Lead[]>>("/leads/handed-off");
+  return response.data.data;
+}
+
 export interface LeadQuickFilterCounts {
   all: number;
   myLeads: number;
