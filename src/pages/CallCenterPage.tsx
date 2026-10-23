@@ -282,7 +282,7 @@ export default function CallCenterPage() {
               Call queue
             </Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Scheduled via Activity Calendar, not yet made
+              Callbacks you've scheduled, not yet made
             </Text>
           </div>
           <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
