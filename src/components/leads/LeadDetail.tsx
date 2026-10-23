@@ -256,8 +256,8 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           canOnboard,
           hasOpenOpportunity,
           canAddActivity: hasPermission("activities.create"),
-          canCall: Boolean(lead.phone),
-          canEditLead: hasPermission("leads.update"),
+          canCall: Boolean(lead.phone) && lead.inOwnerScope,
+          canEditLead: hasPermission("leads.update") && lead.inOwnerScope,
         }}
         calling={calling}
         microsoftConnected={microsoftConnected}
@@ -281,7 +281,9 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
           )}
-          {activeTabKey === "whatsapp" && <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} />}
+          {activeTabKey === "whatsapp" && (
+            <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} canSend={lead.inOwnerScope} />
+          )}
           {activeTabKey === "logs" && <LogsTab activities={activities} loading={activitiesLoading} />}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
           {activeTabKey === "approvals" && (

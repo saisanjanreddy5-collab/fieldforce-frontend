@@ -7,9 +7,9 @@ export interface LeadActionAvailability {
   hasOpenOpportunity: boolean;
   /** hasPermission("activities.create"), resolved by the caller. */
   canAddActivity: boolean;
-  /** Boolean(lead.phone) - no permission gate exists on Call today. */
+  /** Boolean(lead.phone) && lead.inOwnerScope - a phone number alone isn't enough once a lead's been handed to someone else. */
   canCall: boolean;
-  /** hasPermission("leads.update"), resolved by the caller. */
+  /** hasPermission("leads.update") && lead.inOwnerScope. */
   canEditLead: boolean;
 }
 

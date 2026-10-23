@@ -88,32 +88,74 @@ export function LeadSnapshot({
       </Tooltip>
     );
   }
+  // Every reason below this one is about whether contact info exists at
+  // all - this one's about whether this person is even allowed to use it.
+  // Checked first and worded differently on purpose: a lead handed off to
+  // someone else isn't "missing a phone number," it's just not this
+  // person's to contact anymore (read-only via lead_shares - see
+  // shareLeadBackToSender in lead-call-center-service.ts).
+  const notOwnedTitle = "This lead has been handed off to someone else - you can view it, but not contact it from here";
   if (primaryAction !== "call") {
     actionButtons.push(
-      <Tooltip key="call" title={!lead.phone ? "This lead has no phone number on file" : "Call"}>
-        <Button shape="circle" size="large" icon={<PhoneOutlined />} disabled={!lead.phone} loading={calling} onClick={onCall} />
+      <Tooltip key="call" title={!lead.inOwnerScope ? notOwnedTitle : !lead.phone ? "This lead has no phone number on file" : "Call"}>
+        <Button
+          shape="circle"
+          size="large"
+          icon={<PhoneOutlined />}
+          disabled={!lead.phone || !lead.inOwnerScope}
+          loading={calling}
+          onClick={onCall}
+        />
       </Tooltip>
     );
   }
   actionButtons.push(
     <Tooltip
       key="email"
-      title={!microsoftConnected ? "Connect your Microsoft 365 account from your profile (top right) first" : !lead.email ? "This lead has no email address on file" : "Email"}
+      title={
+        !lead.inOwnerScope
+          ? notOwnedTitle
+          : !microsoftConnected
+            ? "Connect your Microsoft 365 account from your profile (top right) first"
+            : !lead.email
+              ? "This lead has no email address on file"
+              : "Email"
+      }
     >
-      <Button shape="circle" size="large" icon={<OutlookLogo size={20} />} disabled={!microsoftConnected || !lead.email} onClick={onEmail} />
+      <Button
+        shape="circle"
+        size="large"
+        icon={<OutlookLogo size={20} />}
+        disabled={!microsoftConnected || !lead.email || !lead.inOwnerScope}
+        onClick={onEmail}
+      />
     </Tooltip>
   );
   actionButtons.push(
     <Tooltip
       key="teams"
-      title={!microsoftConnected ? "Connect your Microsoft 365 account from your profile (top right) first" : !lead.email ? "This lead has no email address on file" : "Teams meeting"}
+      title={
+        !lead.inOwnerScope
+          ? notOwnedTitle
+          : !microsoftConnected
+            ? "Connect your Microsoft 365 account from your profile (top right) first"
+            : !lead.email
+              ? "This lead has no email address on file"
+              : "Teams meeting"
+      }
     >
-      <Button shape="circle" size="large" icon={<TeamsLogo size={20} />} disabled={!microsoftConnected || !lead.email} onClick={onTeamsMeeting} />
+      <Button
+        shape="circle"
+        size="large"
+        icon={<TeamsLogo size={20} />}
+        disabled={!microsoftConnected || !lead.email || !lead.inOwnerScope}
+        onClick={onTeamsMeeting}
+      />
     </Tooltip>
   );
   actionButtons.push(
-    <Tooltip key="whatsapp" title={!lead.phone ? "This lead has no phone number on file" : "WhatsApp"}>
-      <Button shape="circle" size="large" icon={<WhatsAppLogo size={20} />} disabled={!lead.phone} onClick={onWhatsApp} />
+    <Tooltip key="whatsapp" title={!lead.inOwnerScope ? notOwnedTitle : !lead.phone ? "This lead has no phone number on file" : "WhatsApp"}>
+      <Button shape="circle" size="large" icon={<WhatsAppLogo size={20} />} disabled={!lead.phone || !lead.inOwnerScope} onClick={onWhatsApp} />
     </Tooltip>
   );
   if (primaryAction !== "editLead" && availability.canEditLead) {

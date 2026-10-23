@@ -17,6 +17,14 @@ export interface Lead {
   // Field Sales" apart from "still with Call Center" without guessing from
   // status alone (sendToField never changes status, only ownerId).
   ownerRole: string | null;
+  // True when this user can actually act on the lead (Call/Email/Teams/
+  // WhatsApp/Edit) - false when they can only look at it, e.g. a Call
+  // Center rep's read-only share on a lead they already handed to Field
+  // Sales. Backed by the exact same check the backend enforces
+  // (isLeadInOwnerScope) - not re-derived here, since "is this owner in my
+  // subtree" can't be computed correctly on the frontend without the whole
+  // org chart loaded.
+  inOwnerScope: boolean;
   salesTeamId: string | null;
   leadScore: number | null;
   phone: string | null;

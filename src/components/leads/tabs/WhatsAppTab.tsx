@@ -19,6 +19,13 @@ interface WhatsAppTabProps {
   leadId: string;
   fullName: string;
   phone: string | null;
+  // Optional, defaults to true - only the Lead context passes this
+  // explicitly (false when !lead.inOwnerScope, e.g. a Call Center rep's
+  // read-only view after handing this lead to Field Sales). Customers'
+  // reuse of this same component has no equivalent "merely shared, not
+  // owned" concept, so it's left at the default there rather than forcing
+  // every caller to reason about a restriction that only applies to Leads.
+  canSend?: boolean;
 }
 
 // The outbound bubble reuses the app's own primary gradient (same one
@@ -123,7 +130,7 @@ function EmptyState() {
   );
 }
 
-export function WhatsAppTab({ leadId, fullName, phone }: WhatsAppTabProps) {
+export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAppTabProps) {
   const [messages, setMessages] = useState<WhatsappMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -339,7 +346,8 @@ export function WhatsAppTab({ leadId, fullName, phone }: WhatsAppTabProps) {
         <Input.TextArea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Type a message..."
+          placeholder={canSend ? "Type a message..." : "This lead has been handed off to someone else - you can read this thread, but not send"}
+          disabled={!canSend}
           autoSize={{ minRows: 1, maxRows: 4 }}
           style={{ borderRadius: 22, resize: "none", padding: "8px 16px", background: appTokens.surfaceMuted, border: "none" }}
           onPressEnter={(e) => {
@@ -355,7 +363,7 @@ export function WhatsAppTab({ leadId, fullName, phone }: WhatsAppTabProps) {
           icon={<SendOutlined />}
           loading={sending}
           onClick={handleSend}
-          disabled={!draft.trim()}
+          disabled={!canSend || !draft.trim()}
           style={{ flexShrink: 0, boxShadow: OUTBOUND_SHADOW }}
         />
       </div>
