@@ -412,14 +412,20 @@ const CHECK_COLOR: Record<string, string> = {
 function FofoDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: () => void }) {
   const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(null);
     fofoApi
       .getHandoff(item.refId)
       .then(setHandoff)
-      .catch(() => message.error("Failed to load this handoff"))
+      .catch((err) => {
+        const msg = errorMessageFrom(err, "Failed to load this handoff");
+        setLoadError(msg);
+        message.error(msg);
+      })
       .finally(() => setLoading(false));
   }, [item.refId]);
 
@@ -438,11 +444,21 @@ function FofoDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: (
     }
   };
 
-  if (loading || !handoff) {
+  if (loading) {
     return (
       <DetailCard>
         <div style={{ textAlign: "center", padding: 40 }}>
           <Spin />
+        </div>
+      </DetailCard>
+    );
+  }
+
+  if (loadError || !handoff) {
+    return (
+      <DetailCard>
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <Text type="danger">{loadError ?? "Failed to load this handoff"}</Text>
         </div>
       </DetailCard>
     );
