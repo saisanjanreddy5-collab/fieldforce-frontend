@@ -51,7 +51,15 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   const nextTier = NEXT_TIER[lead.status];
   const isTlc = lead.status === TLC_STAGE;
 
-  if ((!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isTlc)) return null;
+  // Once a lead escalates (or is sent to Field), the tier/team it came from
+  // keeps a read-only lead_shares grant on it (shareLeadBackToSender) - so a
+  // prior owner can still open and see this same lead sitting at its new
+  // stage. Without this check, NEXT_TIER[lead.status] alone would show
+  // "Escalate to X" to that read-only viewer too, since it only looks at
+  // the lead's own status, not who's allowed to act on it - a 403-after-
+  // the-click instead of the button simply not being there, same class of
+  // bug already fixed for Call/Email/WhatsApp after a Field Sales handoff.
+  if (!lead.inOwnerScope || (!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isTlc)) return null;
 
   const isCallBack = disposition === "Call Back";
 
