@@ -112,6 +112,16 @@ export async function qualifyLead(id: string): Promise<Lead> {
   return response.data.data;
 }
 
+export async function escalateToSlc(id: string): Promise<Lead> {
+  const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/escalate-to-slc`);
+  return response.data.data;
+}
+
+export async function escalateToTlc(id: string): Promise<Lead> {
+  const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/escalate-to-tlc`);
+  return response.data.data;
+}
+
 export async function getSwapCandidates(id: string): Promise<SwapCandidate[]> {
   const response = await apiClient.get<ApiSuccess<SwapCandidate[]>>(`/leads/${id}/swap-candidates`);
   return response.data.data;

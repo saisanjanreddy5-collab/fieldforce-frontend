@@ -8,13 +8,16 @@ import * as leadApi from "../api/lead-api";
 import type { Call } from "../types/call";
 import type { CustomerContact } from "../types/customer-extras";
 import type { Lead } from "../types/lead";
+import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { useLeadCategories } from "../hooks/use-lead-categories";
+import { FLC_STAGE, SLC_STAGE, TLC_STAGE } from "../utils/lead-constants";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
+import { DuplicateLeadTag } from "../components/leads/DuplicateLeadTag";
 
 const { Title, Text } = Typography;
 
@@ -28,6 +31,24 @@ const DISPOSITION_COLORS: Record<string, string> = {
   "Call Back": appTokens.primary,
   "Call Done And Interested": appTokens.success,
   "Call Done And Not Interested": appTokens.danger,
+};
+
+// Which calling-tier stage a user's own queue works, derived from their
+// sales team (same 3 teams seeded in model.ts) - not stored anywhere on the
+// user record itself, since the team is already the one source of truth for
+// this. Defaults to FLC for anyone not on one of the three teams (e.g. an
+// Admin/Manager just checking in on the queue), matching this tab's
+// pre-tiered single-section behavior.
+const TIER_BY_TEAM: Record<string, string> = {
+  "FLC Team": FLC_STAGE,
+  "SLC Team": SLC_STAGE,
+  "TLC Team": TLC_STAGE,
+};
+
+const TIER_LABELS: Record<string, string> = {
+  [FLC_STAGE]: "FLC",
+  [SLC_STAGE]: "SLC",
+  [TLC_STAGE]: "TLC",
 };
 
 const EMPTY_STATS: callCenterApi.CallCenterStats = {
@@ -490,21 +511,30 @@ function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () =
 
 function MyQueueTab() {
   const { message } = App.useApp();
+  const { user } = useAuth();
   const hasPermission = useHasPermission();
   // Checked on its own, not assumed to come bundled with leads.call_log -
   // an admin can revoke permissions independently per employee from the
   // Permissions screen, so this button must only show when its own specific
   // permission is actually granted.
   const canAddToQueue = hasPermission("leads.queue_create");
+  const myTierStage = (user?.salesTeamName ? TIER_BY_TEAM[user.salesTeamName] : undefined) ?? FLC_STAGE;
+  const myTierLabel = TIER_LABELS[myTierStage] ?? myTierStage;
   // Two separate stages shown as two sections - a lead vanishing from view
   // the instant it's marked Qualified left no place to ever click Send to
-  // Field Sales, so both stages of this agent's own queue are fetched.
+  // Field Sales, so both stages of this agent's own queue are fetched. The
+  // "Qualified" fetch is naturally empty for an FLC/SLC user (qualifyLead
+  // only ever runs from TLC, and never changes owner), so this stays
+  // correct for every tier without branching on which one this is.
   const [callingLeads, setCallingLeads] = useState<Lead[]>([]);
   const [qualifiedLeads, setQualifiedLeads] = useState<Lead[]>([]);
-  // Leads this person used to own and has since sent to Field Sales -
-  // without this, the queue going empty read as the work having vanished
-  // rather than finished (see leadApi.listHandedOffLeads's own comment).
-  // Read-only: renderRow hides the inline Call button for these.
+  // Leads this person used to own and has since handed onward - to Field
+  // Sales (TLC's own Qualified -> Send to Field), or to the next calling
+  // tier (FLC -> SLC, SLC -> TLC) - all three use the same shareLeadBackTo
+  // Sender grant, so one fetch covers every hand-off type. Without this, the
+  // queue going empty read as the work having vanished rather than finished
+  // (see leadApi.listHandedOffLeads's own comment). Read-only: renderRow
+  // hides the inline Call button for these.
   const [handedOffLeads, setHandedOffLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
@@ -516,7 +546,7 @@ function MyQueueTab() {
   const load = () => {
     setLoading(true);
     Promise.all([
-      leadApi.listLeads({ status: "Call Center", limit: 100 }),
+      leadApi.listLeads({ status: myTierStage, limit: 100 }),
       leadApi.listLeads({ status: "Qualified", limit: 100 }),
       leadApi.listHandedOffLeads(),
     ])
@@ -586,9 +616,12 @@ function MyQueueTab() {
           {initials(lead.fullName)}
         </Avatar>
         <div style={{ minWidth: 0 }}>
-          <Text strong style={{ fontSize: 14, display: "block" }}>
-            {lead.fullName}
-          </Text>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Text strong style={{ fontSize: 14 }}>
+              {lead.fullName}
+            </Text>
+            <DuplicateLeadTag lead={lead} compact />
+          </div>
           <Text type="secondary" style={{ fontSize: 12 }}>
             {[lead.phone, lead.pincode ? `PIN ${lead.pincode}` : "no pincode yet", lead.category].filter(Boolean).join(" · ")}
           </Text>
@@ -655,7 +688,7 @@ function MyQueueTab() {
       {callingLeads.length > 0 && (
         <div>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Awaiting qualification ({callingLeads.length})
+            Awaiting {myTierLabel} ({callingLeads.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{callingLeads.map((l) => renderRow(l))}</div>
         </div>
@@ -663,7 +696,7 @@ function MyQueueTab() {
       {handedOffLeads.length > 0 && (
         <div>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Already sent to Field Sales ({handedOffLeads.length})
+            Already handed off ({handedOffLeads.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
             {handedOffLeads.map((l) => renderRow(l, { showCallButton: false }))}

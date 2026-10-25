@@ -9,6 +9,9 @@ import { errorMessageFrom } from "../../utils/api-error";
 import { formatDateTime } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
 import { SendToFieldAction } from "./SendToFieldAction";
+import { FLC_STAGE, SLC_STAGE, TLC_STAGE } from "../../utils/lead-constants";
+
+const CALLING_TIER_STAGES: Record<string, true> = { [FLC_STAGE]: true, [SLC_STAGE]: true, [TLC_STAGE]: true };
 
 const { Text } = Typography;
 
@@ -86,8 +89,8 @@ export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProp
   const reassignContent = (
     <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 8 }}>
       <Text type="secondary" style={{ fontSize: 12 }}>
-        {lead.status === "Call Center"
-          ? "Any active Call Center employee can take this lead."
+        {CALLING_TIER_STAGES[lead.status]
+          ? `Any active ${lead.status} team employee can take this lead.`
           : "Only field employees who cover this lead's pincode are listed."}
       </Text>
       <Select

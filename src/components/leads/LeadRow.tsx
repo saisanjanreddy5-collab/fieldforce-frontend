@@ -3,6 +3,7 @@ import type { Lead } from "../../types/lead";
 import { formatCompactCurrency, formatFollowUpDate, initials, scoreColor } from "../../utils/lead-format";
 import { avatarGradient, appTokens } from "../../utils/design-system";
 import { LEAD_STATUS_COLORS } from "../../utils/lead-constants";
+import { DuplicateLeadTag } from "./DuplicateLeadTag";
 
 const { Text } = Typography;
 
@@ -118,6 +119,7 @@ export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
           >
             {lead.status}
           </Tag>
+          <DuplicateLeadTag lead={lead} compact />
           <Text
             style={{
               fontSize: 11.5,

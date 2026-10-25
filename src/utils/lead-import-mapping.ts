@@ -26,6 +26,12 @@ export const IMPORT_MAPPABLE_FIELDS: ImportMappableField[] = [
   { key: "expectedValue", label: "Expected value" },
   { key: "website", label: "Website" },
   { key: "internalNotes", label: "Internal notes" },
+  // Optional - matched against an active Call Center employee's email or
+  // employee code at import time (see resolveCallCenterExecutiveByIdentifier
+  // in lead-service.ts). A row with a value that doesn't resolve is reported
+  // as skipped rather than guessed at, so leave this unmapped entirely for a
+  // normal round-robin-into-FLC import.
+  { key: "assigneeIdentifier", label: "Call Center Executive (email or employee code)" },
 ];
 
 // Exact-match only (on a normalized header), not fuzzy substring matching -
@@ -46,6 +52,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   expectedValue: ["expectedvalue", "value", "dealvalue", "amount"],
   website: ["website", "url"],
   internalNotes: ["notes", "internalnotes", "remarks", "comment", "comments"],
+  assigneeIdentifier: ["executive", "callcenterexecutive", "agent", "assignedto", "owner", "executiveemail", "employeecode"],
 };
 
 function normalize(header: string): string {
