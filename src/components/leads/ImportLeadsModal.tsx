@@ -245,8 +245,10 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
       {step === 2 && parsed && !result && (
         <>
           <Text type="secondary">
-            Ready to import {parsed.rows.length} lead{parsed.rows.length === 1 ? "" : "s"}. A duplicate phone number
-            (already an active lead, or repeated within this file) is skipped, not overwritten.
+            Ready to import {parsed.rows.length} lead{parsed.rows.length === 1 ? "" : "s"}. A phone number repeated
+            within this same file is skipped; one that already matches an active lead is still created, just flagged
+            "Possible duplicate" and linked to the original. A Call Center Executive identifier that doesn't match an
+            active employee is skipped for manual assignment instead of guessed.
           </Text>
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 4 }}>
             {IMPORT_MAPPABLE_FIELDS.filter((f) => mapping[f.key]).map((f) => (
@@ -265,7 +267,7 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           </Text>
           {result.skipped.length > 0 && (
             <div style={{ marginTop: 12 }}>
-              <Text type="secondary">{result.skipped.length} skipped as duplicates:</Text>
+              <Text type="secondary">{result.skipped.length} skipped - needs a look:</Text>
               <div style={{ marginTop: 4 }}>
                 {result.skipped.map((s, i) => (
                   <Text key={i} style={{ display: "block", fontSize: 12.5 }}>

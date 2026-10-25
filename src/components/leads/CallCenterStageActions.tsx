@@ -7,6 +7,15 @@ import { CALL_DISPOSITIONS, type CallDisposition } from "../../api/lead-api";
 import type { Lead } from "../../types/lead";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
+import { FLC_STAGE, SLC_STAGE, TLC_STAGE } from "../../utils/lead-constants";
+
+// Which tier a lead escalates to next, and what to call it - null for TLC,
+// since that tier's own "next step" is the existing Qualify action below,
+// not an escalation to a fourth tier.
+const NEXT_TIER: Record<string, { label: string; action: (id: string) => Promise<Lead> } | undefined> = {
+  [FLC_STAGE]: { label: "SLC", action: leadApi.escalateToSlc },
+  [SLC_STAGE]: { label: "TLC", action: leadApi.escalateToTlc },
+};
 
 const { Text } = Typography;
 
@@ -15,19 +24,21 @@ interface CallCenterStageActionsProps {
   onChanged: () => void;
 }
 
-// Log call outcome / Mark Qualified - the two Call Center-only actions that
-// only ever apply while a lead is still in the "Call Center" stage. Rendered
-// in the same compact row as Send to Field Sales/Reassign/History (see
-// LeadDetail.tsx), not a separate box, for the same space reason those got
-// redesigned. Each button checks its own permission (leads.call_log /
-// leads.qualify) rather than one gate for both - the Permissions screen
-// lets an admin grant/revoke them independently per employee, so showing a
-// button whose own permission was revoked would just produce a 403 on
-// click instead of the button simply not being there.
+// Log call outcome / Escalate to next tier / Mark Qualified - the Call
+// Center-only actions that only ever apply while a lead is still at one of
+// the three calling tiers (FLC/SLC/TLC). Rendered in the same compact row as
+// Send to Field Sales/Reassign/History (see LeadDetail.tsx), not a separate
+// box, for the same space reason those got redesigned. Each button checks
+// its own permission (leads.call_log / leads.escalate / leads.qualify)
+// rather than one gate for all three - the Permissions screen lets an admin
+// grant/revoke them independently per employee, so showing a button whose
+// own permission was revoked would just produce a 403 on click instead of
+// the button simply not being there.
 export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActionsProps) {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const canLogCalls = hasPermission("leads.call_log");
+  const canEscalate = hasPermission("leads.escalate");
   const canQualify = hasPermission("leads.qualify");
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [disposition, setDisposition] = useState<CallDisposition | undefined>(undefined);
@@ -35,8 +46,12 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   const [callbackAt, setCallbackAt] = useState<Dayjs | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [qualifying, setQualifying] = useState(false);
+  const [escalating, setEscalating] = useState(false);
 
-  if ((!canLogCalls && !canQualify) || lead.status !== "Call Center") return null;
+  const nextTier = NEXT_TIER[lead.status];
+  const isTlc = lead.status === TLC_STAGE;
+
+  if ((!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isTlc)) return null;
 
   const isCallBack = disposition === "Call Back";
 
@@ -79,6 +94,20 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
       message.error(errorMessageFrom(err, "Failed to mark this lead Qualified"));
     } finally {
       setQualifying(false);
+    }
+  };
+
+  const handleEscalate = async () => {
+    if (!nextTier) return;
+    setEscalating(true);
+    try {
+      await nextTier.action(lead.id);
+      message.success(`Escalated to ${nextTier.label}`);
+      onChanged();
+    } catch (err) {
+      message.error(errorMessageFrom(err, `Failed to escalate to ${nextTier.label}`));
+    } finally {
+      setEscalating(false);
     }
   };
 
@@ -150,7 +179,12 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
           </Button>
         </Popover>
       )}
-      {canQualify && (
+      {canEscalate && nextTier && (
+        <Button size="small" type="primary" loading={escalating} onClick={handleEscalate}>
+          Escalate to {nextTier.label}
+        </Button>
+      )}
+      {canQualify && isTlc && (
         <Button size="small" type="primary" loading={qualifying} onClick={handleQualify}>
           Mark Qualified
         </Button>

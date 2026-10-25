@@ -25,6 +25,14 @@ export interface Lead {
   // subtree" can't be computed correctly on the frontend without the whole
   // org chart loaded.
   inOwnerScope: boolean;
+  // Set when this lead's phone matched an already-active lead at
+  // create/edit time - created and flagged, not blocked, so the duplicate
+  // stays visible and linkable instead of silently vanishing. The name/
+  // number are only present on endpoints that already join owner info
+  // (list/detail), not on a raw mutation response.
+  duplicateOfLeadId: string | null;
+  duplicateOfFullName?: string;
+  duplicateOfLeadNumber?: number;
   salesTeamId: string | null;
   leadScore: number | null;
   phone: string | null;

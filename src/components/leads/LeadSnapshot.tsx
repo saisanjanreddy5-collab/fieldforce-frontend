@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Avatar, Button, Progress, Tag, Tooltip, Typography } from "antd";
+import { DuplicateLeadTag } from "./DuplicateLeadTag";
 import { CloudUploadOutlined, EditOutlined, PhoneOutlined, PlusOutlined } from "@ant-design/icons";
 import { OutlookLogo, TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
 import type { Lead } from "../../types/lead";
@@ -195,6 +196,7 @@ export function LeadSnapshot({
                   {lead.category}
                 </Tag>
               )}
+              <DuplicateLeadTag lead={lead} />
               {lead.leadScore !== null && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <Progress percent={lead.leadScore} size="small" showInfo={false} strokeColor={scoreColor(lead.leadScore)} style={{ width: 52 }} />
