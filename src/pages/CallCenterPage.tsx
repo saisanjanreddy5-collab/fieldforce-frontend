@@ -18,6 +18,7 @@ import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from 
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { DuplicateLeadTag } from "../components/leads/DuplicateLeadTag";
+import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
 
 const { Title, Text } = Typography;
 
@@ -518,6 +519,11 @@ function MyQueueTab() {
   // Permissions screen, so this button must only show when its own specific
   // permission is actually granted.
   const canAddToQueue = hasPermission("leads.queue_create");
+  // leads.bulk_import is Call Center's own scoped version of the Leads
+  // page's bulk-import (executive-matched by email/employee code) -
+  // leads.create (Admin/Manager) also works, matching the backend route's
+  // own requireAnyPermission.
+  const canBulkImport = hasPermission("leads.create") || hasPermission("leads.bulk_import");
   const myTierStage = (user?.salesTeamName ? TIER_BY_TEAM[user.salesTeamName] : undefined) ?? FLC_STAGE;
   const myTierLabel = TIER_LABELS[myTierStage] ?? myTierStage;
   // Two separate stages shown as two sections - a lead vanishing from view
@@ -542,6 +548,7 @@ function MyQueueTab() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -658,11 +665,14 @@ function MyQueueTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {canAddToQueue && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddLeadOpen(true)}>
-            Add lead
-          </Button>
+      {(canAddToQueue || canBulkImport) && (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          {canBulkImport && <Button onClick={() => setImportOpen(true)}>Import</Button>}
+          {canAddToQueue && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddLeadOpen(true)}>
+              Add lead
+            </Button>
+          )}
         </div>
       )}
 
@@ -705,6 +715,8 @@ function MyQueueTab() {
       )}
 
       <AddLeadModal open={addLeadOpen} onClose={() => setAddLeadOpen(false)} onAdded={() => { setAddLeadOpen(false); load(); }} />
+
+      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); load(); }} />
 
       <Drawer
         title={selectedLead?.fullName ?? ""}
