@@ -82,10 +82,11 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
 
   const load = () => {
     setLoading(true);
-    Promise.all([fofoApi.getHandoff(leadId), leadApi.getLeadConsent(leadId)])
-      .then(([h, c]) => {
+    fofoApi
+      .getHandoff(leadId)
+      .then((h) => {
         setHandoff(h);
-        setConsent(c);
+        setConsent(h.consent);
       })
       .catch(() => message.error("Failed to load onboarding handoff"))
       .finally(() => setLoading(false));
@@ -327,7 +328,7 @@ function HandoffPayloadCard({ lead, documents, consent }: { lead: FofoHandoff["l
       <PayloadRow label="Credit category" complete={Boolean(lead.creditCategory)} detail={lead.creditCategory || "Not set"} />
       <div style={{ background: "#f0f7ff", borderRadius: 6, padding: "8px 10px", marginTop: 10 }}>
         <Text style={{ fontSize: 11, color: "#1677ff" }}>
-          No external onboarding system is connected yet - pushing marks this handoff as complete here and records a reference code.
+          Pushing registers the store owner's app login in SKIA FOFO and records a reference code here.
         </Text>
       </div>
     </div>
