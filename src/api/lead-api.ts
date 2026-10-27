@@ -68,6 +68,7 @@ export interface BulkImportResult {
   created: number;
   skipped: { row: number; reason: string }[];
   errors: { row: number; message: string }[];
+  redirected: { row: number; reason: string }[];
 }
 
 export async function bulkImportLeads(rows: Record<string, unknown>[]): Promise<BulkImportResult> {

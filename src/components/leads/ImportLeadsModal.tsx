@@ -265,6 +265,18 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           <Text strong style={{ display: "block", color: "#15803d" }}>
             {result.created} lead{result.created === 1 ? "" : "s"} created
           </Text>
+          {result.redirected.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <Text type="secondary">{result.redirected.length} created but reassigned - FYI only, nothing to fix:</Text>
+              <div style={{ marginTop: 4 }}>
+                {result.redirected.map((r, i) => (
+                  <Text key={i} style={{ display: "block", fontSize: 12.5 }}>
+                    Row {r.row}: {r.reason}
+                  </Text>
+                ))}
+              </div>
+            </div>
+          )}
           {result.skipped.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <Text type="secondary">{result.skipped.length} skipped - needs a look:</Text>
