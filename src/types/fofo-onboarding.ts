@@ -1,4 +1,4 @@
-import type { Lead } from "./lead";
+import type { Lead, LeadConsent } from "./lead";
 
 export type ApprovalStepStatus = "pending" | "approved" | "rejected" | "not_applicable";
 
@@ -35,6 +35,7 @@ export interface FofoHandoff {
   lead: Lead;
   approvalSteps: ApprovalStep[];
   documents: LeadDocument[];
+  consent: LeadConsent | null;
 }
 
 export interface FofoOnboardingListItem {
