@@ -13,8 +13,9 @@ import type { AdvancedFilters } from "../components/leads/LeadFilters";
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
-import { exportToXlsx } from "../utils/export-xlsx";
+import { exportMultiSheetXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
@@ -223,25 +224,63 @@ export default function LeadsPage() {
   const showDetailOnMobile = isMobile && selectedLead;
   const showOwner = user?.role !== "agent";
 
-  const handleExportLeads = () =>
-    exportToXlsx(
-      "Leads",
-      [
-        { header: "Lead #", key: "leadNumber" },
-        { header: "Name", key: "fullName" },
-        { header: "Phone", key: "phone" },
-        { header: "Email", key: "email" },
-        { header: "Company", key: "companyName" },
-        { header: "Category", key: "category" },
-        { header: "Status", key: "status" },
-        { header: "Owner", key: "ownerName" },
-        { header: "Territory", key: "territory" },
-        { header: "Source", key: "source" },
-        { header: "Expected value", key: "expectedValue" },
-      ],
-      leads.map((l) => ({ ...l })),
-      "leads"
-    );
+  const [exporting, setExporting] = useState(false);
+
+  // Backend-driven now (lead-export-service.ts), not a dump of whatever's
+  // already loaded on screen - this always covers every lead matching the
+  // current filters, not just the current page, and includes the FLC/SLC/
+  // Field Sales ownership trail plus a full History sheet neither of which
+  // the old client-only version could ever have had.
+  const handleExportLeads = async () => {
+    setExporting(true);
+    try {
+      const { leads: exportLeadRows, history } = await leadApi.exportLeads(resolvedFilters);
+      await exportMultiSheetXlsx(
+        [
+          {
+            name: "Leads",
+            columns: [
+              { header: "Lead #", key: "leadNumber" },
+              { header: "Name", key: "fullName" },
+              { header: "Phone", key: "phone" },
+              { header: "Email", key: "email" },
+              { header: "Company", key: "companyName" },
+              { header: "Category", key: "category" },
+              { header: "Stage", key: "status" },
+              { header: "FLC Handled By", key: "flcHandledBy", width: 22 },
+              { header: "SLC Handled By", key: "slcHandledBy", width: 22 },
+              { header: "Field Sales Executive", key: "fieldSalesExecutive", width: 24 },
+              { header: "Current Owner", key: "ownerName", width: 22 },
+              { header: "Current Owner Role", key: "ownerRole" },
+              { header: "Territory", key: "territory" },
+              { header: "Source", key: "source" },
+              { header: "Expected value", key: "expectedValue" },
+              { header: "Created", key: "createdAt", width: 20 },
+              { header: "Last updated", key: "updatedAt", width: 20 },
+            ],
+            rows: exportLeadRows.map((l) => ({ ...l })),
+          },
+          {
+            name: "History & Remarks",
+            columns: [
+              { header: "Lead #", key: "leadNumber" },
+              { header: "Lead name", key: "leadName", width: 22 },
+              { header: "Date", key: "date", width: 20 },
+              { header: "Type", key: "kind" },
+              { header: "Detail", key: "detail", width: 48 },
+              { header: "By", key: "actor", width: 20 },
+            ],
+            rows: history.map((h) => ({ ...h })),
+          },
+        ],
+        "leads"
+      );
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to export leads"));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div
@@ -272,13 +311,15 @@ export default function LeadsPage() {
           <div style={{ width: 1, height: 22, background: appTokens.border, flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {hasPermission("leads.export") && (
-              <Button style={{ paddingInline: 10 }} onClick={handleExportLeads}>
+              <Button style={{ paddingInline: 10 }} loading={exporting} onClick={handleExportLeads}>
                 Export
               </Button>
             )}
-            <Button style={{ paddingInline: 10 }} onClick={() => setImportOpen(true)}>
-              Import
-            </Button>
+            {hasPermission("leads.create") && (
+              <Button style={{ paddingInline: 10 }} onClick={() => setImportOpen(true)}>
+                Import
+              </Button>
+            )}
             {hasPermission("leads.create") && (
               <Button
                 type="primary"
@@ -477,13 +518,15 @@ export default function LeadsPage() {
                 <div style={{ height: 1, background: appTokens.borderLight, margin: "2px 0" }} />
                 <div style={{ display: "flex", gap: 8 }}>
                   {hasPermission("leads.export") && (
-                    <Button style={{ flex: 1 }} onClick={handleExportLeads}>
+                    <Button style={{ flex: 1 }} loading={exporting} onClick={handleExportLeads}>
                       Export
                     </Button>
                   )}
-                  <Button style={{ flex: 1 }} onClick={() => setImportOpen(true)}>
-                    Import
-                  </Button>
+                  {hasPermission("leads.create") && (
+                    <Button style={{ flex: 1 }} onClick={() => setImportOpen(true)}>
+                      Import
+                    </Button>
+                  )}
                 </div>
                 {hasPermission("leads.create") && (
                   <Button

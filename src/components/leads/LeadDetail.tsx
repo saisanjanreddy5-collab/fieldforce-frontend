@@ -23,11 +23,10 @@ import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
 import { WhatsAppTab } from "./tabs/WhatsAppTab";
-import { LogsTab } from "./tabs/LogsTab";
+import { HistoryTab } from "./tabs/HistoryTab";
 import { ConsentTab } from "./tabs/ConsentTab";
 import { ApprovalsTab } from "./tabs/ApprovalsTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
-import { QuotesTab } from "./tabs/QuotesTab";
 import { EmailComposeDrawer } from "../calendar/EmailComposeDrawer";
 
 const { Text } = Typography;
@@ -46,10 +45,9 @@ interface LeadDetailProps {
 const BASE_DETAIL_TABS = [
   { key: "overview", label: "Overview" },
   { key: "opportunities", label: "Opportunities" },
-  { key: "quotes", label: "Quotes" },
+  { key: "history", label: "History" },
   { key: "activity", label: "Activity" },
   { key: "whatsapp", label: "WhatsApp" },
-  { key: "logs", label: "Logs" },
   { key: "consent", label: "Consent" },
   { key: "approvals", label: "Approvals" },
   { key: "documents", label: "Documents" },
@@ -58,15 +56,16 @@ const BASE_DETAIL_TABS = [
 // Which permission a tab actually needs, matching the real route guard
 // behind it (see lead-routes.ts) - null means every authenticated viewer of
 // this lead can see it. Without this, a role missing one of these (Call
-// Center holds neither opportunities.view nor quotes.view nor leads.view,
-// by design - see role-permission-service.ts) would still see the tab,
-// click it, and get a 403 toast instead of the tab just not being there.
-// Approvals/Documents aren't listed here - they're already gated inline via
+// Center holds neither opportunities.view nor leads.view, by design - see
+// role-permission-service.ts) would still see the tab, click it, and get a
+// 403 toast instead of the tab just not being there. History deliberately
+// has no entry here - every call center/field/admin person who can open
+// this lead at all needs to see its full history. Approvals/Documents
+// aren't listed here either - they're already gated inline via
 // canViewOnboarding below, which the same fofo_onboarding.view permission
 // backs.
 const TAB_PERMISSION: Partial<Record<string, string>> = {
   opportunities: "opportunities.view",
-  quotes: "quotes.view",
   whatsapp: "whatsapp.view",
   consent: "leads.view",
 };
@@ -249,7 +248,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         assignmentActions={
           <>
             <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} />
-            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />
+            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} onViewHistory={() => setActiveTabKey("history")} />
           </>
         }
         availability={{
@@ -277,14 +276,13 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           {activeTabKey === "opportunities" && (
             <OpportunitiesTab leadId={lead.id} opportunities={opportunities} loading={opportunitiesLoading} onChanged={loadOpportunities} />
           )}
-          {activeTabKey === "quotes" && <QuotesTab leadId={lead.id} />}
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
           )}
           {activeTabKey === "whatsapp" && (
             <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} canSend={lead.inOwnerScope} />
           )}
-          {activeTabKey === "logs" && <LogsTab activities={activities} loading={activitiesLoading} />}
+          {activeTabKey === "history" && <HistoryTab leadId={lead.id} />}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
           {activeTabKey === "approvals" && (
             <ApprovalsTab lead={lead} canView={canViewOnboarding} loading={handoffLoading} handoff={handoff} onChanged={loadHandoff} />

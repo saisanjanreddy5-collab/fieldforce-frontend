@@ -40,6 +40,36 @@ export interface FofoCohortRow {
   m12: number | null;
 }
 
+export interface CallCenterDispositionCounts {
+  ringing: number;
+  notReachable: number;
+  switchedOff: number;
+  language: number;
+  callBack: number;
+  interested: number;
+  notInterested: number;
+}
+
+export interface CallCenterPerformanceRow {
+  userId: string;
+  name: string;
+  team: string | null;
+  callsMade: number;
+  dispositions: CallCenterDispositionCounts;
+  leadsCalled: number;
+  escalatedOrQualified: number;
+  escalationRate: number;
+}
+
+export interface FieldSalesPerformanceRow {
+  userId: string;
+  name: string;
+  leadsReceived: number;
+  leadsConverted: number;
+  conversionRate: number;
+  siteVisitsLogged: number;
+}
+
 export interface SavedReportView {
   id: string;
   reportKey: string;

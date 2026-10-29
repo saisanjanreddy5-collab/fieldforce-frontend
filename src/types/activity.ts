@@ -11,6 +11,7 @@ export interface Activity {
   status: string;
   details: Record<string, unknown>;
   createdBy: string | null;
+  createdByName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface ActivityComment {
   id: string;
   activityId: string;
   userId: string | null;
+  userName: string | null;
   comment: string;
   createdAt: string;
 }

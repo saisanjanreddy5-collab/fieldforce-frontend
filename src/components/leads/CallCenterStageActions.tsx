@@ -7,14 +7,13 @@ import { CALL_DISPOSITIONS, type CallDisposition } from "../../api/lead-api";
 import type { Lead } from "../../types/lead";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
-import { FLC_STAGE, SLC_STAGE, TLC_STAGE } from "../../utils/lead-constants";
+import { FLC_STAGE, SLC_STAGE } from "../../utils/lead-constants";
 
-// Which tier a lead escalates to next, and what to call it - null for TLC,
+// Which tier a lead escalates to next, and what to call it - null for SLC,
 // since that tier's own "next step" is the existing Qualify action below,
-// not an escalation to a fourth tier.
+// not an escalation to a third tier.
 const NEXT_TIER: Record<string, { label: string; action: (id: string) => Promise<Lead> } | undefined> = {
   [FLC_STAGE]: { label: "SLC", action: leadApi.escalateToSlc },
-  [SLC_STAGE]: { label: "TLC", action: leadApi.escalateToTlc },
 };
 
 const { Text } = Typography;
@@ -26,7 +25,7 @@ interface CallCenterStageActionsProps {
 
 // Log call outcome / Escalate to next tier / Mark Qualified - the Call
 // Center-only actions that only ever apply while a lead is still at one of
-// the three calling tiers (FLC/SLC/TLC). Rendered in the same compact row as
+// the two calling tiers (FLC/SLC). Rendered in the same compact row as
 // Send to Field Sales/Reassign/History (see LeadDetail.tsx), not a separate
 // box, for the same space reason those got redesigned. Each button checks
 // its own permission (leads.call_log / leads.escalate / leads.qualify)
@@ -49,7 +48,7 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   const [escalating, setEscalating] = useState(false);
 
   const nextTier = NEXT_TIER[lead.status];
-  const isTlc = lead.status === TLC_STAGE;
+  const isSlc = lead.status === SLC_STAGE;
 
   // Once a lead escalates (or is sent to Field), the tier/team it came from
   // keeps a read-only lead_shares grant on it (shareLeadBackToSender) - so a
@@ -59,7 +58,7 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   // the lead's own status, not who's allowed to act on it - a 403-after-
   // the-click instead of the button simply not being there, same class of
   // bug already fixed for Call/Email/WhatsApp after a Field Sales handoff.
-  if (!lead.inOwnerScope || (!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isTlc)) return null;
+  if (!lead.inOwnerScope || (!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isSlc)) return null;
 
   const isCallBack = disposition === "Call Back";
 
@@ -192,7 +191,7 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
           Escalate to {nextTier.label}
         </Button>
       )}
-      {canQualify && isTlc && (
+      {canQualify && isSlc && (
         <Button size="small" type="primary" loading={qualifying} onClick={handleQualify}>
           Mark Qualified
         </Button>

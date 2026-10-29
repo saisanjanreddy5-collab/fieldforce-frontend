@@ -1,10 +1,19 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { CreateLeadPayload, Lead, LeadConsent, LeadListFilters, LeadListResult } from "../types/lead";
-import type { AuditEvent } from "../types/audit-consent";
+import type { LeadTimelineEntry } from "../types/lead-timeline";
+import type { LeadsExportResult } from "../types/lead-export";
 
 export async function listLeads(filters: LeadListFilters): Promise<LeadListResult> {
   const response = await apiClient.get<ApiSuccess<LeadListResult>>("/leads", { params: filters });
+  return response.data.data;
+}
+
+// Same filters as listLeads, minus page/limit - returns every matching lead
+// (not one page) plus its full history/remarks, for the Leads page's Export
+// button to turn into a real multi-sheet workbook.
+export async function exportLeads(filters: Omit<LeadListFilters, "page" | "limit">): Promise<LeadsExportResult> {
+  const response = await apiClient.get<ApiSuccess<LeadsExportResult>>("/leads/export", { params: filters });
   return response.data.data;
 }
 
@@ -118,11 +127,6 @@ export async function escalateToSlc(id: string): Promise<Lead> {
   return response.data.data;
 }
 
-export async function escalateToTlc(id: string): Promise<Lead> {
-  const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/escalate-to-tlc`);
-  return response.data.data;
-}
-
 export async function getSwapCandidates(id: string): Promise<SwapCandidate[]> {
   const response = await apiClient.get<ApiSuccess<SwapCandidate[]>>(`/leads/${id}/swap-candidates`);
   return response.data.data;
@@ -141,7 +145,7 @@ export async function reassignLead(id: string, ownerId: string): Promise<Lead> {
   return response.data.data;
 }
 
-export async function getLeadHistory(id: string): Promise<AuditEvent[]> {
-  const response = await apiClient.get<ApiSuccess<AuditEvent[]>>(`/leads/${id}/history`);
+export async function getLeadTimeline(id: string): Promise<LeadTimelineEntry[]> {
+  const response = await apiClient.get<ApiSuccess<LeadTimelineEntry[]>>(`/leads/${id}/timeline`);
   return response.data.data;
 }
