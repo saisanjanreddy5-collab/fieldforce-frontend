@@ -4,9 +4,13 @@ import { BarChartOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as reportApi from "../api/report-api";
 import * as salesTeamApi from "../api/sales-team-api";
+import * as userApi from "../api/user-api";
 import type { Zone } from "../types/sales-team";
+import type { TeamMember } from "../types/user";
 import type {
   B2BGroupRow,
+  CallCenterPerformanceRow,
+  FieldSalesPerformanceRow,
   FofoCohortRow,
   LeadSourceRoiRow,
   SalespersonPerformanceRow,
@@ -19,8 +23,16 @@ import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
-type ReportKey = "salesperson" | "state_wise" | "b2b_group" | "lead_source_roi" | "fofo_cohort_retention";
+type ReportKey =
+  | "salesperson"
+  | "state_wise"
+  | "b2b_group"
+  | "lead_source_roi"
+  | "fofo_cohort_retention"
+  | "call_center_performance"
+  | "field_sales_performance";
 
 const REPORT_TABS: { key: ReportKey; label: string }[] = [
   { key: "salesperson", label: "Salesperson" },
@@ -28,7 +40,19 @@ const REPORT_TABS: { key: ReportKey; label: string }[] = [
   { key: "b2b_group", label: "B2B group" },
   { key: "lead_source_roi", label: "Lead source ROI" },
   { key: "fofo_cohort_retention", label: "Cohort retention" },
+  { key: "call_center_performance", label: "Call Center performance" },
+  { key: "field_sales_performance", label: "Field Sales performance" },
 ];
+
+const DISPOSITION_LABEL: Record<keyof CallCenterPerformanceRow["dispositions"], string> = {
+  ringing: "Ringing",
+  notReachable: "Not Reachable",
+  switchedOff: "Switched Off",
+  language: "Language",
+  callBack: "Call Back",
+  interested: "Interested",
+  notInterested: "Not Interested",
+};
 
 const money = (v: number | null) => (v === null ? "-" : formatCompactCurrency(v));
 
@@ -57,7 +81,7 @@ function ReportTable<T>({
 }) {
   return (
     <div style={{ border: `1px solid ${appTokens.border}`, borderRadius: appTokens.radius, overflow: "hidden" }}>
-      <div style={{ display: "flex", padding: "10px 18px", background: appTokens.surfaceMuted, borderBottom: `1px solid ${appTokens.borderLight}` }}>
+      <div style={{ display: "flex", gap: 16, padding: "10px 18px", background: appTokens.surfaceMuted, borderBottom: `1px solid ${appTokens.borderLight}` }}>
         {columns.map((c) => (
           <div
             key={c.key}
@@ -93,6 +117,7 @@ function ReportTable<T>({
             key={rowKey(row)}
             style={{
               display: "flex",
+              gap: 16,
               padding: "13px 18px",
               borderBottom: idx === rows.length - 1 && !totalRow ? "none" : `1px solid ${appTokens.borderLight}`,
               transition: "background 0.1s",
@@ -108,7 +133,7 @@ function ReportTable<T>({
       )}
 
       {totalRow && rows.length > 0 && (
-        <div style={{ display: "flex", padding: "13px 18px", background: appTokens.surfaceMuted, borderTop: `1.5px solid ${appTokens.border}` }}>
+        <div style={{ display: "flex", gap: 16, padding: "13px 18px", background: appTokens.surfaceMuted, borderTop: `1.5px solid ${appTokens.border}` }}>
           {columns.map((c, i) => (
             <div key={c.key} style={{ flex: c.flex ?? 1, textAlign: c.align ?? "left", fontSize: 13.5, fontWeight: 700, color: appTokens.textPrimary }}>
               {totalRow[i]}
@@ -161,7 +186,16 @@ export default function ReportsPage() {
   const [b2bGroup, setB2bGroup] = useState<B2BGroupRow[]>([]);
   const [leadSource, setLeadSource] = useState<LeadSourceRoiRow[]>([]);
   const [cohort, setCohort] = useState<FofoCohortRow[]>([]);
+  const [callCenterPerf, setCallCenterPerf] = useState<CallCenterPerformanceRow[]>([]);
+  const [fieldSalesPerf, setFieldSalesPerf] = useState<FieldSalesPerformanceRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Shared by the two new performance tabs only - a real date range (not
+  // just a month) and a pick of specific people, not just one zone, per the
+  // client's own "Date Filters and Multiple Selection in Reports" ask.
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const [employeeIds, setEmployeeIds] = useState<string[]>([]);
+  const [allUsers, setAllUsers] = useState<TeamMember[]>([]);
 
   const [savedViewOpen, setSavedViewOpen] = useState(false);
   const [savedViewName, setSavedViewName] = useState("");
@@ -169,7 +203,20 @@ export default function ReportsPage() {
 
   useEffect(() => {
     salesTeamApi.listZones().then(setZones).catch(() => undefined);
+    userApi.listUsers().then(setAllUsers).catch(() => undefined);
   }, []);
+
+  const callCenterEmployees = useMemo(() => allUsers.filter((u) => u.role === "call_center"), [allUsers]);
+  const fieldEmployees = useMemo(() => allUsers.filter((u) => u.role === "agent"), [allUsers]);
+
+  const performanceFilters = useMemo(
+    () => ({
+      from: dateRange ? dateRange[0].format("YYYY-MM-DD") : undefined,
+      to: dateRange ? dateRange[1].format("YYYY-MM-DD") : undefined,
+      employeeIds: employeeIds.length > 0 ? employeeIds : undefined,
+    }),
+    [dateRange, employeeIds]
+  );
 
   const loadSalesperson = () => {
     setLoading(true);
@@ -185,6 +232,30 @@ export default function ReportsPage() {
     loadSalesperson();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, month, zoneId]);
+
+  const loadCallCenterPerf = () => {
+    setLoading(true);
+    reportApi
+      .getCallCenterPerformance(performanceFilters)
+      .then(setCallCenterPerf)
+      .catch(() => message.error("Failed to load report"))
+      .finally(() => setLoading(false));
+  };
+
+  const loadFieldSalesPerf = () => {
+    setLoading(true);
+    reportApi
+      .getFieldSalesPerformance(performanceFilters)
+      .then(setFieldSalesPerf)
+      .catch(() => message.error("Failed to load report"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (tab === "call_center_performance") loadCallCenterPerf();
+    else if (tab === "field_sales_performance") loadFieldSalesPerf();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, JSON.stringify(performanceFilters)]);
 
   useEffect(() => {
     if (tab === "state_wise") {
@@ -213,10 +284,17 @@ export default function ReportsPage() {
 
   const canSaveView = hasPermission("reports.save_view");
 
+  const isPerformanceTab = tab === "call_center_performance" || tab === "field_sales_performance";
+
   const handleSaveView = async () => {
     if (!savedViewName.trim()) return;
     try {
-      const filters = tab === "salesperson" ? { month: month?.format("YYYY-MM"), zoneId } : {};
+      const filters =
+        tab === "salesperson"
+          ? { month: month?.format("YYYY-MM"), zoneId }
+          : isPerformanceTab
+            ? performanceFilters
+            : {};
       await reportApi.createSavedView(tab, savedViewName.trim(), filters);
       message.success("View saved");
       setSavedViewName("");
@@ -227,11 +305,19 @@ export default function ReportsPage() {
   };
 
   const handleLoadView = (view: SavedReportView) => {
-    if (view.reportKey !== "salesperson") return;
-    const filters = view.filters as { month?: string; zoneId?: string };
-    setMonth(filters.month ? dayjs(filters.month) : null);
-    setZoneId(filters.zoneId);
-    setSavedViewOpen(false);
+    if (view.reportKey === "salesperson") {
+      const filters = view.filters as { month?: string; zoneId?: string };
+      setMonth(filters.month ? dayjs(filters.month) : null);
+      setZoneId(filters.zoneId);
+      setSavedViewOpen(false);
+      return;
+    }
+    if (view.reportKey === "call_center_performance" || view.reportKey === "field_sales_performance") {
+      const filters = view.filters as { from?: string; to?: string; employeeIds?: string[] };
+      setDateRange(filters.from && filters.to ? [dayjs(filters.from), dayjs(filters.to)] : null);
+      setEmployeeIds(filters.employeeIds ?? []);
+      setSavedViewOpen(false);
+    }
   };
 
   const handleDeleteView = async (id: string) => {
@@ -292,7 +378,7 @@ export default function ReportsPage() {
         leadSource.map((r) => ({ ...r, cost: r.cost ?? "-", cpql: r.cpql ?? "-" })),
         "lead-source-roi"
       );
-    } else {
+    } else if (tab === "fofo_cohort_retention") {
       await exportToXlsx(
         "FOFO cohort retention",
         [
@@ -310,6 +396,40 @@ export default function ReportsPage() {
           m12: r.m12 ?? "-",
         })),
         "fofo-cohort-retention"
+      );
+    } else if (tab === "call_center_performance") {
+      await exportToXlsx(
+        "Call Center performance",
+        [
+          { header: "Name", key: "name" },
+          { header: "Team", key: "team" },
+          { header: "Calls made", key: "callsMade" },
+          { header: "Ringing", key: "ringing" },
+          { header: "Not Reachable", key: "notReachable" },
+          { header: "Switched Off", key: "switchedOff" },
+          { header: "Language", key: "language" },
+          { header: "Call Back", key: "callBack" },
+          { header: "Interested", key: "interested" },
+          { header: "Not Interested", key: "notInterested" },
+          { header: "Leads called", key: "leadsCalled" },
+          { header: "Escalated/Qualified", key: "escalatedOrQualified", width: 20 },
+          { header: "Escalation rate %", key: "escalationRate", width: 18 },
+        ],
+        callCenterPerf.map((r) => ({ ...r, team: r.team ?? "-", ...r.dispositions })),
+        "call-center-performance"
+      );
+    } else {
+      await exportToXlsx(
+        "Field Sales performance",
+        [
+          { header: "Name", key: "name" },
+          { header: "Leads received", key: "leadsReceived", width: 18 },
+          { header: "Leads converted", key: "leadsConverted", width: 18 },
+          { header: "Conversion rate %", key: "conversionRate", width: 18 },
+          { header: "Site visits logged", key: "siteVisitsLogged", width: 18 },
+        ],
+        fieldSalesPerf.map((r) => ({ ...r })),
+        "field-sales-performance"
       );
     }
   };
@@ -506,6 +626,91 @@ export default function ReportsPage() {
               { key: "m3", label: "M+3", align: "right", render: (r) => (r.m3 === null ? "-" : `${r.m3}%`) },
               { key: "m6", label: "M+6", align: "right", render: (r) => (r.m6 === null ? "-" : `${r.m6}%`) },
               { key: "m12", label: "M+12", align: "right", render: (r) => (r.m12 === null ? "-" : `${r.m12}%`) },
+            ]}
+          />
+        </ReportCard>
+      )}
+
+      {tab === "call_center_performance" && (
+        <ReportCard
+          title="Call Center performance"
+          sub="Calls and dispositions from the activity log, escalation/qualification counts from each lead's real stage history - grouped per person for the date range and people selected."
+          right={
+            <Space wrap>
+              <RangePicker value={dateRange} onChange={(v) => setDateRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} allowClear />
+              <Select
+                mode="multiple"
+                placeholder="All Call Center employees"
+                allowClear
+                maxTagCount={2}
+                style={{ minWidth: 220 }}
+                value={employeeIds}
+                onChange={setEmployeeIds}
+                options={callCenterEmployees.map((u) => ({ value: u.id, label: u.name }))}
+              />
+            </Space>
+          }
+        >
+          <ReportTable<CallCenterPerformanceRow>
+            loading={loading}
+            rows={callCenterPerf}
+            rowKey={(r) => r.userId}
+            emptyText="No calls logged by anyone in your reporting line for this range yet"
+            columns={[
+              { key: "name", label: "Name", flex: 1.3, render: (r) => <Text strong>{r.name}</Text> },
+              { key: "team", label: "Team", render: (r) => r.team ?? "-" },
+              { key: "calls", label: "Calls", align: "right", render: (r) => r.callsMade },
+              {
+                key: "dispositions",
+                label: "Top dispositions",
+                flex: 1.6,
+                render: (r) =>
+                  (Object.keys(r.dispositions) as (keyof CallCenterPerformanceRow["dispositions"])[])
+                    .filter((k) => r.dispositions[k] > 0)
+                    .sort((a, b) => r.dispositions[b] - r.dispositions[a])
+                    .slice(0, 2)
+                    .map((k) => `${DISPOSITION_LABEL[k]} (${r.dispositions[k]})`)
+                    .join(", ") || "-",
+              },
+              { key: "leadsCalled", label: "Leads called", align: "right", render: (r) => r.leadsCalled },
+              { key: "escalated", label: "Escalated/Qualified", align: "right", render: (r) => r.escalatedOrQualified },
+              { key: "rate", label: "Rate", align: "right", render: (r) => `${r.escalationRate}%` },
+            ]}
+          />
+        </ReportCard>
+      )}
+
+      {tab === "field_sales_performance" && (
+        <ReportCard
+          title="Field Sales performance"
+          sub="Leads received/converted are grouped by the lead's own creation date, same convention as Salesperson performance - not the exact date it reached this field rep. Site visits use the real activity timestamp."
+          right={
+            <Space wrap>
+              <RangePicker value={dateRange} onChange={(v) => setDateRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} allowClear />
+              <Select
+                mode="multiple"
+                placeholder="All Field Sales employees"
+                allowClear
+                maxTagCount={2}
+                style={{ minWidth: 220 }}
+                value={employeeIds}
+                onChange={setEmployeeIds}
+                options={fieldEmployees.map((u) => ({ value: u.id, label: u.name }))}
+              />
+            </Space>
+          }
+        >
+          <ReportTable<FieldSalesPerformanceRow>
+            loading={loading}
+            rows={fieldSalesPerf}
+            rowKey={(r) => r.userId}
+            emptyText="No leads owned by anyone in your reporting line for this range yet"
+            columns={[
+              { key: "name", label: "Name", flex: 1.4, render: (r) => <Text strong>{r.name}</Text> },
+              { key: "received", label: "Received", align: "right", render: (r) => r.leadsReceived },
+              { key: "converted", label: "Converted", align: "right", render: (r) => r.leadsConverted },
+              { key: "rate", label: "Conv. %", align: "right", render: (r) => `${r.conversionRate}%` },
+              { key: "visits", label: "Site visits", align: "right", render: (r) => r.siteVisitsLogged },
             ]}
           />
         </ReportCard>

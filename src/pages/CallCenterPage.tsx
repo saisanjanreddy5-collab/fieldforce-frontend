@@ -11,7 +11,7 @@ import type { Lead } from "../types/lead";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { useLeadCategories } from "../hooks/use-lead-categories";
-import { FLC_STAGE, SLC_STAGE, TLC_STAGE } from "../utils/lead-constants";
+import { FLC_STAGE, SLC_STAGE } from "../utils/lead-constants";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
@@ -35,21 +35,19 @@ const DISPOSITION_COLORS: Record<string, string> = {
 };
 
 // Which calling-tier stage a user's own queue works, derived from their
-// sales team (same 3 teams seeded in model.ts) - not stored anywhere on the
+// sales team (same 2 teams seeded in model.ts) - not stored anywhere on the
 // user record itself, since the team is already the one source of truth for
-// this. Defaults to FLC for anyone not on one of the three teams (e.g. an
+// this. Defaults to FLC for anyone not on one of the two teams (e.g. an
 // Admin/Manager just checking in on the queue), matching this tab's
 // pre-tiered single-section behavior.
 const TIER_BY_TEAM: Record<string, string> = {
   "FLC Team": FLC_STAGE,
   "SLC Team": SLC_STAGE,
-  "TLC Team": TLC_STAGE,
 };
 
 const TIER_LABELS: Record<string, string> = {
   [FLC_STAGE]: "FLC",
   [SLC_STAGE]: "SLC",
-  [TLC_STAGE]: "TLC",
 };
 
 const EMPTY_STATS: callCenterApi.CallCenterStats = {
@@ -529,15 +527,15 @@ function MyQueueTab() {
   // Two separate stages shown as two sections - a lead vanishing from view
   // the instant it's marked Qualified left no place to ever click Send to
   // Field Sales, so both stages of this agent's own queue are fetched. The
-  // "Qualified" fetch is naturally empty for an FLC/SLC user (qualifyLead
-  // only ever runs from TLC, and never changes owner), so this stays
-  // correct for every tier without branching on which one this is.
+  // "Qualified" fetch is naturally empty for an FLC user (qualifyLead only
+  // ever runs from SLC, and never changes owner), so this stays correct for
+  // every tier without branching on which one this is.
   const [callingLeads, setCallingLeads] = useState<Lead[]>([]);
   const [qualifiedLeads, setQualifiedLeads] = useState<Lead[]>([]);
   // Leads this person used to own and has since handed onward - to Field
-  // Sales (TLC's own Qualified -> Send to Field), or to the next calling
-  // tier (FLC -> SLC, SLC -> TLC) - all three use the same shareLeadBackTo
-  // Sender grant, so one fetch covers every hand-off type. Without this, the
+  // Sales (SLC's own Qualified -> Send to Field), or to the next calling
+  // tier (FLC -> SLC) - both use the same shareLeadBackToSender grant, so
+  // one fetch covers every hand-off type. Without this, the
   // queue going empty read as the work having vanished rather than finished
   // (see leadApi.listHandedOffLeads's own comment). Read-only: renderRow
   // hides the inline Call button for these.
