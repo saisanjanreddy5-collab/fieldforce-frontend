@@ -352,7 +352,10 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
         smartfloAgentNumber: values.smartfloAgentNumber,
         mobile: values.mobile,
         territory: values.territory,
-        salesTeamId: values.salesTeamId,
+        // Only meaningful for a Call Center Executive (it's what actually
+        // decides FLC vs SLC) - the field itself is hidden for every other
+        // tier, same reasoning as operationType/pincodes below.
+        salesTeamId: selectedLevel?.securityTier === "call_center" ? values.salesTeamId : undefined,
         zoneId: values.zoneId,
         stateId: values.stateId,
         employeeCode: values.employeeCode,
@@ -762,22 +765,45 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                         />
                       </Form.Item>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                      <Form.Item name="customerCategoryId" label="Customer category">
-                        <Select
-                          allowClear
-                          placeholder="Select a customer category"
-                          options={customerCategories.map((c) => ({ value: c.id, label: c.label }))}
-                        />
-                      </Form.Item>
-                      <Form.Item name="salesTeamId" label="Sales team">
-                        <Select
-                          allowClear
-                          placeholder="Select a sales team"
-                          options={salesTeams.map((t) => ({ value: t.id, label: t.region ? `${t.name} (${t.region})` : t.name }))}
-                        />
-                      </Form.Item>
-                    </div>
+                    {(() => {
+                      const customerCategoryField = (
+                        <Form.Item name="customerCategoryId" label="Customer category">
+                          <Select
+                            allowClear
+                            placeholder="Select a customer category"
+                            options={customerCategories.map((c) => ({ value: c.id, label: c.label }))}
+                          />
+                        </Form.Item>
+                      );
+                      // Sales team only means anything for a Call Center
+                      // Executive - it's what actually decides FLC vs SLC
+                      // (see resolveTierAssignee in lead-service.ts). Field
+                      // Sales is matched by pincode, not a team, and Admin
+                      // isn't on a calling team at all, so the field is
+                      // hidden rather than offering a choice that does
+                      // nothing. Restricted to FLC/SLC Team specifically -
+                      // any other sales_teams row existing is legacy data,
+                      // never a real choice to offer here.
+                      if (selectedLevel?.securityTier !== "call_center") return customerCategoryField;
+                      return (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                          {customerCategoryField}
+                          <Form.Item
+                            name="salesTeamId"
+                            label="Sales team"
+                            tooltip="Which calling tier this person works - FLC (first line) or SLC (second line)"
+                          >
+                            <Select
+                              allowClear
+                              placeholder="Select FLC or SLC"
+                              options={salesTeams
+                                .filter((t) => t.name === "FLC Team" || t.name === "SLC Team")
+                                .map((t) => ({ value: t.id, label: t.name }))}
+                            />
+                          </Form.Item>
+                        </div>
+                      );
+                    })()}
                     <Form.Item
                       name="smartfloAgentNumber"
                       label="Smartflo agent number"
