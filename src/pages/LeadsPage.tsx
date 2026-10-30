@@ -257,6 +257,9 @@ export default function LeadsPage() {
               { header: "Expected value", key: "expectedValue" },
               { header: "Created", key: "createdAt", width: 20 },
               { header: "Last updated", key: "updatedAt", width: 20 },
+              { header: "Internal Notes", key: "internalNotes", width: 30 },
+              { header: "RM Remark", key: "rmRemark", width: 30 },
+              { header: "LG Remark", key: "lgRemark", width: 30 },
             ],
             rows: exportLeadRows.map((l) => ({ ...l })),
           },
@@ -315,7 +318,7 @@ export default function LeadsPage() {
                 Export
               </Button>
             )}
-            {hasPermission("leads.create") && (
+            {hasPermission("leads.bulk_import") && (
               <Button style={{ paddingInline: 10 }} onClick={() => setImportOpen(true)}>
                 Import
               </Button>
@@ -522,7 +525,7 @@ export default function LeadsPage() {
                       Export
                     </Button>
                   )}
-                  {hasPermission("leads.create") && (
+                  {hasPermission("leads.bulk_import") && (
                     <Button style={{ flex: 1 }} onClick={() => setImportOpen(true)}>
                       Import
                     </Button>

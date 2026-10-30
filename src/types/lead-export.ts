@@ -19,6 +19,9 @@ export interface ExportLeadRow {
   flcHandledBy: string;
   slcHandledBy: string;
   fieldSalesExecutive: string;
+  internalNotes: string | null;
+  rmRemark: string | null;
+  lgRemark: string | null;
 }
 
 export interface ExportHistoryRow {

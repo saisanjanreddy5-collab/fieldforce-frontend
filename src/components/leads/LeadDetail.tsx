@@ -282,7 +282,14 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           {activeTabKey === "whatsapp" && (
             <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} canSend={lead.inOwnerScope} />
           )}
-          {activeTabKey === "history" && <HistoryTab leadId={lead.id} />}
+          {activeTabKey === "history" && (
+            <HistoryTab
+              leadId={lead.id}
+              internalNotes={lead.internalNotes}
+              rmRemark={lead.rmRemark}
+              lgRemark={lead.lgRemark}
+            />
+          )}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
           {activeTabKey === "approvals" && (
             <ApprovalsTab lead={lead} canView={canViewOnboarding} loading={handoffLoading} handoff={handoff} onChanged={loadHandoff} />
