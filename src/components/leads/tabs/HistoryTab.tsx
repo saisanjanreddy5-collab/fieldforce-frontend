@@ -4,6 +4,7 @@ import {
   DeleteOutlined,
   DownOutlined,
   EditOutlined,
+  FileTextOutlined,
   MessageOutlined,
   PlayCircleOutlined,
   RiseOutlined,
@@ -47,6 +48,9 @@ const AUDIT_ICON: Record<string, React.ReactNode> = {
   owner_reassigned: <UserSwitchOutlined />,
   category_changed: <TagsOutlined />,
   deleted: <DeleteOutlined />,
+  internal_notes_updated: <FileTextOutlined />,
+  rm_remark_updated: <FileTextOutlined />,
+  lg_remark_updated: <FileTextOutlined />,
 };
 // Reads naturally after an actor's name ("Priya escalated this lead") -
 // built from audit_log's own `action` key rather than parsing its `summary`
@@ -57,6 +61,9 @@ const AUDIT_VERB: Record<string, string> = {
   owner_reassigned: "reassigned the salesperson",
   category_changed: "changed the category",
   deleted: "deleted this lead",
+  internal_notes_updated: "updated the internal notes",
+  rm_remark_updated: "updated the RM remark",
+  lg_remark_updated: "updated the LG remark",
 };
 
 function dayGroupLabel(date: string): string {
@@ -256,7 +263,40 @@ function CommentEntry({ entry }: { entry: NonNullable<LeadTimelineEntry["comment
   );
 }
 
+// Internal Notes/RM Remark/LG Remark carry free-form paragraphs, not short
+// enum-like values (a stage name, an owner's name) - cramming those into the
+// same small Tag-chip treatment every other audit event uses would wrap
+// badly and read poorly, so these three get their own quote-style block
+// instead, same visual language as a remark's own card.
+const NOTE_UPDATE_ACTIONS = new Set(["internal_notes_updated", "rm_remark_updated", "lg_remark_updated"]);
+
 function AuditEntry({ event }: { event: AuditEvent }) {
+  if (NOTE_UPDATE_ACTIONS.has(event.action)) {
+    return (
+      <EntryShell node={AUDIT_ICON[event.action] ?? <FileTextOutlined />} nodeBg={FILTER_DOT_COLOR.audit} time={formatDateTime(event.createdAt)}>
+        <Actor name={event.actorName} trailing={AUDIT_VERB[event.action] ?? event.summary} />
+        {event.newValue && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: "8px 12px",
+              background: appTokens.surfaceMuted,
+              borderRadius: 6,
+              border: `1px solid ${appTokens.borderLight}`,
+            }}
+          >
+            <Text style={{ fontSize: 13.5, whiteSpace: "pre-wrap" }}>{event.newValue}</Text>
+          </div>
+        )}
+        {event.oldValue && (
+          <Text type="secondary" style={{ fontSize: 11.5, display: "block", marginTop: 6 }}>
+            Previously: {event.oldValue}
+          </Text>
+        )}
+      </EntryShell>
+    );
+  }
+
   return (
     <EntryShell node={AUDIT_ICON[event.action] ?? <SwapOutlined />} nodeBg={FILTER_DOT_COLOR.audit} time={formatDateTime(event.createdAt)}>
       <Actor name={event.actorName} trailing={AUDIT_VERB[event.action] ?? event.summary} />
@@ -273,8 +313,39 @@ function AuditEntry({ event }: { event: AuditEvent }) {
   );
 }
 
+function CurrentNoteCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div
+      style={{
+        flex: "1 1 220px",
+        minWidth: 220,
+        border: `1px solid ${appTokens.borderLight}`,
+        borderRadius: appTokens.radius,
+        padding: "10px 12px",
+        background: appTokens.surface,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+        <Text strong style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: 0.3, color: appTokens.textTertiary }}>
+          {label}
+        </Text>
+      </div>
+      <Text style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{value}</Text>
+    </div>
+  );
+}
+
 interface HistoryTabProps {
   leadId: string;
+  // Current values only (no timestamp/actor of their own, unlike everything
+  // else in History) - shown as a pinned summary up top since they're plain
+  // mutable fields (see LeadFormDrawer's "Visible only to your team"
+  // section), not a dated event. Any edit from here on does get a real,
+  // dated History entry below (see lead-service.ts's updateLead).
+  internalNotes: string | null;
+  rmRemark: string | null;
+  lgRemark: string | null;
 }
 
 // The lead's full end-to-end story in one place: every call/email/meeting/
@@ -284,8 +355,13 @@ interface HistoryTabProps {
 // drawer, which each told only part of this story on their own. Deliberately
 // has no entry in LeadDetail's TAB_PERMISSION map - every call center/field/
 // admin person who can open this lead at all can see its whole history.
-export function HistoryTab({ leadId }: HistoryTabProps) {
+export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark }: HistoryTabProps) {
   const hasPermission = useHasPermission();
+  const currentNotes = [
+    { key: "internalNotes", label: "Internal Notes", value: internalNotes, color: "#7c3aed" },
+    { key: "rmRemark", label: "RM Remark", value: rmRemark, color: "#2a78d6" },
+    { key: "lgRemark", label: "LG Remark", value: lgRemark, color: "#0f9aa8" },
+  ].filter((n): n is { key: string; label: string; value: string; color: string } => Boolean(n.value?.trim()));
   const [entries, setEntries] = useState<LeadTimelineEntry[] | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<Set<FilterKey>>(new Set());
   const [typeSearch, setTypeSearch] = useState("");
@@ -438,6 +514,19 @@ export function HistoryTab({ leadId }: HistoryTabProps) {
           </Dropdown>
         </div>
       </div>
+
+      {currentNotes.length > 0 && (
+        <div style={{ margin: "12px 0 16px" }}>
+          <Text type="secondary" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 8 }}>
+            Current notes
+          </Text>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {currentNotes.map((n) => (
+              <CurrentNoteCard key={n.key} label={n.label} value={n.value} color={n.color} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <Text type="secondary" style={{ fontSize: 12, display: "block", margin: "8px 0 16px" }}>
         {filtered.length} of {entries.length} events
