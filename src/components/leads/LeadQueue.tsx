@@ -1,12 +1,25 @@
-import type { UIEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Empty, Input, Spin, Typography } from "antd";
 import { DoubleLeftOutlined, DoubleRightOutlined, SearchOutlined } from "@ant-design/icons";
+import { FixedSizeList, type ListOnItemsRenderedProps } from "react-window";
 import type { Lead } from "../../types/lead";
 import { appTokens } from "../../utils/design-system";
 import { LeadRow } from "./LeadRow";
 import { LeadFilters, type AdvancedFilters } from "./LeadFilters";
 
 const { Text } = Typography;
+
+// LeadRow is a fixed two-line layout (no variable-height content - every
+// field truncates with ellipsis rather than wrapping), so a plain
+// FixedSizeList works here without needing react-window's variable-size
+// variant. Measured against the row's own padding (10px top/bottom) plus its
+// two text lines - matches closely enough that react-window's own
+// overscan/off-by-a-few-px tolerance handles the rest.
+const ROW_HEIGHT = 68;
+// How many rows from the end of what's currently loaded before fetching the
+// next page - small enough to not over-fetch, large enough that scrolling
+// fast never outruns the network round-trip and shows a visible gap.
+const LOAD_MORE_THRESHOLD = 8;
 
 interface LeadQueueProps {
   leads: Lead[];
@@ -49,9 +62,24 @@ export function LeadQueue({
   advancedFilters,
   onAdvancedFiltersChange,
 }: LeadQueueProps) {
-  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    if (!loadingMore && hasMore && el.scrollTop + el.clientHeight >= el.scrollHeight - 80) {
+  // react-window needs an explicit pixel height, not "flex: 1" - measured via
+  // ResizeObserver so the list fills whatever space the surrounding layout
+  // (sidebar collapse, window resize, filter bar height) actually gives it.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      setContainerHeight(entries[0].contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleItemsRendered = ({ visibleStopIndex }: ListOnItemsRenderedProps) => {
+    if (!loadingMore && hasMore && visibleStopIndex >= leads.length - LOAD_MORE_THRESHOLD) {
       onLoadMore();
     }
   };
@@ -82,25 +110,39 @@ export function LeadQueue({
         <Button icon={<DoubleLeftOutlined />} onClick={onToggleCollapsed} title="Collapse list" />
       </div>
 
-      <div onScroll={handleScroll} style={{ flex: 1, overflowY: "auto", minHeight: 200, margin: "0 -20px" }}>
+      <div ref={containerRef} style={{ flex: 1, minHeight: 200, margin: "0 -20px" }}>
         {loading ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <Spin />
           </div>
         ) : leads.length === 0 ? (
           <Empty description="No leads match this filter" style={{ padding: 24 }} />
-        ) : (
-          <>
-            {leads.map((lead) => (
-              <LeadRow key={lead.id} lead={lead} selected={lead.id === selectedId} showOwner={showOwner} onClick={() => onSelect(lead.id)} />
-            ))}
-            {loadingMore && (
-              <div style={{ padding: 12, textAlign: "center" }}>
-                <Spin size="small" />
-              </div>
-            )}
-          </>
-        )}
+        ) : containerHeight > 0 ? (
+          <FixedSizeList
+            height={containerHeight}
+            width="100%"
+            itemCount={leads.length + (loadingMore ? 1 : 0)}
+            itemSize={ROW_HEIGHT}
+            onItemsRendered={handleItemsRendered}
+          >
+            {({ index, style }) =>
+              index >= leads.length ? (
+                <div style={{ ...style, textAlign: "center", paddingTop: 12 }}>
+                  <Spin size="small" />
+                </div>
+              ) : (
+                <div style={style}>
+                  <LeadRow
+                    lead={leads[index]}
+                    selected={leads[index].id === selectedId}
+                    showOwner={showOwner}
+                    onClick={() => onSelect(leads[index].id)}
+                  />
+                </div>
+              )
+            }
+          </FixedSizeList>
+        ) : null}
       </div>
     </div>
   );

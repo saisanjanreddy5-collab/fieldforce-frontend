@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Input, Table, Tag, Typography } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import * as quoteApi from "../api/quote-api";
@@ -17,17 +17,33 @@ export default function QuotesPage() {
   const hasPermission = useHasPermission();
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const [openQuoteId, setOpenQuoteId] = useState<string | null>(null);
 
+  // Same race-guard as OpportunitiesPage's own multi-page load - only the
+  // most recently started load's progress callbacks are allowed to touch
+  // state, so a stale in-flight fetch can't overwrite newer data.
+  const loadTokenRef = useRef(0);
+
   const load = () => {
+    const token = ++loadTokenRef.current;
     setLoading(true);
+    setStreamProgress(null);
     quoteApi
-      .listQuotes()
-      .then((result) => setQuotes(result.quotes))
-      .catch(() => message.error("Failed to load quotes"))
-      .finally(() => setLoading(false));
+      .listAllQuotes((loadedSoFar, total) => {
+        if (loadTokenRef.current !== token) return;
+        setQuotes(loadedSoFar);
+        setLoading(false);
+        setStreamProgress(loadedSoFar.length < total ? { loaded: loadedSoFar.length, total } : null);
+      })
+      .catch(() => {
+        if (loadTokenRef.current === token) message.error("Failed to load quotes");
+      })
+      .finally(() => {
+        if (loadTokenRef.current === token) setLoading(false);
+      });
   };
 
   useEffect(load, []);
@@ -71,6 +87,50 @@ export default function QuotesPage() {
           </Button>
         )}
       </div>
+
+      {streamProgress && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: "8px 14px",
+            borderRadius: appTokens.radius,
+            background: appTokens.primarySoft,
+            border: `1px solid ${appTokens.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              border: `2px solid ${appTokens.primary}`,
+              borderTopColor: "transparent",
+              flexShrink: 0,
+              animation: "quote-stream-spin 0.7s linear infinite",
+            }}
+          />
+          <Text style={{ fontSize: 12.5, color: appTokens.textSecondary, flexShrink: 0 }}>
+            Loading the rest of the quotes - {streamProgress.loaded.toLocaleString()} of {streamProgress.total.toLocaleString()}
+          </Text>
+          <div style={{ flex: 1, height: 4, borderRadius: 999, background: appTokens.border, overflow: "hidden", minWidth: 60 }}>
+            <div
+              style={{
+                height: "100%",
+                borderRadius: 999,
+                background: appTokens.primary,
+                width: `${Math.min(100, (streamProgress.loaded / Math.max(1, streamProgress.total)) * 100)}%`,
+                transition: "width 0.25s ease-out",
+              }}
+            />
+          </div>
+          <style>{"@keyframes quote-stream-spin { to { transform: rotate(360deg); } }"}</style>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
         {[

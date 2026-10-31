@@ -3,13 +3,9 @@ import { AutoComplete, Avatar, Button, Drawer, Form, Input, Radio, Select, Space
 import { PlusOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import * as userApi from "../api/user-api";
-import * as salesTeamApi from "../api/sales-team-api";
-import * as classificationApi from "../api/classification-api";
 import type { CreateUserPayload, TeamMember, UserStatus } from "../types/user";
-import type { SalesTeam, State, Zone } from "../types/sales-team";
-import type { Office } from "../types/office";
+import type { SalesTeam } from "../types/sales-team";
 import type { Level } from "../types/level";
-import type { CustomerCategory, DivisionChannel } from "../types/classification";
 import { useHasPermission } from "../hooks/use-permission";
 import { ladderIndex, SPAN_WARNING_THRESHOLD } from "../utils/level-format";
 import { initials } from "../utils/lead-format";
@@ -62,20 +58,12 @@ interface FormValues {
   password: string;
   employeeCode: string;
   mobile: string;
-  dateOfJoining?: string;
   status?: UserStatus;
-  designation?: string;
   levelId: string;
   managerId?: string;
-  dottedLineManagerId?: string;
-  zoneId?: string;
-  stateId?: string;
   territory?: string;
-  officeId?: string;
-  salesTeamId?: string;
+  salesTeamIds?: string[];
   smartfloAgentNumber?: string;
-  divisionChannelId?: string;
-  customerCategoryId?: string;
   operationType?: "COCO" | "FOFO" | "Both";
   pincodes?: string[];
 }
@@ -85,8 +73,6 @@ interface UserFormWizardProps {
   user: TeamMember | null;
   users: TeamMember[];
   levels: Level[];
-  zones: Zone[];
-  offices: Office[];
   salesTeams: SalesTeam[];
   onClose: () => void;
   onSaved: () => void;
@@ -158,13 +144,13 @@ function OrgChartPreview({
   users,
   levels,
   name,
-  designation,
+  levelId,
 }: {
   managerId: string | undefined;
   users: TeamMember[];
   levels: Level[];
   name: string | undefined;
-  designation: string | undefined;
+  levelId: string | undefined;
 }) {
   if (!managerId) {
     return (
@@ -210,7 +196,7 @@ function OrgChartPreview({
     <div style={{ marginBottom: 4 }}>
       {skipLevel && row("skip level", skipLevel.name, skipLevel.designation ?? levelName(skipLevel.levelId))}
       {row("manager", manager.name, manager.designation ?? levelName(manager.levelId), "blue")}
-      {row("this user", name?.trim() || "New user", designation, "green")}
+      {row("this user", name?.trim() || "New user", levelName(levelId ?? null), "green")}
       <Text type="secondary" style={{ fontSize: 11 }}>
         Ownership follows this line: {manager.name} and everyone above will see this person&apos;s records. Peers see
         aggregates only.
@@ -219,26 +205,19 @@ function OrgChartPreview({
   );
 }
 
-export function UserFormWizard({ open, user, users, levels, zones, offices, salesTeams, onClose, onSaved }: UserFormWizardProps) {
+export function UserFormWizard({ open, user, users, levels, salesTeams, onClose, onSaved }: UserFormWizardProps) {
   const hasPermission = useHasPermission();
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
-  const [states, setStates] = useState<State[]>([]);
-  const [divisionChannels, setDivisionChannels] = useState<DivisionChannel[]>([]);
-  const [customerCategories, setCustomerCategories] = useState<CustomerCategory[]>([]);
   const [territories, setTerritories] = useState<string[]>([]);
   const [managerPickerExpanded, setManagerPickerExpanded] = useState(true);
 
-  const zoneId = Form.useWatch("zoneId", form);
   const managerId = Form.useWatch("managerId", form);
   const levelId = Form.useWatch("levelId", form);
   const nameWatch = Form.useWatch("name", form);
-  const designationWatch = Form.useWatch("designation", form);
 
   useEffect(() => {
     if (!open) return;
-    classificationApi.listDivisionChannels().then(setDivisionChannels).catch(() => undefined);
-    classificationApi.listCustomerCategories().then(setCustomerCategories).catch(() => undefined);
     userApi.listTerritories().then(setTerritories).catch(() => undefined);
     setManagerPickerExpanded(true);
   }, [open]);
@@ -250,20 +229,12 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
         name: user.name ?? undefined,
         employeeCode: user.employeeCode ?? undefined,
         mobile: user.mobile ?? undefined,
-        dateOfJoining: user.dateOfJoining ?? undefined,
         status: user.status,
-        designation: user.designation ?? undefined,
         levelId: user.levelId ?? undefined,
         managerId: user.managerId ?? undefined,
-        dottedLineManagerId: user.dottedLineManagerId ?? undefined,
-        zoneId: user.zoneId ?? undefined,
-        stateId: user.stateId ?? undefined,
         territory: user.territory ?? undefined,
-        officeId: user.officeId ?? undefined,
-        salesTeamId: user.salesTeamId ?? undefined,
+        salesTeamIds: user.salesTeamIds ?? [],
         smartfloAgentNumber: user.smartfloAgentNumber ?? undefined,
-        divisionChannelId: user.divisionChannelId ?? undefined,
-        customerCategoryId: user.customerCategoryId ?? undefined,
         operationType: user.operationType ?? undefined,
         pincodes: user.pincodes ?? [],
       });
@@ -276,36 +247,6 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
       userApi.getNextEmployeeCode().then((code) => form.setFieldValue("employeeCode", code)).catch(() => undefined);
     }
   }, [open, user, form]);
-
-  // Clearing a stale state selection is decided against the freshly
-  // resolved list, not the `states` state variable - checking against that
-  // instead would race the fetch (it still holds the previous zone's list,
-  // or the initial empty array, for one render after zoneId changes) and
-  // could wipe out a just-hydrated edit-mode value before its own zone's
-  // states had even loaded.
-  useEffect(() => {
-    if (!open) return;
-    salesTeamApi
-      .listStates(zoneId || undefined)
-      .then((fetchedStates) => {
-        setStates(fetchedStates);
-        const current = form.getFieldValue("stateId");
-        if (current && !fetchedStates.some((s) => s.id === current)) {
-          form.setFieldValue("stateId", undefined);
-        }
-      })
-      .catch(() => setStates([]));
-  }, [open, zoneId, form]);
-
-  // Same stale-clearing as the state effect above, but against the `offices`
-  // prop directly - it's the full list already, not refetched per zone.
-  useEffect(() => {
-    if (!open) return;
-    const current = form.getFieldValue("officeId");
-    if (current && !offices.some((o) => o.id === current && o.zoneId === zoneId)) {
-      form.setFieldValue("officeId", undefined);
-    }
-  }, [open, zoneId, form, offices]);
 
   const selectedLevel = levels.find((l) => l.id === levelId);
   // Someone with login access disabled shouldn't be newly assignable as a
@@ -346,25 +287,18 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
     try {
       const shared = {
         name: values.name,
-        designation: values.designation,
         managerId: values.managerId,
-        dottedLineManagerId: values.dottedLineManagerId,
         smartfloAgentNumber: values.smartfloAgentNumber,
         mobile: values.mobile,
         territory: values.territory,
         // Only meaningful for a Call Center Executive (it's what actually
         // decides FLC vs SLC) - the field itself is hidden for every other
-        // tier, same reasoning as operationType/pincodes below.
-        salesTeamId: selectedLevel?.securityTier === "call_center" ? values.salesTeamId : undefined,
-        zoneId: values.zoneId,
-        stateId: values.stateId,
+        // tier, same reasoning as operationType/pincodes below. Multi-select:
+        // one person can now be staffed on both FLC and SLC teams at once.
+        salesTeamIds: selectedLevel?.securityTier === "call_center" ? values.salesTeamIds ?? [] : undefined,
         employeeCode: values.employeeCode,
-        dateOfJoining: values.dateOfJoining,
         status: values.status,
         levelId: values.levelId,
-        officeId: values.officeId,
-        divisionChannelId: values.divisionChannelId,
-        customerCategoryId: values.customerCategoryId,
         // Only meaningful for a field employee - the fields themselves are
         // hidden for every other tier, so this is always empty/undefined
         // for them regardless of what's left over from a previous selection.
@@ -510,14 +444,9 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                       </Form.Item>
                     </div>
                   )}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                    <Form.Item name="dateOfJoining" label="Date of joining">
-                      <Input type="date" />
-                    </Form.Item>
-                    <Form.Item name="status" label="Status">
-                      <Select options={STATUS_OPTIONS} />
-                    </Form.Item>
-                  </div>
+                  <Form.Item name="status" label="Status">
+                    <Select options={STATUS_OPTIONS} />
+                  </Form.Item>
                 </SectionCard>
               ),
             },
@@ -536,7 +465,7 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     color={appTokens.primary}
                     background={appTokens.primarySoft}
                   >
-                    <OrgChartPreview managerId={managerId} users={users} levels={levels} name={nameWatch} designation={designationWatch} />
+                    <OrgChartPreview managerId={managerId} users={users} levels={levels} name={nameWatch} levelId={levelId} />
                   </SectionCard>
 
                   <SectionCard
@@ -640,62 +569,33 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                     color={appTokens.purple}
                     background="#f8f4fd"
                   >
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                      <Form.Item name="designation" label="Designation">
-                        <Input placeholder="e.g. Regional Sales Manager" />
-                      </Form.Item>
-                      <Form.Item
-                        name="levelId"
-                        label="Level"
-                        tooltip="Ladder position (or Admin/Finance) - also determines their real backend access tier"
-                        // Only required when creating - the backend itself requires a Level
-                        // (or a role) on every new account, with no frontend role picker as a
-                        // fallback, so skipping this here would let a brand-new user submit
-                        // successfully on screen and then fail with a confusing 422 from the
-                        // server. Editing an existing account has no such requirement - their
-                        // role is already set in the database and stays untouched if Level is
-                        // left blank here (see updateUser's partial-update logic).
-                        rules={user ? [] : [{ required: true, message: "Level is required" }]}
-                      >
-                        <Select
-                          placeholder="Select a level"
-                          options={levels.map((l) => ({ value: l.id, label: `L${ladderIndex(l, levels)} · ${l.name}` }))}
-                        />
-                      </Form.Item>
-                      <Form.Item name="dottedLineManagerId" label="Dotted-line to (optional)">
-                        <Select
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="Select a secondary reporting line"
-                          options={users.filter((u) => !user || u.id !== user.id).map((u) => ({ value: u.id, label: u.name }))}
-                        />
-                      </Form.Item>
-                    </div>
+                    <Form.Item
+                      name="levelId"
+                      label="Level"
+                      tooltip="Ladder position (or Admin/Finance) - also determines their real backend access tier"
+                      // Only required when creating - the backend itself requires a Level
+                      // (or a role) on every new account, with no frontend role picker as a
+                      // fallback, so skipping this here would let a brand-new user submit
+                      // successfully on screen and then fail with a confusing 422 from the
+                      // server. Editing an existing account has no such requirement - their
+                      // role is already set in the database and stays untouched if Level is
+                      // left blank here (see updateUser's partial-update logic).
+                      rules={user ? [] : [{ required: true, message: "Level is required" }]}
+                    >
+                      <Select
+                        placeholder="Select a level"
+                        options={levels.map((l) => ({ value: l.id, label: `L${ladderIndex(l, levels)} · ${l.name}` }))}
+                      />
+                    </Form.Item>
                   </SectionCard>
 
                   <SectionCard
                     icon="⌖"
-                    title="Geography & office"
-                    subtitle="Region, state, territory and where they sit"
+                    title="Territory & office"
+                    subtitle="Where they sit and which tier they work"
                     color={appTokens.success}
                     background="#f1faf1"
                   >
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                      <Form.Item name="zoneId" label="Region">
-                        <Select allowClear placeholder="Select a region" options={zones.map((z) => ({ value: z.id, label: z.name }))} />
-                      </Form.Item>
-                      <Form.Item name="stateId" label="State">
-                        <Select
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder={zoneId ? "Select a state" : "Select a region first"}
-                          disabled={!zoneId}
-                          options={states.map((s) => ({ value: s.id, label: s.name }))}
-                        />
-                      </Form.Item>
-                    </div>
                     <Form.Item
                       name="territory"
                       label="Territory"
@@ -740,70 +640,34 @@ export function UserFormWizard({ open, user, users, levels, zones, offices, sale
                         </Form.Item>
                       </div>
                     )}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                      <Form.Item name="officeId" label="Office location">
+                    {/* Sales team only means anything for a Call Center
+                        Executive - it's what actually decides FLC vs SLC
+                        (see resolveTierAssignee in lead-service.ts). Field
+                        Sales is matched by pincode, not a team, and Admin
+                        isn't on a calling team at all, so the field is
+                        hidden rather than offering a choice that does
+                        nothing. Restricted to FLC/SLC Team specifically -
+                        any other sales_teams row existing is legacy data,
+                        never a real choice to offer here. Multi-select: one
+                        person can be staffed on both at once (e.g. to cover
+                        an urgent lead through both tiers if the dedicated
+                        SLC person is out that day), not just a single team. */}
+                    {selectedLevel?.securityTier === "call_center" && (
+                      <Form.Item
+                        name="salesTeamIds"
+                        label="Sales team"
+                        tooltip="Which calling tier(s) this person works - FLC (first line), SLC (second line), or both"
+                      >
                         <Select
+                          mode="multiple"
                           allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder={zoneId ? "Select an office" : "Select a region first"}
-                          disabled={!zoneId}
-                          options={offices
-                            .filter((o) => (o.isActive || o.id === user?.officeId) && (o.zoneId === zoneId || o.id === user?.officeId))
-                            .map((o) => {
-                              const region = zones.find((z) => z.id === o.zoneId)?.name ?? o.region;
-                              const suffix = [region, o.isActive ? null : "inactive"].filter(Boolean).join(" · ");
-                              return { value: o.id, label: suffix ? `${o.name} (${suffix})` : o.name };
-                            })}
+                          placeholder="Select FLC and/or SLC"
+                          options={salesTeams
+                            .filter((t) => t.name === "FLC Team" || t.name === "SLC Team")
+                            .map((t) => ({ value: t.id, label: t.name }))}
                         />
                       </Form.Item>
-                      <Form.Item name="divisionChannelId" label="Division / channel">
-                        <Select
-                          allowClear
-                          placeholder="Select a division / channel"
-                          options={divisionChannels.map((d) => ({ value: d.id, label: d.label }))}
-                        />
-                      </Form.Item>
-                    </div>
-                    {(() => {
-                      const customerCategoryField = (
-                        <Form.Item name="customerCategoryId" label="Customer category">
-                          <Select
-                            allowClear
-                            placeholder="Select a customer category"
-                            options={customerCategories.map((c) => ({ value: c.id, label: c.label }))}
-                          />
-                        </Form.Item>
-                      );
-                      // Sales team only means anything for a Call Center
-                      // Executive - it's what actually decides FLC vs SLC
-                      // (see resolveTierAssignee in lead-service.ts). Field
-                      // Sales is matched by pincode, not a team, and Admin
-                      // isn't on a calling team at all, so the field is
-                      // hidden rather than offering a choice that does
-                      // nothing. Restricted to FLC/SLC Team specifically -
-                      // any other sales_teams row existing is legacy data,
-                      // never a real choice to offer here.
-                      if (selectedLevel?.securityTier !== "call_center") return customerCategoryField;
-                      return (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                          {customerCategoryField}
-                          <Form.Item
-                            name="salesTeamId"
-                            label="Sales team"
-                            tooltip="Which calling tier this person works - FLC (first line) or SLC (second line)"
-                          >
-                            <Select
-                              allowClear
-                              placeholder="Select FLC or SLC"
-                              options={salesTeams
-                                .filter((t) => t.name === "FLC Team" || t.name === "SLC Team")
-                                .map((t) => ({ value: t.id, label: t.name }))}
-                            />
-                          </Form.Item>
-                        </div>
-                      );
-                    })()}
+                    )}
                     <Form.Item
                       name="smartfloAgentNumber"
                       label="Smartflo agent number"

@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { App as AntApp, ConfigProvider } from "antd";
+import { App as AntApp, ConfigProvider, Result } from "antd";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import LeadsPage from "./pages/LeadsPage";
@@ -24,6 +24,34 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { ALL_NAV_LEAVES } from "./components/nav-config";
 import { appTheme } from "./utils/design-system";
+import { useHasPermission } from "./hooks/use-permission";
+
+// "/" is also this app's catch-all redirect target (see the final Route
+// below), so a plain permission check here can't just redirect to "/" on
+// failure the way every other permission-based redirect in this app does -
+// that would loop forever. Falls through to whatever other built page this
+// user actually has a real permission for, same OR-across-permissions rule
+// nav-config.tsx already uses to decide what's visible in the sidebar, so
+// this never contradicts what the sidebar itself would offer.
+function DashboardRoute() {
+  const hasPermission = useHasPermission();
+  if (hasPermission("dashboard.view")) {
+    return <DashboardPage />;
+  }
+  const fallback = ALL_NAV_LEAVES.find(
+    (item) => item.built && item.path !== "/" && item.permissions?.some((p) => hasPermission(p))
+  );
+  if (fallback) {
+    return <Navigate to={fallback.path} replace />;
+  }
+  return (
+    <Result
+      status="403"
+      title="No access yet"
+      subTitle="Your account doesn't have access to any module yet. Contact your administrator."
+    />
+  );
+}
 
 function App() {
   return (
@@ -34,7 +62,7 @@ function App() {
           <Route path="/f/:code" element={<QrCapturePage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<DashboardRoute />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/opportunities" element={<OpportunitiesPage />} />
               <Route path="/quotes" element={<QuotesPage />} />

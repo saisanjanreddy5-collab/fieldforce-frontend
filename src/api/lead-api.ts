@@ -9,6 +9,28 @@ export async function listLeads(filters: LeadListFilters): Promise<LeadListResul
   return response.data.data;
 }
 
+// Drains every real page for one status filter - a caller passing a fixed
+// `limit` (e.g. Call Center's own queue, scoped to one person's work) would
+// otherwise silently truncate once that one status bucket grows past it.
+// Same drain-every-real-page pattern as opportunity-api.ts's
+// listAllOpportunities, just without a progress callback - these queues are
+// small/personal, not a page-wide dataset worth a visible progress banner.
+export async function listAllLeadsForStatus(filters: Omit<LeadListFilters, "page" | "limit">): Promise<Lead[]> {
+  // Unlike quotes/customers/support-tickets, the /leads endpoint's own
+  // validator caps limit at 100 (listLeadsQuerySchema) - 200 here 422s.
+  const PAGE_SIZE = 100;
+  const first = await listLeads({ ...filters, page: 1, limit: PAGE_SIZE });
+  let all = first.leads;
+  let page = 2;
+  while (all.length < first.total) {
+    const next = await listLeads({ ...filters, page, limit: PAGE_SIZE });
+    if (next.leads.length === 0) break;
+    all = [...all, ...next.leads];
+    page += 1;
+  }
+  return all;
+}
+
 // Same filters as listLeads, minus page/limit - returns every matching lead
 // (not one page) plus its full history/remarks, for the Leads page's Export
 // button to turn into a real multi-sheet workbook.
@@ -77,7 +99,6 @@ export interface BulkImportResult {
   created: number;
   skipped: { row: number; reason: string }[];
   errors: { row: number; message: string }[];
-  redirected: { row: number; reason: string }[];
 }
 
 export async function bulkImportLeads(rows: Record<string, unknown>[]): Promise<BulkImportResult> {

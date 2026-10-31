@@ -14,6 +14,28 @@ export async function listSupportTickets(
   return response.data.data;
 }
 
+// A single listSupportTickets() call silently capped at its own default
+// limit (200) - anything past that was invisible, not just slow. Same
+// drain-every-real-page pattern as opportunity-api.ts's listAllOpportunities.
+export async function listAllSupportTickets(
+  onProgress?: (loadedSoFar: SupportTicket[], total: number) => void
+): Promise<SupportTicket[]> {
+  const PAGE_SIZE = 200;
+  const first = await listSupportTickets({ page: 1, limit: PAGE_SIZE });
+  let all = first.supportTickets;
+  onProgress?.(all, first.total);
+
+  let page = 2;
+  while (all.length < first.total) {
+    const next = await listSupportTickets({ page, limit: PAGE_SIZE });
+    if (next.supportTickets.length === 0) break;
+    all = [...all, ...next.supportTickets];
+    onProgress?.(all, first.total);
+    page += 1;
+  }
+  return all;
+}
+
 export async function createSupportTicket(payload: {
   leadId: string;
   subject: string;

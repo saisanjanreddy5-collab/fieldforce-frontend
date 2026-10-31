@@ -26,12 +26,6 @@ export const IMPORT_MAPPABLE_FIELDS: ImportMappableField[] = [
   { key: "expectedValue", label: "Expected value" },
   { key: "website", label: "Website" },
   { key: "internalNotes", label: "Internal notes" },
-  // Optional - matched against an active Call Center employee's email or
-  // employee code at import time (see resolveCallCenterExecutiveByIdentifier
-  // in lead-service.ts). A row with a value that doesn't resolve is reported
-  // as skipped rather than guessed at, so leave this unmapped entirely for a
-  // normal round-robin-into-FLC import.
-  { key: "assigneeIdentifier", label: "Call Center Executive (email or employee code)" },
 ];
 
 // Exact-match only (on a normalized header), not fuzzy substring matching -
@@ -52,14 +46,6 @@ const FIELD_ALIASES: Record<string, string[]> = {
   expectedValue: ["expectedvalue", "value", "dealvalue", "amount"],
   website: ["website", "url"],
   internalNotes: ["notes", "internalnotes", "remarks", "comment", "comments"],
-  // "executive" alone used to be in this list and was the real cause of a
-  // live mis-import: a sheet's plain "Executive" column (the person's NAME,
-  // not their email/code - the two are easy to conflate when filling a
-  // sheet by hand) auto-matched here, silently feeding names into a field
-  // that can only ever match an email or employee code, and every row got
-  // reported as "not found". Every alias left here is specific enough that
-  // it's very unlikely to label a bare-name column instead.
-  assigneeIdentifier: ["callcenterexecutive", "executiveemail", "employeecode", "assignedto", "agent", "owner"],
 };
 
 function normalize(header: string): string {
@@ -76,14 +62,8 @@ export function guessColumnMapping(headers: string[]): ColumnMapping {
     // A field's own label counts as one of its aliases - without this, our
     // own downloadable template (handleDownloadTemplate in
     // ImportLeadsModal.tsx, which writes f.label as the column header)
-    // didn't round-trip for any field whose label isn't already a literal
-    // alias. assigneeIdentifier was the one real casualty: its label, "Call
-    // Center Executive (email or employee code)", normalizes to
-    // "callcenterexecutiveemailoremployeecode", which matched none of its
-    // own aliases - so the template this app generates for people to fill
-    // in didn't even auto-map itself back. Every other field happened to
-    // have a short label that was already also listed as its own alias
-    // (e.g. "Email" -> "email"), which is why only this one field broke.
+    // wouldn't round-trip for any field whose label isn't already a literal
+    // alias in the list above.
     const aliases = [...(FIELD_ALIASES[field.key] ?? []), normalize(field.label)];
     const match = normalizedHeaders.find((h) => aliases.includes(h.normalized));
     if (match) mapping[field.key] = match.original;

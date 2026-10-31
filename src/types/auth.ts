@@ -8,8 +8,9 @@ export interface AuthUser {
   designation: string | null;
   managerId: string | null;
   managerName: string | null;
-  salesTeamId: string | null;
-  salesTeamName: string | null;
+  // A Call Center Executive can now be staffed on more than one team at
+  // once - always an array, 0/1/2 entries.
+  salesTeamNames: string[];
   zoneId: string | null;
   stateId: string | null;
   districtId: string | null;

@@ -22,10 +22,10 @@ import {
 } from "antd";
 import {
   BankOutlined,
-  DeleteOutlined,
   DownOutlined,
   EditOutlined,
   FileTextOutlined,
+  InboxOutlined,
   PhoneOutlined,
   PlusOutlined,
   ShoppingOutlined,
@@ -502,8 +502,8 @@ function ContactsTab({
                     />
                   )}
                   {canUpdate && (
-                    <Popconfirm title="Remove this contact?" onConfirm={() => removeContact(c.id)}>
-                      <Button size="small" type="text" icon={<DeleteOutlined />} danger />
+                    <Popconfirm title="Archive this contact?" onConfirm={() => removeContact(c.id)}>
+                      <Button size="small" type="text" icon={<InboxOutlined />} title="Archive" />
                     </Popconfirm>
                   )}
                 </div>
@@ -545,8 +545,8 @@ function ContactsTab({
                   </div>
                 </div>
                 {canUpdate && (
-                  <Popconfirm title="Remove this address?" onConfirm={() => removeAddress(a.id)}>
-                    <Button size="small" type="text" icon={<DeleteOutlined />} danger />
+                  <Popconfirm title="Archive this address?" onConfirm={() => removeAddress(a.id)}>
+                    <Button size="small" type="text" icon={<InboxOutlined />} title="Archive" />
                   </Popconfirm>
                 )}
               </div>

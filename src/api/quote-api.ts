@@ -20,6 +20,28 @@ export async function listQuotes(filters: ListQuotesFilters & { page?: number; l
   return response.data.data;
 }
 
+// A single listQuotes() call silently capped at its own default limit (200)
+// - anything past that was invisible, not just slow, and the Quotes page's
+// own summary stats (total value, accepted value, etc.) need the real full
+// set regardless. Same drain-every-real-page pattern as
+// opportunity-api.ts's listAllOpportunities - not a new idea.
+export async function listAllQuotes(onProgress?: (loadedSoFar: QuoteListItem[], total: number) => void): Promise<QuoteListItem[]> {
+  const PAGE_SIZE = 200;
+  const first = await listQuotes({ page: 1, limit: PAGE_SIZE });
+  let all = first.quotes;
+  onProgress?.(all, first.total);
+
+  let page = 2;
+  while (all.length < first.total) {
+    const next = await listQuotes({ page, limit: PAGE_SIZE });
+    if (next.quotes.length === 0) break;
+    all = [...all, ...next.quotes];
+    onProgress?.(all, first.total);
+    page += 1;
+  }
+  return all;
+}
+
 export async function listQuotesForLead(leadId: string): Promise<QuoteListItem[]> {
   const response = await apiClient.get<ApiSuccess<QuoteListItem[]>>(`/leads/${leadId}/quotes`);
   return response.data.data;

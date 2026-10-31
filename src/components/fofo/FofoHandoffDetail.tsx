@@ -601,9 +601,9 @@ function DocumentsStep({
               </Button>
             )}
             {canManage && doc.hasFile && (
-              <Popconfirm title="Remove this document?" onConfirm={() => handleDelete(doc)}>
-                <Button size="small" danger>
-                  Remove
+              <Popconfirm title="Archive this document?" onConfirm={() => handleDelete(doc)}>
+                <Button size="small">
+                  Archive
                 </Button>
               </Popconfirm>
             )}

@@ -134,9 +134,9 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
                   </Button>
                 )}
                 {hasPermission("commission_rules.delete") && (
-                  <Popconfirm title="Delete this commission rule?" onConfirm={() => handleDelete(rule.id)}>
-                    <Button type="link" size="small" danger>
-                      Delete
+                  <Popconfirm title="Archive this commission rule?" onConfirm={() => handleDelete(rule.id)}>
+                    <Button type="link" size="small">
+                      Archive
                     </Button>
                   </Popconfirm>
                 )}

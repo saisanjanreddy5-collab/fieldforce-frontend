@@ -247,8 +247,8 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           <Text type="secondary">
             Ready to import {parsed.rows.length} lead{parsed.rows.length === 1 ? "" : "s"}. A phone number repeated
             within this same file is skipped; one that already matches an active lead is still created, just flagged
-            "Possible duplicate" and linked to the original. A Call Center Executive identifier that doesn't match an
-            active employee is skipped for manual assignment instead of guessed.
+            "Possible duplicate" and linked to the original. Every imported lead goes through the same FLC queue as
+            one added any other way - there's no way to hand-pick who it's assigned to from the sheet.
           </Text>
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 4 }}>
             {IMPORT_MAPPABLE_FIELDS.filter((f) => mapping[f.key]).map((f) => (
@@ -265,18 +265,6 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
           <Text strong style={{ display: "block", color: "#15803d" }}>
             {result.created} lead{result.created === 1 ? "" : "s"} created
           </Text>
-          {result.redirected.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <Text type="secondary">{result.redirected.length} created but reassigned - FYI only, nothing to fix:</Text>
-              <div style={{ marginTop: 4 }}>
-                {result.redirected.map((r, i) => (
-                  <Text key={i} style={{ display: "block", fontSize: 12.5 }}>
-                    Row {r.row}: {r.reason}
-                  </Text>
-                ))}
-              </div>
-            </div>
-          )}
           {result.skipped.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <Text type="secondary">{result.skipped.length} skipped - needs a look:</Text>

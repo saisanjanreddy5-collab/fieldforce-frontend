@@ -522,8 +522,16 @@ function MyQueueTab() {
   // leads.create (Admin/Manager) also works, matching the backend route's
   // own requireAnyPermission.
   const canBulkImport = hasPermission("leads.create") || hasPermission("leads.bulk_import");
-  const myTierStage = (user?.salesTeamName ? TIER_BY_TEAM[user.salesTeamName] : undefined) ?? FLC_STAGE;
-  const myTierLabel = TIER_LABELS[myTierStage] ?? myTierStage;
+  // A Call Center Executive can now be staffed on both FLC and SLC teams at
+  // once - their queue has to fetch and show both tiers' awaiting leads, not
+  // just whichever single team used to be the only option. Deduped since
+  // the (currently only 2-team) mapping could otherwise list the same stage
+  // twice.
+  const myTierStages = Array.from(
+    new Set((user?.salesTeamNames ?? []).map((name) => TIER_BY_TEAM[name]).filter((stage): stage is string => Boolean(stage)))
+  );
+  if (myTierStages.length === 0) myTierStages.push(FLC_STAGE);
+  const myTierLabel = myTierStages.map((stage) => TIER_LABELS[stage] ?? stage).join(" / ");
   // Two separate stages shown as two sections - a lead vanishing from view
   // the instant it's marked Qualified left no place to ever click Send to
   // Field Sales, so both stages of this agent's own queue are fetched. The
@@ -551,11 +559,11 @@ function MyQueueTab() {
   const load = () => {
     setLoading(true);
     Promise.all([
-      leadApi.listLeads({ status: myTierStage, limit: 100 }),
-      leadApi.listLeads({ status: "Qualified", limit: 100 }),
+      Promise.all(myTierStages.map((stage) => leadApi.listAllLeadsForStatus({ status: stage }))),
+      leadApi.listAllLeadsForStatus({ status: "Qualified" }),
       leadApi.listHandedOffLeads(),
     ])
-      .then(([callCenter, qualified, handedOff]) => {
+      .then(([callCenterByStage, qualified, handedOff]) => {
         // status alone can't tell "I still own this" apart from "I used to
         // own this" - sendToField never changes status (see
         // lead-call-center-service.ts's own comment on that), so a leftover
@@ -563,8 +571,8 @@ function MyQueueTab() {
         // still read "Qualified" would otherwise show up here too, with its
         // full Call button, duplicating (and contradicting) its real place
         // in "Already sent" below. inOwnerScope is the real signal.
-        setCallingLeads(callCenter.leads.filter((l) => l.inOwnerScope));
-        setQualifiedLeads(qualified.leads.filter((l) => l.inOwnerScope));
+        setCallingLeads(callCenterByStage.flat().filter((l) => l.inOwnerScope));
+        setQualifiedLeads(qualified.filter((l) => l.inOwnerScope));
         setHandedOffLeads(handedOff);
       })
       .catch(() => message.error("Failed to load your queue"))

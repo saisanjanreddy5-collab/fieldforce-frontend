@@ -248,7 +248,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         assignmentActions={
           <>
             <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} />
-            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} onViewHistory={() => setActiveTabKey("history")} />
+            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />
           </>
         }
         availability={{
@@ -288,6 +288,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
               internalNotes={lead.internalNotes}
               rmRemark={lead.rmRemark}
               lgRemark={lead.lgRemark}
+              onComposeEmail={() => setEmailOpen(true)}
             />
           )}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}

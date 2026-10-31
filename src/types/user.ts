@@ -13,7 +13,9 @@ export interface TeamMember {
   smartfloAgentNumber: string | null;
   mobile: string | null;
   territory: string | null;
-  salesTeamId: string | null;
+  // A Call Center Executive can be staffed on more than one team at once -
+  // 0/1/2 entries.
+  salesTeamIds: string[];
   zoneId: string | null;
   stateId: string | null;
   employeeCode: string | null;
@@ -40,44 +42,28 @@ export interface CreateUserPayload {
   // side (see auth-service.ts's registerUser) - only needed as a fallback
   // for an account with no Level (Administrator/Finance-style entries).
   role?: "admin" | "manager" | "agent" | "call_center";
-  designation?: string;
   managerId?: string;
-  dottedLineManagerId?: string;
   smartfloAgentNumber?: string;
   mobile?: string;
   territory?: string;
-  salesTeamId?: string;
-  zoneId?: string;
-  stateId?: string;
+  salesTeamIds?: string[];
   employeeCode?: string;
-  dateOfJoining?: string;
   status?: UserStatus;
   levelId?: string;
-  officeId?: string;
-  divisionChannelId?: string;
-  customerCategoryId?: string;
   operationType?: OperationType;
   pincodes?: string[];
 }
 
 export interface UpdateUserPayload {
   name?: string;
-  designation?: string;
   managerId?: string;
-  dottedLineManagerId?: string;
   smartfloAgentNumber?: string;
   mobile?: string;
   territory?: string;
-  salesTeamId?: string;
-  zoneId?: string;
-  stateId?: string;
+  salesTeamIds?: string[];
   employeeCode?: string;
-  dateOfJoining?: string;
   status?: UserStatus;
   levelId?: string;
-  officeId?: string;
-  divisionChannelId?: string;
-  customerCategoryId?: string;
   isActive?: boolean;
   operationType?: OperationType | "";
   pincodes?: string[];
