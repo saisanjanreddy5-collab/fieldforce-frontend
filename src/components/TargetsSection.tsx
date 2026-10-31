@@ -196,9 +196,9 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
                       </Button>
                     )}
                     {hasPermission("targets.delete") && (
-                      <Popconfirm title="Delete this target?" onConfirm={() => handleDelete(t.id)}>
-                        <Button type="link" size="small" danger>
-                          Delete
+                      <Popconfirm title="Archive this target?" onConfirm={() => handleDelete(t.id)}>
+                        <Button type="link" size="small">
+                          Archive
                         </Button>
                       </Popconfirm>
                     )}

@@ -187,7 +187,7 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
         <Text style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: appTokens.textTertiary }}>PROFILE</Text>
         <div style={{ marginTop: 8, marginBottom: 20 }}>
           <ProfileField label="Role" value={user.designation ?? capitalize(user.role)} />
-          {user.salesTeamName && <ProfileField label="Sales team" value={user.salesTeamName} />}
+          {user.salesTeamNames.length > 0 && <ProfileField label="Sales team" value={user.salesTeamNames.join(" / ")} />}
           {user.managerName && <ProfileField label="Reports to" value={user.managerName} />}
           {user.territory && <ProfileField label="Territory" value={user.territory} />}
           <ProfileField label="Work email" value={user.email} />

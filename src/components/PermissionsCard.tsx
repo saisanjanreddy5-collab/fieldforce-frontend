@@ -54,7 +54,11 @@ const VERB_LABELS: Record<string, string> = {
   view: "View",
   create: "Create",
   update: "Edit",
-  delete: "Delete",
+  // User-facing label only - the underlying permission key stays `.delete`
+  // everywhere (role_permissions, route guards, etc.); every actual delete
+  // action behind it now archives instead of destroying data, so "Archive"
+  // is what this column should say.
+  delete: "Archive",
   share: "Share",
   send: "Send",
   reset_password: "Reset password",
@@ -217,10 +221,18 @@ const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => voi
   // "not granted". It never overclaims a full grant that isn't really there;
   // the exact split (e.g. "6 of 21 granted") is still available on hover via
   // the tooltip, just not as a third symbol cluttering the grid.
+  //
+  // "na" (this action doesn't exist for this module at all - e.g. Dashboard
+  // has no Delete) renders as a truly blank cell, not a dash - a dash reads
+  // as "an inert checkbox that happens to be off", which is indistinguishable
+  // at a glance from "not-granted" (a real toggle this role just doesn't
+  // have). A blank cell reads as "this column isn't a thing here", which is
+  // what's actually true.
+  if (state === "na") {
+    return <span ref={ref} style={{ display: "inline-block", padding: 0 }} />;
+  }
   const icon =
-    state === "na" ? (
-      <MinusOutlined style={{ color: "#d9d9d9" }} />
-    ) : state === "granted" || state === "extra-grant" ? (
+    state === "granted" || state === "extra-grant" ? (
       <CheckOutlined style={{ color: state === "extra-grant" ? appTokens.purple : appTokens.success }} />
     ) : state === "revoked" ? (
       <CloseOutlined style={{ color: appTokens.danger }} />

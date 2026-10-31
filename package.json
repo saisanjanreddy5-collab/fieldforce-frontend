@@ -20,12 +20,14 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
+    "react-window": "^1.8.11",
     "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@types/react-window": "^1.8.8",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
     "playwright": "^1.63.0",

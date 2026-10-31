@@ -583,8 +583,6 @@ export default function SalesForceManagementPage() {
         user={editingUser}
         users={users}
         levels={levels}
-        zones={zones}
-        offices={offices}
         salesTeams={salesTeams}
         onClose={closeDrawer}
         onSaved={handleSaved}

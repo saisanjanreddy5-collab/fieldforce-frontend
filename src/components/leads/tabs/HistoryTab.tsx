@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Checkbox, Dropdown, Empty, Input, Modal, Skeleton, Tag, Tooltip, Typography, message } from "antd";
+import { Avatar, Badge, Button, Checkbox, Dropdown, Empty, Input, Modal, Segmented, Skeleton, Tag, Tooltip, Typography, message } from "antd";
 import {
   DeleteOutlined,
   DownOutlined,
   EditOutlined,
   FileTextOutlined,
+  MailOutlined,
   MessageOutlined,
   PlayCircleOutlined,
   RiseOutlined,
@@ -41,6 +42,31 @@ const FILTER_DOT_COLOR: Record<FilterKey, string> = {
   audit: "#7c3aed",
 };
 const ALL_FILTER_KEYS: FilterKey[] = [...ALL_ACTIVITY_TYPES, "comment", "audit"];
+
+// The 4 event kinds people actually filter to day-to-day get their own
+// one-click pill, matching the pill-button pattern this app already uses
+// elsewhere (e.g. the Leads page's own stage chips) - everything else
+// (site visits, WhatsApp, meetings, tickets) is still fully selectable, just
+// tucked behind "More filters" instead of cluttering the default row with a
+// wall of checkboxes.
+const QUICK_FILTERS: { key: string; label: string; types: FilterKey[] }[] = [
+  { key: "all", label: "All", types: [] },
+  { key: "call", label: "Calls", types: ["call"] },
+  { key: "email", label: "Emails", types: ["email"] },
+  { key: "comment", label: "Remarks", types: ["comment"] },
+  { key: "audit", label: "Status changes", types: ["audit"] },
+];
+
+// null when the current selection doesn't correspond to exactly one quick
+// pill (e.g. a multi-type combination picked from "More filters") - the
+// Segmented control then shows none of its pills as active, which is
+// correct: none of them describe what's actually selected.
+function matchingQuickFilterKey(selected: Set<FilterKey>): string {
+  for (const quick of QUICK_FILTERS) {
+    if (quick.types.length === selected.size && quick.types.every((t) => selected.has(t))) return quick.key;
+  }
+  return "";
+}
 
 const AUDIT_ICON: Record<string, React.ReactNode> = {
   escalated: <RiseOutlined />,
@@ -346,6 +372,10 @@ interface HistoryTabProps {
   internalNotes: string | null;
   rmRemark: string | null;
   lgRemark: string | null;
+  // Opens the same EmailComposeDrawer the lead header's own Outlook icon
+  // already uses (LeadDetail.tsx owns its open state) - "Send an email" here
+  // is a second entry point to that one real flow, not a separate composer.
+  onComposeEmail: () => void;
 }
 
 // The lead's full end-to-end story in one place: every call/email/meeting/
@@ -355,7 +385,7 @@ interface HistoryTabProps {
 // drawer, which each told only part of this story on their own. Deliberately
 // has no entry in LeadDetail's TAB_PERMISSION map - every call center/field/
 // admin person who can open this lead at all can see its whole history.
-export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark }: HistoryTabProps) {
+export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark, onComposeEmail }: HistoryTabProps) {
   const hasPermission = useHasPermission();
   const currentNotes = [
     { key: "internalNotes", label: "Internal Notes", value: internalNotes, color: "#7c3aed" },
@@ -420,7 +450,6 @@ export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark }: Histor
       return next;
     });
   };
-  const filterLabel = selectedTypes.size === 0 ? "Everything" : Array.from(selectedTypes).map((t) => FILTER_LABEL[t]).join(", ");
   const visibleKeys = ALL_FILTER_KEYS.filter((key) => FILTER_LABEL[key].toLowerCase().includes(typeSearch.toLowerCase()));
 
   const submitRemark = async () => {
@@ -459,60 +488,84 @@ export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark }: Histor
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {hasPermission("activities.create") && (
-            <Button icon={<EditOutlined />} onClick={() => setRemarkOpen(true)}>
-              Add remark
-            </Button>
+            <Dropdown
+              trigger={["click"]}
+              placement="bottomRight"
+              menu={{
+                items: [
+                  { key: "remark", icon: <EditOutlined />, label: "Add a remark", onClick: () => setRemarkOpen(true) },
+                  { key: "email", icon: <MailOutlined />, label: "Send an email", onClick: onComposeEmail },
+                ],
+              }}
+            >
+              <Button icon={<EditOutlined />}>
+                Add remark <DownOutlined style={{ fontSize: 10 }} />
+              </Button>
+            </Dropdown>
           )}
-          <Dropdown
-            trigger={["click"]}
-            placement="bottomRight"
-            onOpenChange={(open) => {
-              if (!open) setTypeSearch("");
-            }}
-            popupRender={() => (
-              <div style={{ background: appTokens.surface, borderRadius: 8, boxShadow: appTokens.shadowLg, padding: 12, minWidth: 240 }}>
-                <Input
-                  size="small"
-                  placeholder="Search"
-                  value={typeSearch}
-                  onChange={(e) => setTypeSearch(e.target.value)}
-                  style={{ marginBottom: 8 }}
-                />
-                {visibleKeys.map((key) => (
-                  <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
-                    <Checkbox checked={selectedTypes.has(key)} onChange={() => toggleType(key)}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          background: FILTER_DOT_COLOR[key],
-                          marginRight: 6,
-                        }}
-                      />
-                      {FILTER_LABEL[key]}
-                    </Checkbox>
-                    <Text type="secondary">{counts[key] ?? 0}</Text>
-                  </div>
-                ))}
-                <div style={{ display: "flex", gap: 8, marginTop: 8, borderTop: `1px solid ${appTokens.borderLight}`, paddingTop: 8 }}>
-                  <Button size="small" onClick={() => setSelectedTypes(new Set(ALL_FILTER_KEYS))}>
-                    Select all
-                  </Button>
-                  <Button size="small" onClick={() => setSelectedTypes(new Set())}>
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            )}
-          >
-            <Button size="small">
-              <span style={{ color: appTokens.textTertiary, marginRight: 4 }}>SHOW</span>
-              {filterLabel} <DownOutlined style={{ fontSize: 10 }} />
-            </Button>
-          </Dropdown>
         </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+        <Segmented
+          size="small"
+          value={matchingQuickFilterKey(selectedTypes)}
+          onChange={(key) => {
+            const quick = QUICK_FILTERS.find((f) => f.key === key);
+            if (quick) setSelectedTypes(new Set(quick.types));
+          }}
+          options={QUICK_FILTERS.map((f) => ({ label: f.label, value: f.key }))}
+        />
+        <Dropdown
+          trigger={["click"]}
+          placement="bottomRight"
+          onOpenChange={(open) => {
+            if (!open) setTypeSearch("");
+          }}
+          popupRender={() => (
+            <div style={{ background: appTokens.surface, borderRadius: 8, boxShadow: appTokens.shadowLg, padding: 12, minWidth: 240 }}>
+              <Input
+                size="small"
+                placeholder="Search"
+                value={typeSearch}
+                onChange={(e) => setTypeSearch(e.target.value)}
+                style={{ marginBottom: 8 }}
+              />
+              {visibleKeys.map((key) => (
+                <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+                  <Checkbox checked={selectedTypes.has(key)} onChange={() => toggleType(key)}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: FILTER_DOT_COLOR[key],
+                        marginRight: 6,
+                      }}
+                    />
+                    {FILTER_LABEL[key]}
+                  </Checkbox>
+                  <Text type="secondary">{counts[key] ?? 0}</Text>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 8, marginTop: 8, borderTop: `1px solid ${appTokens.borderLight}`, paddingTop: 8 }}>
+                <Button size="small" onClick={() => setSelectedTypes(new Set(ALL_FILTER_KEYS))}>
+                  Select all
+                </Button>
+                <Button size="small" onClick={() => setSelectedTypes(new Set())}>
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+        >
+          <Badge dot={matchingQuickFilterKey(selectedTypes) === ""} color={appTokens.primary} offset={[-6, 2]}>
+            <Button size="small" type="text">
+              More filters <DownOutlined style={{ fontSize: 10 }} />
+            </Button>
+          </Badge>
+        </Dropdown>
       </div>
 
       {currentNotes.length > 0 && (

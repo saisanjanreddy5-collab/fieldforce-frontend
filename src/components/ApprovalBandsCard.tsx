@@ -175,9 +175,9 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
                               </Button>
                             )}
                             {canDelete && (
-                              <Popconfirm title="Delete this approval band?" onConfirm={() => handleDelete(band.id)}>
-                                <Button type="link" size="small" danger style={{ padding: 0, height: "auto", fontSize: 11 }}>
-                                  Delete
+                              <Popconfirm title="Archive this approval band?" onConfirm={() => handleDelete(band.id)}>
+                                <Button type="link" size="small" style={{ padding: 0, height: "auto", fontSize: 11 }}>
+                                  Archive
                                 </Button>
                               </Popconfirm>
                             )}

@@ -179,9 +179,9 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
                 key: "actions",
                 render: (_, a) =>
                   canManage && (
-                    <Popconfirm title="Remove this incentive plan assignment?" onConfirm={() => handleDelete(a.id)}>
-                      <Button type="link" size="small" danger>
-                        Remove
+                    <Popconfirm title="Archive this incentive plan assignment?" onConfirm={() => handleDelete(a.id)}>
+                      <Button type="link" size="small">
+                        Archive
                       </Button>
                     </Popconfirm>
                   ),

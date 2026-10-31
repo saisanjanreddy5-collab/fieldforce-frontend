@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Avatar, Button, Input, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as customerApi from "../api/customer-api";
@@ -19,19 +19,33 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [loading, setLoading] = useState(true);
+  const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Same race-guard as OpportunitiesPage's own multi-page load - only the
+  // most recently started load's progress callbacks are allowed to touch
+  // state, so a stale in-flight fetch can't overwrite newer data.
+  const loadTokenRef = useRef(0);
+
   const load = () => {
+    const token = ++loadTokenRef.current;
     setLoading(true);
+    setStreamProgress(null);
     customerApi
-      .listCustomers()
-      .then((result) => {
-        setCustomers(result.customers);
-        setSelectedId((current) => current ?? result.customers[0]?.id ?? null);
+      .listAllCustomers((loadedSoFar, total) => {
+        if (loadTokenRef.current !== token) return;
+        setCustomers(loadedSoFar);
+        setSelectedId((current) => current ?? loadedSoFar[0]?.id ?? null);
+        setLoading(false);
+        setStreamProgress(loadedSoFar.length < total ? { loaded: loadedSoFar.length, total } : null);
       })
-      .catch(() => message.error("Failed to load customers"))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (loadTokenRef.current === token) message.error("Failed to load customers");
+      })
+      .finally(() => {
+        if (loadTokenRef.current === token) setLoading(false);
+      });
   };
 
   useEffect(load, []);
@@ -111,6 +125,50 @@ export default function CustomersPage() {
           Export
         </Button>
       </div>
+
+      {streamProgress && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: "8px 14px",
+            borderRadius: appTokens.radius,
+            background: appTokens.primarySoft,
+            border: `1px solid ${appTokens.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              border: `2px solid ${appTokens.primary}`,
+              borderTopColor: "transparent",
+              flexShrink: 0,
+              animation: "customer-stream-spin 0.7s linear infinite",
+            }}
+          />
+          <Text style={{ fontSize: 12.5, color: appTokens.textSecondary, flexShrink: 0 }}>
+            Loading the rest of the customers - {streamProgress.loaded.toLocaleString()} of {streamProgress.total.toLocaleString()}
+          </Text>
+          <div style={{ flex: 1, height: 4, borderRadius: 999, background: appTokens.border, overflow: "hidden", minWidth: 60 }}>
+            <div
+              style={{
+                height: "100%",
+                borderRadius: 999,
+                background: appTokens.primary,
+                width: `${Math.min(100, (streamProgress.loaded / Math.max(1, streamProgress.total)) * 100)}%`,
+                transition: "width 0.25s ease-out",
+              }}
+            />
+          </div>
+          <style>{"@keyframes customer-stream-spin { to { transform: rotate(360deg); } }"}</style>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
         {[

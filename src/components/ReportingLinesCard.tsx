@@ -334,9 +334,9 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Tag style={{ color: statusColor, background: `${statusColor}14`, border: "none" }}>{status}</Tag>
                     {canCreateDelegation && (
-                      <Popconfirm title="Remove this delegation?" onConfirm={() => handleDeleteDelegation(d.id)}>
-                        <Button type="link" size="small" danger>
-                          Remove
+                      <Popconfirm title="Archive this delegation?" onConfirm={() => handleDeleteDelegation(d.id)}>
+                        <Button type="link" size="small">
+                          Archive
                         </Button>
                       </Popconfirm>
                     )}

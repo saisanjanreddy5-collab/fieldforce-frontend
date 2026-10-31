@@ -147,9 +147,9 @@ export function UserCommissionSection({ userId }: UserCommissionSectionProps) {
                 key: "actions",
                 render: (_, c) =>
                   canManage && (
-                    <Popconfirm title="Remove this commission arrangement?" onConfirm={() => handleDelete(c.id)}>
-                      <Button type="link" size="small" danger>
-                        Remove
+                    <Popconfirm title="Archive this commission arrangement?" onConfirm={() => handleDelete(c.id)}>
+                      <Button type="link" size="small">
+                        Archive
                       </Button>
                     </Popconfirm>
                   ),

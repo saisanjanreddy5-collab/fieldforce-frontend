@@ -15,11 +15,6 @@ const { Text } = Typography;
 interface LeadAssignmentPanelProps {
   lead: Lead;
   onChanged: () => void;
-  // Jumps the parent LeadDetail to its History tab - that tab is now the one
-  // place the lead's full change history lives (see lead-service.ts's
-  // getLeadTimeline), so this button no longer keeps its own separate copy
-  // of that view in a drawer.
-  onViewHistory: () => void;
 }
 
 // Admin/Manager-only assignment controls (Send to Field Sales, Reassign/
@@ -31,7 +26,7 @@ interface LeadAssignmentPanelProps {
 // Reassign opens in a small anchored popover, deliberately never growing
 // inline and pushing the rest of the page down, which is what the previous
 // always-expanding-inline-block version did.
-export function LeadAssignmentPanel({ lead, onChanged, onViewHistory }: LeadAssignmentPanelProps) {
+export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProps) {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const canSendToField = hasPermission("leads.send_to_field");
@@ -117,9 +112,6 @@ export function LeadAssignmentPanel({ lead, onChanged, onViewHistory }: LeadAssi
           </Button>
         </Popover>
       )}
-      <Button size="small" type="link" onClick={onViewHistory} style={{ paddingLeft: 0, paddingRight: 0 }}>
-        History
-      </Button>
     </div>
   );
 }
