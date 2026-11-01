@@ -34,17 +34,6 @@ const DISPOSITION_COLORS: Record<string, string> = {
   "Call Done And Not Interested": appTokens.danger,
 };
 
-// Which calling-tier stage a user's own queue works, derived from their
-// sales team (same 2 teams seeded in model.ts) - not stored anywhere on the
-// user record itself, since the team is already the one source of truth for
-// this. Defaults to FLC for anyone not on one of the two teams (e.g. an
-// Admin/Manager just checking in on the queue), matching this tab's
-// pre-tiered single-section behavior.
-const TIER_BY_TEAM: Record<string, string> = {
-  "FLC Team": FLC_STAGE,
-  "SLC Team": SLC_STAGE,
-};
-
 const TIER_LABELS: Record<string, string> = {
   [FLC_STAGE]: "FLC",
   [SLC_STAGE]: "SLC",
@@ -522,15 +511,16 @@ function MyQueueTab() {
   // leads.create (Admin/Manager) also works, matching the backend route's
   // own requireAnyPermission.
   const canBulkImport = hasPermission("leads.create") || hasPermission("leads.bulk_import");
-  // A Call Center Executive can now be staffed on both FLC and SLC teams at
-  // once - their queue has to fetch and show both tiers' awaiting leads, not
-  // just whichever single team used to be the only option. Deduped since
-  // the (currently only 2-team) mapping could otherwise list the same stage
-  // twice.
-  const myTierStages = Array.from(
-    new Set((user?.salesTeamNames ?? []).map((name) => TIER_BY_TEAM[name]).filter((stage): stage is string => Boolean(stage)))
-  );
-  if (myTierStages.length === 0) myTierStages.push(FLC_STAGE);
+  // Client-confirmed, explicit: every Call Center Executive sees and can
+  // work every lead at FLC or SLC, regardless of which team they're
+  // personally tagged as (see lead-service.ts's TIER_TEAMMATE_CLAUSE) - a
+  // freshly bulk-imported batch must show up for the whole floor right away,
+  // not just whoever happens to share the lead's team tag. Team tagging
+  // still drives round-robin auto-assignment of new/escalated leads; it no
+  // longer gates what shows up in this queue. Admin/Manager "just checking
+  // in" on the queue still default to FLC only, same as before - this is
+  // specifically about the call_center role.
+  const myTierStages = user?.role === "call_center" ? [FLC_STAGE, SLC_STAGE] : [FLC_STAGE];
   const myTierLabel = myTierStages.map((stage) => TIER_LABELS[stage] ?? stage).join(" / ");
   // Two separate stages shown as two sections - a lead vanishing from view
   // the instant it's marked Qualified left no place to ever click Send to
