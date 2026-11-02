@@ -561,7 +561,23 @@ function MyQueueTab() {
         // still read "Qualified" would otherwise show up here too, with its
         // full Call button, duplicating (and contradicting) its real place
         // in "Already sent" below. inOwnerScope is the real signal.
-        setCallingLeads(callCenterByStage.flat().filter((l) => l.inOwnerScope));
+        //
+        // Sorted by creation time (newest first, same convention as the main
+        // Leads page), never left as "every New lead, then every FLC lead,
+        // then every SLC lead" - that ordering was the actual bug client-
+        // confirmed as "very important": clicking Start FLC/Escalate to SLC
+        // moved a lead's own stage-group fetch to a different position in
+        // the array, so the row visibly jumped to a whole different part of
+        // the list the instant its stage changed, even though nothing about
+        // when it was created ever moved. Sorting the merged list by a
+        // stage-independent key means a lead's row stays exactly where it
+        // was - only its stage badge and next-step button change.
+        setCallingLeads(
+          callCenterByStage
+            .flat()
+            .filter((l) => l.inOwnerScope)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        );
         setQualifiedLeads(qualified.filter((l) => l.inOwnerScope));
         setHandedOffLeads(handedOff);
       })

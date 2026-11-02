@@ -146,7 +146,7 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
       return (
         <NextStepSlot>
           <Button size="small" type="primary" loading={startingFlc} onClick={handleStartFlc}>
-            Start FLC
+            Push to FLC
           </Button>
         </NextStepSlot>
       );
