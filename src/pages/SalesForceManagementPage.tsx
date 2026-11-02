@@ -74,7 +74,7 @@ export default function SalesForceManagementPage() {
   const hasPermission = useHasPermission();
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [salesTeams, setSalesTeams] = useState<SalesTeam[]>([]);
+  const [, setSalesTeams] = useState<SalesTeam[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [offices, setOffices] = useState<Office[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
