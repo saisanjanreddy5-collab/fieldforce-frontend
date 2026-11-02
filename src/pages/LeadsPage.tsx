@@ -100,6 +100,8 @@ export default function LeadsPage() {
       status: advancedFilters.status,
       source: advancedFilters.source,
       consentPending: advancedFilters.consentPending || undefined,
+      createdFrom: advancedFilters.createdFrom,
+      createdTo: advancedFilters.createdTo,
     }),
     [search, quickFilter, advancedFilters]
   );
@@ -218,6 +220,11 @@ export default function LeadsPage() {
       key: "consentPending",
       label: "Consent pending",
       onRemove: () => setAdvancedFilters((v) => ({ ...v, consentPending: undefined })),
+    },
+    (advancedFilters.createdFrom || advancedFilters.createdTo) && {
+      key: "createdRange",
+      label: `Created: ${advancedFilters.createdFrom ?? "…"} – ${advancedFilters.createdTo ?? "…"}`,
+      onRemove: () => setAdvancedFilters((v) => ({ ...v, createdFrom: undefined, createdTo: undefined })),
     },
   ].filter((t): t is { key: string; label: string; onRemove: () => void } => Boolean(t));
 

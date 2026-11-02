@@ -138,6 +138,16 @@ export async function logCallDisposition(
   return response.data.data;
 }
 
+export async function startFlc(id: string): Promise<Lead> {
+  const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/start-flc`);
+  return response.data.data;
+}
+
+export async function claimLead(id: string): Promise<Lead> {
+  const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/claim`);
+  return response.data.data;
+}
+
 export async function qualifyLead(id: string): Promise<Lead> {
   const response = await apiClient.post<ApiSuccess<Lead>>(`/leads/${id}/qualify`);
   return response.data.data;

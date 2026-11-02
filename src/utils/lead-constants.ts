@@ -15,8 +15,11 @@ export const LEAD_STATUS_COLORS: Record<string, string> = {
   "Closed Lost": "#e0393e",
 };
 
-// The two calling-tier stages a marketing lead walks through before
-// reaching Qualified, mirroring the same constants the backend exports from
-// lead-service.ts.
+// The calling-tier stages a marketing lead walks through before reaching
+// Qualified, mirroring the same constants the backend exports from
+// lead-service.ts. Every lead now lands on NEW_STAGE first, regardless of
+// how it was created - FLC is a deliberate click (POST /:id/start-flc), not
+// an automatic landing spot.
+export const NEW_STAGE = "New";
 export const FLC_STAGE = "FLC";
 export const SLC_STAGE = "SLC";

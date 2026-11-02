@@ -11,7 +11,7 @@ import type { Lead } from "../types/lead";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { useLeadCategories } from "../hooks/use-lead-categories";
-import { FLC_STAGE, SLC_STAGE } from "../utils/lead-constants";
+import { FLC_STAGE, LEAD_STATUS_COLORS, NEW_STAGE, SLC_STAGE } from "../utils/lead-constants";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
@@ -35,6 +35,7 @@ const DISPOSITION_COLORS: Record<string, string> = {
 };
 
 const TIER_LABELS: Record<string, string> = {
+  [NEW_STAGE]: "New",
   [FLC_STAGE]: "FLC",
   [SLC_STAGE]: "SLC",
 };
@@ -512,15 +513,14 @@ function MyQueueTab() {
   // own requireAnyPermission.
   const canBulkImport = hasPermission("leads.create") || hasPermission("leads.bulk_import");
   // Client-confirmed, explicit: every Call Center Executive sees and can
-  // work every lead at FLC or SLC, regardless of which team they're
-  // personally tagged as (see lead-service.ts's TIER_TEAMMATE_CLAUSE) - a
-  // freshly bulk-imported batch must show up for the whole floor right away,
-  // not just whoever happens to share the lead's team tag. Team tagging
-  // still drives round-robin auto-assignment of new/escalated leads; it no
-  // longer gates what shows up in this queue. Admin/Manager "just checking
-  // in" on the queue still default to FLC only, same as before - this is
-  // specifically about the call_center role.
-  const myTierStages = user?.role === "call_center" ? [FLC_STAGE, SLC_STAGE] : [FLC_STAGE];
+  // work every lead at New, FLC, or SLC - there's no team split any more
+  // (see lead-service.ts's TIER_TEAMMATE_CLAUSE). A freshly imported or
+  // manually created batch shows up for the whole floor right away, however
+  // it was created. New/FLC/SLC share one merged queue (not separate tabs) -
+  // a lead just carries its own stage badge/label. Admin/Manager "just
+  // checking in" on the queue still default to FLC only, same as before -
+  // this is specifically about the call_center role.
+  const myTierStages = user?.role === "call_center" ? [NEW_STAGE, FLC_STAGE, SLC_STAGE] : [FLC_STAGE];
   const myTierLabel = myTierStages.map((stage) => TIER_LABELS[stage] ?? stage).join(" / ");
   // Two separate stages shown as two sections - a lead vanishing from view
   // the instant it's marked Qualified left no place to ever click Send to
@@ -596,7 +596,7 @@ function MyQueueTab() {
   // below, reusing the exact same LeadDetail a field rep or admin sees
   // elsewhere, so there's one real workspace for a lead, not a second
   // parallel one just for Call Center.
-  const renderRow = (lead: Lead, options?: { showCallButton?: boolean }) => (
+  const renderRow = (lead: Lead, options?: { showCallButton?: boolean; showStageTag?: boolean }) => (
     <div
       key={lead.id}
       onClick={() => setSelectedLeadId(lead.id)}
@@ -623,6 +623,11 @@ function MyQueueTab() {
             <Text strong style={{ fontSize: 14 }}>
               {lead.fullName}
             </Text>
+            {options?.showStageTag && (
+              <Tag color={LEAD_STATUS_COLORS[lead.status] ?? "default"} style={{ margin: 0, fontSize: 10 }}>
+                {TIER_LABELS[lead.status] ?? lead.status}
+              </Tag>
+            )}
             <DuplicateLeadTag lead={lead} compact />
           </div>
           <Text type="secondary" style={{ fontSize: 12 }}>
@@ -696,7 +701,9 @@ function MyQueueTab() {
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
             Awaiting {myTierLabel} ({callingLeads.length})
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{callingLeads.map((l) => renderRow(l))}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {callingLeads.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
+          </div>
         </div>
       )}
       {handedOffLeads.length > 0 && (
