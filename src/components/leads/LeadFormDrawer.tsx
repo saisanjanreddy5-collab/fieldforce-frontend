@@ -16,8 +16,10 @@ import {
 import dayjs from "dayjs";
 import * as leadApi from "../../api/lead-api";
 import * as salesTeamApi from "../../api/sales-team-api";
+import * as userApi from "../../api/user-api";
 import type { CreateLeadPayload, Lead } from "../../types/lead";
 import type { State } from "../../types/sales-team";
+import type { TeamMember } from "../../types/user";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { errorMessageFrom } from "../../utils/api-error";
@@ -47,6 +49,7 @@ interface FormValues {
   prospectStatus?: string;
   category?: string;
   leadScore?: number;
+  ownerId?: string;
 
   phone?: string;
   altPhone?: string;
@@ -133,6 +136,17 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
     salesTeamApi.listStates().then(setStates).catch(() => setStates([]));
   }, [open]);
 
+  // Create-only (see the "Assign to Call Center Executive" field below) -
+  // not worth fetching on every open of an edit drawer, where it's unused.
+  const [callCenterUsers, setCallCenterUsers] = useState<TeamMember[]>([]);
+  useEffect(() => {
+    if (!open || isEdit) return;
+    userApi
+      .listUsers()
+      .then((users) => setCallCenterUsers(users.filter((u) => u.role === "call_center" && u.isActive)))
+      .catch(() => setCallCenterUsers([]));
+  }, [open, isEdit]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -207,6 +221,9 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       prospectStatus: values.prospectStatus,
       category: values.category,
       leadScore: values.leadScore,
+      // Create-only - reassigning an existing lead goes through Reassign/
+      // Pick up this lead instead, never a plain edit-and-save.
+      ownerId: isEdit ? undefined : values.ownerId,
       phone: values.phone,
       altPhone: values.altPhone,
       email: values.email,
@@ -376,6 +393,24 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item name="leadScore" label="Lead Score (%)">
                       <InputNumber min={0} max={100} style={{ width: "100%" }} />
                     </Form.Item>
+                    {/* Create-only - purely a starting owner, never an access
+                        gate: every Call Center Executive can see and work
+                        this lead regardless of who it's assigned to (same as
+                        the bulk import's own "Call Center Executive" column).
+                        Left blank, it falls back to the normal round robin.
+                        Not shown on edit - reassigning an existing lead goes
+                        through Reassign/Pick up this lead instead. */}
+                    {!isEdit && (
+                      <Form.Item name="ownerId" label="Assign to Call Center Executive" tooltip="Optional - leave blank to auto-assign via round robin. Visible to every Call Center Executive either way.">
+                        <Select
+                          allowClear
+                          showSearch
+                          placeholder="Auto-assign (round robin)"
+                          optionFilterProp="label"
+                          options={callCenterUsers.map((u) => ({ value: u.id, label: `${u.name} (${u.email})` }))}
+                        />
+                      </Form.Item>
+                    )}
                   </FormSection>
                 </>
               ),

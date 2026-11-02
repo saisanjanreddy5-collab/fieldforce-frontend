@@ -7,11 +7,14 @@ import { CALL_DISPOSITIONS, type CallDisposition } from "../../api/lead-api";
 import type { Lead } from "../../types/lead";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
-import { FLC_STAGE, SLC_STAGE } from "../../utils/lead-constants";
+import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../utils/lead-constants";
 
 // Which tier a lead escalates to next, and what to call it - null for SLC,
 // since that tier's own "next step" is the existing Qualify action below,
-// not an escalation to a third tier.
+// not an escalation to a third tier. 'New' isn't in here - its own step
+// (start-flc) isn't an "escalation" in the same sense, it's the one-time
+// move from a brand-new, not-yet-worked lead into the real FLC queue, so it
+// gets its own button below instead of this label's "Escalate to X" phrasing.
 const NEXT_TIER: Record<string, { label: string; action: (id: string) => Promise<Lead> } | undefined> = {
   [FLC_STAGE]: { label: "SLC", action: leadApi.escalateToSlc },
 };
@@ -46,9 +49,11 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   const [submitting, setSubmitting] = useState(false);
   const [qualifying, setQualifying] = useState(false);
   const [escalating, setEscalating] = useState(false);
+  const [startingFlc, setStartingFlc] = useState(false);
 
   const nextTier = NEXT_TIER[lead.status];
   const isSlc = lead.status === SLC_STAGE;
+  const isNew = lead.status === NEW_STAGE;
 
   // Once a lead escalates (or is sent to Field), the tier/team it came from
   // keeps a read-only lead_shares grant on it (shareLeadBackToSender) - so a
@@ -58,7 +63,7 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   // the lead's own status, not who's allowed to act on it - a 403-after-
   // the-click instead of the button simply not being there, same class of
   // bug already fixed for Call/Email/WhatsApp after a Field Sales handoff.
-  if (!lead.inOwnerScope || (!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isSlc)) return null;
+  if (!lead.inOwnerScope || (!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isSlc && !isNew)) return null;
 
   const isCallBack = disposition === "Call Back";
 
@@ -101,6 +106,19 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
       message.error(errorMessageFrom(err, "Failed to mark this lead Qualified"));
     } finally {
       setQualifying(false);
+    }
+  };
+
+  const handleStartFlc = async () => {
+    setStartingFlc(true);
+    try {
+      await leadApi.startFlc(lead.id);
+      message.success("Moved to FLC");
+      onChanged();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to move this lead to FLC"));
+    } finally {
+      setStartingFlc(false);
     }
   };
 
@@ -179,7 +197,12 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
           Last: {lead.lastCallOutcome} ({lead.callAttemptCount} call{lead.callAttemptCount === 1 ? "" : "s"})
         </Text>
       )}
-      {canLogCalls && (
+      {canLogCalls && isNew && (
+        <Button size="small" type="primary" loading={startingFlc} onClick={handleStartFlc}>
+          FLC
+        </Button>
+      )}
+      {canLogCalls && !isNew && (
         <Popover content={dispositionContent} open={dispositionOpen} onOpenChange={openDisposition} trigger="click" placement="bottomRight">
           <Button size="small" icon={<PhoneOutlined />}>
             Log call outcome

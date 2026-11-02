@@ -26,6 +26,11 @@ export const IMPORT_MAPPABLE_FIELDS: ImportMappableField[] = [
   { key: "expectedValue", label: "Expected value" },
   { key: "website", label: "Website" },
   { key: "internalNotes", label: "Internal notes" },
+  // Purely a starting owner, never an access gate - every Call Center
+  // Executive can see and work this lead regardless of who it's assigned to.
+  // Left blank (or an email that doesn't match an active Call Center
+  // Executive), it falls back to the normal round-robin assignment.
+  { key: "assignedToEmail", label: "Call Center Executive (email)" },
 ];
 
 // Exact-match only (on a normalized header), not fuzzy substring matching -
@@ -46,6 +51,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   expectedValue: ["expectedvalue", "value", "dealvalue", "amount"],
   website: ["website", "url"],
   internalNotes: ["notes", "internalnotes", "remarks", "comment", "comments"],
+  assignedToEmail: ["callcenterexecutive", "assignedto", "assignee", "owner", "owneremail"],
 };
 
 function normalize(header: string): string {

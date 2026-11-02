@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { App, Button, Popover, Select, Skeleton, Typography } from "antd";
-import { UserSwitchOutlined } from "@ant-design/icons";
+import { UserAddOutlined, UserSwitchOutlined } from "@ant-design/icons";
 import * as leadApi from "../../api/lead-api";
 import type { Lead } from "../../types/lead";
+import { useAuth } from "../../context/AuthContext";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { SendToFieldAction } from "./SendToFieldAction";
-import { FLC_STAGE, SLC_STAGE } from "../../utils/lead-constants";
+import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../utils/lead-constants";
 
-const CALLING_TIER_STAGES: Record<string, true> = { [FLC_STAGE]: true, [SLC_STAGE]: true };
+const CALLING_TIER_STAGES: Record<string, true> = { [NEW_STAGE]: true, [FLC_STAGE]: true, [SLC_STAGE]: true };
 
 const { Text } = Typography;
 
@@ -28,17 +29,40 @@ interface LeadAssignmentPanelProps {
 // always-expanding-inline-block version did.
 export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProps) {
   const { message } = App.useApp();
+  const { user } = useAuth();
   const hasPermission = useHasPermission();
   const canSendToField = hasPermission("leads.send_to_field");
   const canReassign = hasPermission("leads.reassign");
+  // Self-service pickup, narrower than Reassign above (which hands a lead to
+  // ANY eligible person and stays Admin/Manager only) - any Call Center
+  // Executive who can already see this lead (New/FLC/SLC, per
+  // TIER_TEAMMATE_CLAUSE) can claim it as their own, covering a colleague's
+  // leads on a day they're out, without needing the broader Reassign
+  // permission. Gated by role here same as the backend route (requireRole,
+  // not a new permission row).
+  const canClaim = user?.role === "call_center" && CALLING_TIER_STAGES[lead.status] && lead.inOwnerScope && lead.ownerId !== user.id;
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [candidates, setCandidates] = useState<leadApi.SwapCandidate[] | null>(null);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [chosenId, setChosenId] = useState<string | undefined>(undefined);
   const [reassigning, setReassigning] = useState(false);
+  const [claiming, setClaiming] = useState(false);
 
-  if (!canSendToField && !canReassign) return null;
+  if (!canSendToField && !canReassign && !canClaim) return null;
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    try {
+      await leadApi.claimLead(lead.id);
+      message.success("Lead picked up");
+      onChanged();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to pick up this lead"));
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   const openReassign = (open: boolean) => {
     setReassignOpen(open);
@@ -111,6 +135,11 @@ export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProp
             Reassign
           </Button>
         </Popover>
+      )}
+      {canClaim && (
+        <Button size="small" icon={<UserAddOutlined />} loading={claiming} onClick={handleClaim}>
+          Pick up this lead
+        </Button>
       )}
     </div>
   );

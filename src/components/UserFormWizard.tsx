@@ -4,7 +4,6 @@ import { PlusOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
 import * as userApi from "../api/user-api";
 import type { CreateUserPayload, TeamMember, UserStatus } from "../types/user";
-import type { SalesTeam } from "../types/sales-team";
 import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
 import { ladderIndex, SPAN_WARNING_THRESHOLD } from "../utils/level-format";
@@ -62,7 +61,6 @@ interface FormValues {
   levelId: string;
   managerId?: string;
   territory?: string;
-  salesTeamIds?: string[];
   smartfloAgentNumber?: string;
   operationType?: "COCO" | "FOFO" | "Both";
   pincodes?: string[];
@@ -73,7 +71,6 @@ interface UserFormWizardProps {
   user: TeamMember | null;
   users: TeamMember[];
   levels: Level[];
-  salesTeams: SalesTeam[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -205,7 +202,7 @@ function OrgChartPreview({
   );
 }
 
-export function UserFormWizard({ open, user, users, levels, salesTeams, onClose, onSaved }: UserFormWizardProps) {
+export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: UserFormWizardProps) {
   const hasPermission = useHasPermission();
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
@@ -233,7 +230,6 @@ export function UserFormWizard({ open, user, users, levels, salesTeams, onClose,
         levelId: user.levelId ?? undefined,
         managerId: user.managerId ?? undefined,
         territory: user.territory ?? undefined,
-        salesTeamIds: user.salesTeamIds ?? [],
         smartfloAgentNumber: user.smartfloAgentNumber ?? undefined,
         operationType: user.operationType ?? undefined,
         pincodes: user.pincodes ?? [],
@@ -291,11 +287,6 @@ export function UserFormWizard({ open, user, users, levels, salesTeams, onClose,
         smartfloAgentNumber: values.smartfloAgentNumber,
         mobile: values.mobile,
         territory: values.territory,
-        // Only meaningful for a Call Center Executive (it's what actually
-        // decides FLC vs SLC) - the field itself is hidden for every other
-        // tier, same reasoning as operationType/pincodes below. Multi-select:
-        // one person can now be staffed on both FLC and SLC teams at once.
-        salesTeamIds: selectedLevel?.securityTier === "call_center" ? values.salesTeamIds ?? [] : undefined,
         employeeCode: values.employeeCode,
         status: values.status,
         levelId: values.levelId,
@@ -589,85 +580,77 @@ export function UserFormWizard({ open, user, users, levels, salesTeams, onClose,
                     </Form.Item>
                   </SectionCard>
 
+                  {/* Territory & office means nothing for a Call Center
+                      Executive - there's no FLC/SLC team split any more
+                      (every active Call Center Executive works every
+                      New/FLC/SLC lead - see TIER_TEAMMATE_CLAUSE in
+                      lead-service.ts), and they don't sit in a physical
+                      territory the way Field Sales does. Hidden entirely for
+                      this tier by explicit request, rather than showing an
+                      empty/irrelevant section. Smartflo agent number is
+                      pulled into its own section below so it still shows for
+                      Call Center (they place calls too). */}
+                  {selectedLevel?.securityTier !== "call_center" && (
+                    <SectionCard
+                      icon="⌖"
+                      title="Territory & office"
+                      subtitle="Where they sit and which tier they work"
+                      color={appTokens.success}
+                      background="#f1faf1"
+                    >
+                      <Form.Item
+                        name="territory"
+                        label="Territory"
+                        tooltip="A new lead is auto-assigned to whoever has this exact territory - must match exactly, so pick an existing one from the list where possible, or type a new one"
+                      >
+                        <AutoComplete
+                          placeholder="e.g. Karnataka · Mysuru"
+                          options={territories.map((t) => ({ value: t }))}
+                          filterOption={(input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase())}
+                        />
+                      </Form.Item>
+                      {selectedLevel?.securityTier === "agent" && (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                          <Form.Item
+                            name="pincodes"
+                            label="Serviceable pincodes"
+                            tooltip="Every pincode this field employee covers - a lead in any of these gets offered to them when sent to Field Sales. More than one person can cover the same pincode on purpose, so a lead can be swapped between them."
+                            rules={[
+                              {
+                                required: true,
+                                message: "At least one pincode is required - a field employee with none can never be matched to a lead",
+                                type: "array",
+                              },
+                            ]}
+                          >
+                            <Select mode="tags" placeholder="Type a pincode and press enter" tokenSeparators={[",", " "]} open={false} />
+                          </Form.Item>
+                          <Form.Item
+                            name="operationType"
+                            label="Operation type"
+                            tooltip="Which store type(s) this person handles - a lead's own category (COCO/FOFO) must match, or be set to Both, for it to be offered to them"
+                          >
+                            <Select
+                              allowClear
+                              placeholder="Select an operation type"
+                              options={[
+                                { value: "COCO", label: "COCO" },
+                                { value: "FOFO", label: "FOFO" },
+                                { value: "Both", label: "Both" },
+                              ]}
+                            />
+                          </Form.Item>
+                        </div>
+                      )}
+                    </SectionCard>
+                  )}
                   <SectionCard
-                    icon="⌖"
-                    title="Territory & office"
-                    subtitle="Where they sit and which tier they work"
+                    icon="☎"
+                    title="Calling"
+                    subtitle="Needed for the Call button to work"
                     color={appTokens.success}
                     background="#f1faf1"
                   >
-                    <Form.Item
-                      name="territory"
-                      label="Territory"
-                      tooltip="A new lead is auto-assigned to whoever has this exact territory - must match exactly, so pick an existing one from the list where possible, or type a new one"
-                    >
-                      <AutoComplete
-                        placeholder="e.g. Karnataka · Mysuru"
-                        options={territories.map((t) => ({ value: t }))}
-                        filterOption={(input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase())}
-                      />
-                    </Form.Item>
-                    {selectedLevel?.securityTier === "agent" && (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                        <Form.Item
-                          name="pincodes"
-                          label="Serviceable pincodes"
-                          tooltip="Every pincode this field employee covers - a lead in any of these gets offered to them when sent to Field Sales. More than one person can cover the same pincode on purpose, so a lead can be swapped between them."
-                          rules={[
-                            {
-                              required: true,
-                              message: "At least one pincode is required - a field employee with none can never be matched to a lead",
-                              type: "array",
-                            },
-                          ]}
-                        >
-                          <Select mode="tags" placeholder="Type a pincode and press enter" tokenSeparators={[",", " "]} open={false} />
-                        </Form.Item>
-                        <Form.Item
-                          name="operationType"
-                          label="Operation type"
-                          tooltip="Which store type(s) this person handles - a lead's own category (COCO/FOFO) must match, or be set to Both, for it to be offered to them"
-                        >
-                          <Select
-                            allowClear
-                            placeholder="Select an operation type"
-                            options={[
-                              { value: "COCO", label: "COCO" },
-                              { value: "FOFO", label: "FOFO" },
-                              { value: "Both", label: "Both" },
-                            ]}
-                          />
-                        </Form.Item>
-                      </div>
-                    )}
-                    {/* Sales team only means anything for a Call Center
-                        Executive - it's what actually decides FLC vs SLC
-                        (see resolveTierAssignee in lead-service.ts). Field
-                        Sales is matched by pincode, not a team, and Admin
-                        isn't on a calling team at all, so the field is
-                        hidden rather than offering a choice that does
-                        nothing. Restricted to FLC/SLC Team specifically -
-                        any other sales_teams row existing is legacy data,
-                        never a real choice to offer here. Multi-select: one
-                        person can be staffed on both at once (e.g. to cover
-                        an urgent lead through both tiers if the dedicated
-                        SLC person is out that day), not just a single team. */}
-                    {selectedLevel?.securityTier === "call_center" && (
-                      <Form.Item
-                        name="salesTeamIds"
-                        label="Sales team"
-                        tooltip="Which calling tier(s) this person works - FLC (first line), SLC (second line), or both"
-                      >
-                        <Select
-                          mode="multiple"
-                          allowClear
-                          placeholder="Select FLC and/or SLC"
-                          options={salesTeams
-                            .filter((t) => t.name === "FLC Team" || t.name === "SLC Team")
-                            .map((t) => ({ value: t.id, label: t.name }))}
-                        />
-                      </Form.Item>
-                    )}
                     <Form.Item
                       name="smartfloAgentNumber"
                       label="Smartflo agent number"

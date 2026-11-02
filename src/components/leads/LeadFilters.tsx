@@ -1,18 +1,24 @@
 import { useState } from "react";
-import { Badge, Button, Popover, Select, Space, Switch, Typography } from "antd";
+import { Badge, Button, DatePicker, Popover, Select, Space, Switch, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadSources } from "../../hooks/use-lead-sources";
 import { appTokens } from "../../utils/design-system";
 
 const { Text } = Typography;
+const { RangePicker } = DatePicker;
 
 export interface AdvancedFilters {
   category?: string;
   status?: string;
   source?: string;
   consentPending?: boolean;
+  // When the lead actually came into the CRM (created_at) - plain calendar
+  // dates (YYYY-MM-DD), inclusive on both ends.
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 interface LeadFiltersProps {
@@ -69,6 +75,20 @@ export function LeadFilters({ value, onChange }: LeadFiltersProps) {
             value={value.source}
             onChange={(source) => onChange({ ...value, source })}
             options={sources.map((s) => ({ value: s, label: s }))}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, letterSpacing: 0.3, marginBottom: 6 }}>DATE CREATED</div>
+          <RangePicker
+            style={{ width: "100%" }}
+            value={[value.createdFrom ? dayjs(value.createdFrom) : null, value.createdTo ? dayjs(value.createdTo) : null]}
+            onChange={(dates) =>
+              onChange({
+                ...value,
+                createdFrom: dates?.[0] ? dates[0].format("YYYY-MM-DD") : undefined,
+                createdTo: dates?.[1] ? dates[1].format("YYYY-MM-DD") : undefined,
+              })
+            }
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 0" }}>

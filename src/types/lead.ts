@@ -129,6 +129,10 @@ export interface LeadListFilters {
   highScoreOnly?: boolean;
   consentPending?: boolean;
   unassignedOnly?: boolean;
+  // When the lead actually came into the CRM (created_at) - plain calendar
+  // dates (YYYY-MM-DD), inclusive on both ends.
+  createdFrom?: string;
+  createdTo?: string;
   page?: number;
   limit?: number;
 }
