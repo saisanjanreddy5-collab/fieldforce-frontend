@@ -245,10 +245,16 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       <LeadSnapshot
         lead={lead}
         showOwner={showOwner}
+        nextStepAction={
+          <>
+            <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} variant="nextStep" />
+            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} variant="nextStep" />
+          </>
+        }
         assignmentActions={
           <>
-            <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} />
-            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} />
+            <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} variant="secondary" />
+            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} variant="secondary" />
           </>
         }
         availability={{

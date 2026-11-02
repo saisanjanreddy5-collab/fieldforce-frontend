@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { SendToFieldAction } from "./SendToFieldAction";
+import { NextStepSlot } from "./NextStepSlot";
 import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../utils/lead-constants";
 
 const CALLING_TIER_STAGES: Record<string, true> = { [NEW_STAGE]: true, [FLC_STAGE]: true, [SLC_STAGE]: true };
@@ -16,18 +17,24 @@ const { Text } = Typography;
 interface LeadAssignmentPanelProps {
   lead: Lead;
   onChanged: () => void;
+  // "nextStep" - Send to Field Sales, the one primary action once a lead is
+  // Qualified, rendered next to the stage tag like every other stage's
+  // progression button (see CallCenterStageActions). "secondary" -
+  // Reassign/Pick up this lead: handing a lead to someone else, never a
+  // "move the pipeline forward" action on its own.
+  variant: "nextStep" | "secondary";
 }
 
 // Admin/Manager-only assignment controls (Send to Field Sales, Reassign/
-// Swap) - a separate panel rather than folded into LeadSnapshot, which stays
-// purely presentational by design (see its own file header comment).
-// Nothing here renders at all for anyone without at least one of the two
-// gating permissions.
+// Swap), plus the Call Center role's own self-service Pick up this lead - a
+// separate panel rather than folded into LeadSnapshot, which stays purely
+// presentational by design (see its own file header comment). Nothing here
+// renders at all for anyone without at least one of the gating permissions.
 //
 // Reassign opens in a small anchored popover, deliberately never growing
 // inline and pushing the rest of the page down, which is what the previous
 // always-expanding-inline-block version did.
-export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProps) {
+export function LeadAssignmentPanel({ lead, onChanged, variant }: LeadAssignmentPanelProps) {
   const { message } = App.useApp();
   const { user } = useAuth();
   const hasPermission = useHasPermission();
@@ -49,7 +56,19 @@ export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProp
   const [reassigning, setReassigning] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
-  if (!canSendToField && !canReassign && !canClaim) return null;
+  if (variant === "nextStep") {
+    if (canSendToField && lead.status === "Qualified" && lead.ownerRole !== "agent" && lead.inOwnerScope) {
+      return (
+        <NextStepSlot>
+          <SendToFieldAction leadId={lead.id} size="small" onDone={onChanged} />
+        </NextStepSlot>
+      );
+    }
+    return null;
+  }
+
+  // variant === "secondary"
+  if (!canReassign && !canClaim) return null;
 
   const handleClaim = async () => {
     setClaiming(true);
@@ -120,9 +139,6 @@ export function LeadAssignmentPanel({ lead, onChanged }: LeadAssignmentPanelProp
 
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-      {canSendToField && lead.status === "Qualified" && lead.ownerRole !== "agent" && lead.inOwnerScope && (
-        <SendToFieldAction leadId={lead.id} size="small" onDone={onChanged} />
-      )}
       {canReassign && lead.inOwnerScope && (
         <Popover
           content={reassignContent}

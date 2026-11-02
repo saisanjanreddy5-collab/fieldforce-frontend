@@ -8,6 +8,7 @@ import type { Lead } from "../../types/lead";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../utils/lead-constants";
+import { NextStepSlot } from "./NextStepSlot";
 
 // Which tier a lead escalates to next, and what to call it - null for SLC,
 // since that tier's own "next step" is the existing Qualify action below,
@@ -24,19 +25,23 @@ const { Text } = Typography;
 interface CallCenterStageActionsProps {
   lead: Lead;
   onChanged: () => void;
+  // "nextStep" - the ONE primary button that moves this lead to its next
+  // stage (FLC / Escalate to SLC / Mark Qualified). Rendered by LeadDetail
+  // right next to the stage tag in LeadSnapshot's header, with a connecting
+  // arrow, so cause (current stage) and effect (what clicking it does) sit
+  // together instead of scattered across the header. "secondary" - Log call
+  // outcome and the last-call-outcome summary text, rendered in the header's
+  // secondary action cluster alongside Reassign/Pick up this lead, since
+  // logging a call doesn't move the pipeline forward on its own.
+  variant: "nextStep" | "secondary";
 }
 
-// Log call outcome / Escalate to next tier / Mark Qualified - the Call
-// Center-only actions that only ever apply while a lead is still at one of
-// the two calling tiers (FLC/SLC). Rendered in the same compact row as
-// Send to Field Sales/Reassign/History (see LeadDetail.tsx), not a separate
-// box, for the same space reason those got redesigned. Each button checks
-// its own permission (leads.call_log / leads.escalate / leads.qualify)
-// rather than one gate for all three - the Permissions screen lets an admin
-// grant/revoke them independently per employee, so showing a button whose
-// own permission was revoked would just produce a 403 on click instead of
-// the button simply not being there.
-export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActionsProps) {
+// Each button checks its own permission (leads.call_log / leads.escalate /
+// leads.qualify) rather than one gate for all three - the Permissions screen
+// lets an admin grant/revoke them independently per employee, so showing a
+// button whose own permission was revoked would just produce a 403 on click
+// instead of the button simply not being there.
+export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterStageActionsProps) {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const canLogCalls = hasPermission("leads.call_log");
@@ -58,12 +63,12 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
   // Once a lead escalates (or is sent to Field), the tier/team it came from
   // keeps a read-only lead_shares grant on it (shareLeadBackToSender) - so a
   // prior owner can still open and see this same lead sitting at its new
-  // stage. Without this check, NEXT_TIER[lead.status] alone would show
-  // "Escalate to X" to that read-only viewer too, since it only looks at
-  // the lead's own status, not who's allowed to act on it - a 403-after-
-  // the-click instead of the button simply not being there, same class of
-  // bug already fixed for Call/Email/WhatsApp after a Field Sales handoff.
-  if (!lead.inOwnerScope || (!canLogCalls && !canEscalate && !canQualify) || (!nextTier && !isSlc && !isNew)) return null;
+  // stage. Without this check, the buttons below would show to that
+  // read-only viewer too, since they only look at the lead's own status, not
+  // who's allowed to act on it - a 403-after-the-click instead of the button
+  // simply not being there, same class of bug already fixed for
+  // Call/Email/WhatsApp after a Field Sales handoff.
+  if (!lead.inOwnerScope) return null;
 
   const isCallBack = disposition === "Call Back";
 
@@ -136,6 +141,41 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
     }
   };
 
+  if (variant === "nextStep") {
+    if (canLogCalls && isNew) {
+      return (
+        <NextStepSlot>
+          <Button size="small" type="primary" loading={startingFlc} onClick={handleStartFlc}>
+            Start FLC
+          </Button>
+        </NextStepSlot>
+      );
+    }
+    if (canEscalate && nextTier) {
+      return (
+        <NextStepSlot>
+          <Button size="small" type="primary" loading={escalating} onClick={handleEscalate}>
+            Escalate to {nextTier.label}
+          </Button>
+        </NextStepSlot>
+      );
+    }
+    if (canQualify && isSlc) {
+      return (
+        <NextStepSlot>
+          <Button size="small" type="primary" loading={qualifying} onClick={handleQualify}>
+            Mark Qualified
+          </Button>
+        </NextStepSlot>
+      );
+    }
+    return null;
+  }
+
+  // variant === "secondary" - nothing to log for a lead that hasn't even
+  // started FLC yet (it's never been called).
+  if (!canLogCalls || isNew) return null;
+
   const dispositionContent = (
     <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 8 }}>
       <Select
@@ -197,28 +237,11 @@ export function CallCenterStageActions({ lead, onChanged }: CallCenterStageActio
           Last: {lead.lastCallOutcome} ({lead.callAttemptCount} call{lead.callAttemptCount === 1 ? "" : "s"})
         </Text>
       )}
-      {canLogCalls && isNew && (
-        <Button size="small" type="primary" loading={startingFlc} onClick={handleStartFlc}>
-          FLC
+      <Popover content={dispositionContent} open={dispositionOpen} onOpenChange={openDisposition} trigger="click" placement="bottomRight">
+        <Button size="small" icon={<PhoneOutlined />}>
+          Log call outcome
         </Button>
-      )}
-      {canLogCalls && !isNew && (
-        <Popover content={dispositionContent} open={dispositionOpen} onOpenChange={openDisposition} trigger="click" placement="bottomRight">
-          <Button size="small" icon={<PhoneOutlined />}>
-            Log call outcome
-          </Button>
-        </Popover>
-      )}
-      {canEscalate && nextTier && (
-        <Button size="small" type="primary" loading={escalating} onClick={handleEscalate}>
-          Escalate to {nextTier.label}
-        </Button>
-      )}
-      {canQualify && isSlc && (
-        <Button size="small" type="primary" loading={qualifying} onClick={handleQualify}>
-          Mark Qualified
-        </Button>
-      )}
+      </Popover>
     </>
   );
 }

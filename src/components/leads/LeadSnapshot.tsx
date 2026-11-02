@@ -22,12 +22,21 @@ const PRIMARY_ICON = {
 interface LeadSnapshotProps {
   lead: Lead;
   showOwner: boolean;
-  // Send to Field Sales / Reassign / History - rendered by LeadAssignmentPanel,
-  // which owns all of that logic/state. Taken as a slot here (not imported
-  // directly) so this component stays purely presentational, per its own
-  // contract - it just places the result next to the owner's name instead of
-  // giving it a separate full-width row, which used to duplicate "Owner: X"
-  // a second time for no new information.
+  // The ONE primary "move this lead to its next stage" action (FLC /
+  // Escalate to SLC / Mark Qualified / Send to Field Sales), rendered
+  // immediately after the status tag with a connecting arrow - cause
+  // (current stage) and effect (what clicking this does) sit together,
+  // instead of a bare stage-shaped button scattered somewhere else that
+  // reads as a second, contradictory status tag. Never more than one of
+  // these exists for a given lead at a time.
+  nextStepAction?: ReactNode;
+  // Everything else that can change who owns/works this lead - Reassign,
+  // Pick up this lead, Log call outcome - rendered by LeadAssignmentPanel/
+  // CallCenterStageActions, which own all of that logic/state. Taken as a
+  // slot here (not imported directly) so this component stays purely
+  // presentational, per its own contract - it just places the result next
+  // to the owner's name instead of giving it a separate full-width row,
+  // which used to duplicate "Owner: X" a second time for no new information.
   assignmentActions?: ReactNode;
   availability: LeadActionAvailability;
   calling: boolean;
@@ -49,6 +58,7 @@ interface LeadSnapshotProps {
 export function LeadSnapshot({
   lead,
   showOwner,
+  nextStepAction,
   assignmentActions,
   availability,
   calling,
@@ -232,6 +242,7 @@ export function LeadSnapshot({
           >
             {lead.status}
           </Tag>
+          {nextStepAction}
           <Text strong style={{ fontSize: 16, color: appTokens.textPrimary }}>
             {formatCompactCurrency(lead.expectedValue)}
           </Text>
