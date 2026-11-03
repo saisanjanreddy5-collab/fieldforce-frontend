@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Select, Table, Tabs, Tag, Typography } from "antd";
+import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Select, Table, Tabs, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as callCenterApi from "../api/call-center-api";
@@ -58,6 +58,7 @@ export default function CallCenterPage() {
   const [queue, setQueue] = useState<Call[]>([]);
   const [stats, setStats] = useState<callCenterApi.CallCenterStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
+  const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   // Queue items whose lead has converted to a customer - keyed by
@@ -67,19 +68,27 @@ export default function CallCenterPage() {
   // picker is instant.
   const [queueContacts, setQueueContacts] = useState<Record<string, CustomerContact[]>>({});
 
-  // Stats come from a real SQL aggregate over every call this user can
-  // see (call-center-service.ts's getCallCenterStats), not arithmetic over
-  // whatever page of calls happens to be loaded - the log view below is
-  // capped (200, then paginated 20 at a time for display), and computing
-  // percentages over that cap used to silently understate reality once an
-  // org passed 200 historical calls despite the UI still saying "of all
-  // calls". "Today" is IST-anchored there too, not the viewer's browser
-  // clock.
+  // Stats come from a real SQL aggregate over every call this user can see
+  // (call-center-service.ts's getCallCenterStats), not arithmetic over
+  // whatever page of calls happens to be loaded, so they're always accurate
+  // regardless of how much of the log has streamed in below. The log itself
+  // used to hard-cap at 200 in one shot - any call past that was invisible,
+  // not just slow - now drains every real page (listAllCalls), streaming
+  // results in as they arrive so the table is usable immediately rather
+  // than blocking on the whole history loading first.
   const load = () => {
     setLoading(true);
-    Promise.all([callCenterApi.listCalls(), callCenterApi.listUpcomingCalls(), callCenterApi.getStats()])
-      .then(async ([log, upcoming, callStats]) => {
-        setCalls(log.calls);
+    setStreamProgress(null);
+    Promise.all([
+      callCenterApi.listAllCalls({}, (loadedSoFar, total) => {
+        setCalls(loadedSoFar);
+        setLoading(false);
+        setStreamProgress(loadedSoFar.length < total ? { loaded: loadedSoFar.length, total } : null);
+      }),
+      callCenterApi.listUpcomingCalls(),
+      callCenterApi.getStats(),
+    ])
+      .then(async ([, upcoming, callStats]) => {
         setQueue(upcoming);
         setStats(callStats);
 
@@ -193,6 +202,37 @@ export default function CallCenterPage() {
               style={{ maxWidth: 320 }}
             />
           </div>
+
+          {streamProgress && (
+            <div
+              style={{
+                margin: "10px 14px 0",
+                padding: "7px 12px",
+                borderRadius: appTokens.radius,
+                background: appTokens.primarySoft,
+                border: `1px solid ${appTokens.border}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  width: 13,
+                  height: 13,
+                  borderRadius: "50%",
+                  border: `2px solid ${appTokens.primary}`,
+                  borderTopColor: "transparent",
+                  flexShrink: 0,
+                  animation: "callcenter-stream-spin 0.7s linear infinite",
+                }}
+              />
+              <Text style={{ fontSize: 12, color: appTokens.textSecondary }}>
+                Loading the rest of the call log - {streamProgress.loaded.toLocaleString()} of {streamProgress.total.toLocaleString()}
+              </Text>
+              <style>{"@keyframes callcenter-stream-spin { to { transform: rotate(360deg); } }"}</style>
+            </div>
+          )}
 
           <Table<Call>
             rowKey="id"
@@ -559,41 +599,58 @@ function MyQueueTab() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([
-      Promise.all(myTierStages.map((stage) => leadApi.listAllLeadsForStatus({ status: stage }))),
+    // One request for every tier stage together (status accepts a
+    // comma-separated list server-side now) instead of one full paginated
+    // fetch per stage - New+FLC+SLC used to mean 3 separate round-trip
+    // loops for what's really one logical "my calling queue" fetch.
+    // allSettled, not all - a slow/failed network hiccup on one of these
+    // (e.g. the handed-off history, rarely needed urgently) must never blank
+    // out the other two that did load; each failure degrades gracefully to
+    // "couldn't load this part" instead of the whole queue vanishing.
+    Promise.allSettled([
+      leadApi.listAllLeadsForStatus({ status: myTierStages.join(",") }),
       leadApi.listAllLeadsForStatus({ status: "Qualified" }),
       leadApi.listHandedOffLeads(),
-    ])
-      .then(([callCenterByStage, qualified, handedOff]) => {
-        // status alone can't tell "I still own this" apart from "I used to
-        // own this" - sendToField never changes status (see
-        // lead-call-center-service.ts's own comment on that), so a leftover
-        // lead_shares grant on an already-handed-off lead that happens to
-        // still read "Qualified" would otherwise show up here too, with its
-        // full Call button, duplicating (and contradicting) its real place
-        // in "Already sent" below. inOwnerScope is the real signal.
-        //
-        // Sorted by creation time (newest first, same convention as the main
-        // Leads page), never left as "every New lead, then every FLC lead,
-        // then every SLC lead" - that ordering was the actual bug client-
-        // confirmed as "very important": clicking Start FLC/Escalate to SLC
-        // moved a lead's own stage-group fetch to a different position in
-        // the array, so the row visibly jumped to a whole different part of
-        // the list the instant its stage changed, even though nothing about
-        // when it was created ever moved. Sorting the merged list by a
-        // stage-independent key means a lead's row stays exactly where it
-        // was - only its stage badge and next-step button change.
+    ]).then(([callCenterResult, qualifiedResult, handedOffResult]) => {
+      // status alone can't tell "I still own this" apart from "I used to
+      // own this" - sendToField never changes status (see
+      // lead-call-center-service.ts's own comment on that), so a leftover
+      // lead_shares grant on an already-handed-off lead that happens to
+      // still read "Qualified" would otherwise show up here too, with its
+      // full Call button, duplicating (and contradicting) its real place
+      // in "Already sent" below. inOwnerScope is the real signal.
+      //
+      // Sorted by creation time (newest first, same convention as the main
+      // Leads page), never left as "every New lead, then every FLC lead,
+      // then every SLC lead" - that ordering was the actual bug client-
+      // confirmed as "very important": clicking Start FLC/Escalate to SLC
+      // moved a lead's own stage-group fetch to a different position in
+      // the array, so the row visibly jumped to a whole different part of
+      // the list the instant its stage changed, even though nothing about
+      // when it was created ever moved. Sorting the merged list by a
+      // stage-independent key means a lead's row stays exactly where it
+      // was - only its stage badge and next-step button change.
+      if (callCenterResult.status === "fulfilled") {
         setCallingLeads(
-          callCenterByStage
-            .flat()
+          callCenterResult.value
             .filter((l) => l.inOwnerScope)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         );
-        setQualifiedLeads(qualified.filter((l) => l.inOwnerScope));
-        setHandedOffLeads(handedOff);
-      })
-      .catch(() => message.error("Failed to load your queue"))
-      .finally(() => setLoading(false));
+      } else {
+        message.error("Couldn't load your awaiting leads - try refreshing");
+      }
+      if (qualifiedResult.status === "fulfilled") {
+        setQualifiedLeads(qualifiedResult.value.filter((l) => l.inOwnerScope));
+      } else {
+        message.error("Couldn't load your Qualified leads - try refreshing");
+      }
+      if (handedOffResult.status === "fulfilled") {
+        setHandedOffLeads(handedOffResult.value);
+      } else {
+        message.error("Couldn't load your handed-off leads - try refreshing");
+      }
+      setLoading(false);
+    });
   };
 
   useEffect(load, []);
@@ -629,6 +686,25 @@ function MyQueueTab() {
   const filteredHandedOff = useMemo(() => handedOffLeads.filter(matchesQueueFilters), [handedOffLeads, search, filters]);
   const hasActiveFilters = search.trim() !== "" || Object.values(filters).some((v) => v !== undefined && v !== false);
   const filteredTotal = filteredQualified.length + filteredCalling.length + filteredHandedOff.length;
+
+  // Real pagination, not an unbounded list - rendering 200+ full row cards
+  // (avatar, tags, buttons) at once was the actual source of the felt
+  // slowness client-reported, not the fetch itself. Each section pages
+  // independently since they're logically separate lists. Resets to page 1
+  // whenever the visible set changes shape, so narrowing a filter never
+  // leaves the view stranded on a now-nonexistent later page.
+  const QUEUE_PAGE_SIZE = 20;
+  const [qualifiedPage, setQualifiedPage] = useState(1);
+  const [callingPage, setCallingPage] = useState(1);
+  const [handedOffPage, setHandedOffPage] = useState(1);
+  useEffect(() => {
+    setQualifiedPage(1);
+    setCallingPage(1);
+    setHandedOffPage(1);
+  }, [search, filters]);
+  const pagedQualified = filteredQualified.slice((qualifiedPage - 1) * QUEUE_PAGE_SIZE, qualifiedPage * QUEUE_PAGE_SIZE);
+  const pagedCalling = filteredCalling.slice((callingPage - 1) * QUEUE_PAGE_SIZE, callingPage * QUEUE_PAGE_SIZE);
+  const pagedHandedOff = filteredHandedOff.slice((handedOffPage - 1) * QUEUE_PAGE_SIZE, handedOffPage * QUEUE_PAGE_SIZE);
 
   const handleCall = async (leadId: string) => {
     setCallingLeadId(leadId);
@@ -683,7 +759,9 @@ function MyQueueTab() {
             <DuplicateLeadTag lead={lead} compact />
           </div>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {[lead.phone, lead.pincode ? `PIN ${lead.pincode}` : "no pincode yet", lead.category].filter(Boolean).join(" · ")}
+            {[lead.phone, lead.pincode ? `PIN ${lead.pincode}` : "no pincode yet", lead.category, `Owner: ${lead.ownerName ?? "Unassigned"}`]
+              .filter(Boolean)
+              .join(" · ")}
           </Text>
         </div>
       </div>
@@ -775,7 +853,19 @@ function MyQueueTab() {
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
             Qualified - ready for Field Sales ({filteredQualified.length})
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{filteredQualified.map((l) => renderRow(l))}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{pagedQualified.map((l) => renderRow(l))}</div>
+          {filteredQualified.length > QUEUE_PAGE_SIZE && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+              <Pagination
+                size="small"
+                current={qualifiedPage}
+                pageSize={QUEUE_PAGE_SIZE}
+                total={filteredQualified.length}
+                onChange={setQualifiedPage}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
         </div>
       )}
       {filteredCalling.length > 0 && (
@@ -784,8 +874,20 @@ function MyQueueTab() {
             Awaiting {myTierLabel} ({filteredCalling.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-            {filteredCalling.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
+            {pagedCalling.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
           </div>
+          {filteredCalling.length > QUEUE_PAGE_SIZE && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+              <Pagination
+                size="small"
+                current={callingPage}
+                pageSize={QUEUE_PAGE_SIZE}
+                total={filteredCalling.length}
+                onChange={setCallingPage}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
         </div>
       )}
       {filteredHandedOff.length > 0 && (
@@ -794,8 +896,20 @@ function MyQueueTab() {
             Already handed off ({filteredHandedOff.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-            {filteredHandedOff.map((l) => renderRow(l, { showCallButton: false }))}
+            {pagedHandedOff.map((l) => renderRow(l, { showCallButton: false }))}
           </div>
+          {filteredHandedOff.length > QUEUE_PAGE_SIZE && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+              <Pagination
+                size="small"
+                current={handedOffPage}
+                pageSize={QUEUE_PAGE_SIZE}
+                total={filteredHandedOff.length}
+                onChange={setHandedOffPage}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
         </div>
       )}
 
