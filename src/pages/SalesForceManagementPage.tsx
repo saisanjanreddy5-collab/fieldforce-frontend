@@ -395,7 +395,7 @@ export default function SalesForceManagementPage() {
             rowKey="id"
             loading={loading}
             dataSource={filteredUsers}
-            pagination={false}
+            pagination={{ pageSize: 20, hideOnSinglePage: true }}
             onRow={() => ({ className: "table-row-hover" })}
             columns={[
               {
