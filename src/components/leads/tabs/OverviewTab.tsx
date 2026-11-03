@@ -24,7 +24,6 @@ const SECTION_FIELDS: Record<string, (keyof Lead)[]> = {
     "startDate",
     "qualifiedPerson",
     "financialStatus",
-    "welcomeMessageSent",
     "status",
     "prospectStatus",
     "category",
@@ -210,7 +209,6 @@ export function OverviewTab({ lead }: OverviewTabProps) {
             <Descriptions.Item label="Start Date">{formatDate(lead.startDate)}</Descriptions.Item>
             <Descriptions.Item label="Qualified Person">{lead.qualifiedPerson ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Financial Status">{lead.financialStatus ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Welcome Message Sent">{yesNo(lead.welcomeMessageSent)}</Descriptions.Item>
             <Descriptions.Item label="Status">{lead.status}</Descriptions.Item>
             <Descriptions.Item label="Prospect Status">{lead.prospectStatus ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Category">{lead.category ?? "-"}</Descriptions.Item>
@@ -255,8 +253,8 @@ export function OverviewTab({ lead }: OverviewTabProps) {
               {[lead.storeCity, lead.storeState].filter(Boolean).join(", ") || "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Store Pincode">{lead.storePincode ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Carpet Area">{lead.carpetArea ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Frontage">{lead.frontage ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="Carpet Area">{lead.carpetArea !== null ? `${lead.carpetArea} sq ft` : "-"}</Descriptions.Item>
+            <Descriptions.Item label="Frontage">{lead.frontage !== null ? `${lead.frontage} ft` : "-"}</Descriptions.Item>
             <Descriptions.Item label="Ownership">{lead.ownership ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Investment Capacity">
               {formatCompactCurrency(lead.investmentCapacity)}

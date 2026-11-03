@@ -339,6 +339,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
               showTime
               style={{ width: "100%" }}
               styles={{ popup: { body: { maxHeight: 200, overflowY: "auto" } } }}
+              disabledDate={(d) => d.isBefore(dayjs(), "day")}
             />
           </Form.Item>
           <Form.Item name="durationMinutes" label="Duration">

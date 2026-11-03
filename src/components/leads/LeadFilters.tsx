@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, Button, DatePicker, Popover, Select, Space, Switch, Typography } from "antd";
+import { Badge, Button, DatePicker, Popover, Select, Space, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
@@ -14,7 +14,6 @@ export interface AdvancedFilters {
   category?: string;
   status?: string;
   source?: string;
-  consentPending?: boolean;
   // When the lead actually came into the CRM (created_at) - plain calendar
   // dates (YYYY-MM-DD), inclusive on both ends.
   createdFrom?: string;
@@ -89,14 +88,6 @@ export function LeadFilters({ value, onChange }: LeadFiltersProps) {
                 createdTo: dates?.[1] ? dates[1].format("YYYY-MM-DD") : undefined,
               })
             }
-          />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 0" }}>
-          <span style={{ fontSize: 13 }}>Consent pending</span>
-          <Switch
-            size="small"
-            checked={value.consentPending ?? false}
-            onChange={(consentPending) => onChange({ ...value, consentPending: consentPending || undefined })}
           />
         </div>
         {count > 0 && (

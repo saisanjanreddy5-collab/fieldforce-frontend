@@ -407,8 +407,15 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                       >
                         <Input placeholder="neha.sharma@company.com" />
                       </Form.Item>
-                      <Form.Item name="mobile" label="Mobile" rules={[{ required: true, message: "Mobile is required" }]}>
-                        <Input placeholder="e.g. +91 98xxx xxxxx" />
+                      <Form.Item
+                        name="mobile"
+                        label="Mobile"
+                        rules={[
+                          { required: true, message: "Mobile is required" },
+                          { pattern: /^(\+91[\s-]?)?\d{10}$/, message: "Enter a valid 10-digit mobile number" },
+                        ]}
+                      >
+                        <Input placeholder="e.g. +91 98xxx xxxxx" maxLength={14} />
                       </Form.Item>
                       <Form.Item
                         name="password"
@@ -430,8 +437,12 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                       <Form.Item name="employeeCode" label="Employee code">
                         <Input placeholder="e.g. EMP-0041" />
                       </Form.Item>
-                      <Form.Item name="mobile" label="Mobile">
-                        <Input placeholder="e.g. +91 98xxx xxxxx" />
+                      <Form.Item
+                        name="mobile"
+                        label="Mobile"
+                        rules={[{ pattern: /^(\+91[\s-]?)?\d{10}$/, message: "Enter a valid 10-digit mobile number" }]}
+                      >
+                        <Input placeholder="e.g. +91 98xxx xxxxx" maxLength={14} />
                       </Form.Item>
                     </div>
                   )}

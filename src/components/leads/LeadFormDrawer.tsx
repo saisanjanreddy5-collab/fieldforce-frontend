@@ -44,7 +44,6 @@ interface FormValues {
   startDate?: dayjs.Dayjs;
   qualifiedPerson?: string;
   financialStatus?: string;
-  welcomeMessageSent?: boolean;
   status?: string;
   prospectStatus?: string;
   category?: string;
@@ -80,8 +79,8 @@ interface FormValues {
   storePincode?: string;
   storeCity?: string;
   storeState?: string;
-  carpetArea?: string;
-  frontage?: string;
+  carpetArea?: number;
+  frontage?: number;
   ownership?: string;
   investmentCapacity?: number;
   existingBusiness?: string;
@@ -136,6 +135,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
     salesTeamApi.listStates().then(setStates).catch(() => setStates([]));
   }, [open]);
 
+
   // Create-only (see the "Assign to Call Center Executive" field below) -
   // not worth fetching on every open of an edit drawer, where it's unused.
   const [callCenterUsers, setCallCenterUsers] = useState<TeamMember[]>([]);
@@ -158,7 +158,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         startDate: lead.startDate ? dayjs(lead.startDate) : undefined,
         qualifiedPerson: lead.qualifiedPerson ?? undefined,
         financialStatus: lead.financialStatus ?? undefined,
-        welcomeMessageSent: lead.welcomeMessageSent ?? undefined,
         status: lead.status,
         prospectStatus: lead.prospectStatus ?? undefined,
         category: lead.category ?? undefined,
@@ -216,7 +215,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       startDate: values.startDate?.toISOString(),
       qualifiedPerson: values.qualifiedPerson,
       financialStatus: values.financialStatus,
-      welcomeMessageSent: values.welcomeMessageSent,
       status: values.status,
       prospectStatus: values.prospectStatus,
       category: values.category,
@@ -371,9 +369,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     title="Lead status"
                     description="Where this enquiry currently stands"
                   >
-                    <Form.Item name="welcomeMessageSent" label="Welcome Message Sent">
-                      <Select options={YES_NO} allowClear />
-                    </Form.Item>
                     <Form.Item name="status" label="Status">
                       <Select
                         allowClear
@@ -421,11 +416,19 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
               children: (
                 <>
                   <FormSection icon={<ContactsOutlined />} iconColor="#0ca30c" title="Contact details" description="How we reach them">
-                    <Form.Item name="phone" label="Phone Number">
-                      <Input />
+                    <Form.Item
+                      name="phone"
+                      label="Phone Number"
+                      rules={[{ pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" }]}
+                    >
+                      <Input maxLength={10} />
                     </Form.Item>
-                    <Form.Item name="altPhone" label="Alternative Mobile Number">
-                      <Input />
+                    <Form.Item
+                      name="altPhone"
+                      label="Alternative Mobile Number"
+                      rules={[{ pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" }]}
+                    >
+                      <Input maxLength={10} />
                     </Form.Item>
                     <Form.Item name="email" label="Email address" rules={[{ type: "email", message: "Invalid email" }]}>
                       <Input />
@@ -587,10 +590,10 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
 
                   <FormSection icon={<HomeOutlined />} iconColor="#0ca30c" title="Premises" description="Site facts used for approval">
                     <Form.Item name="carpetArea" label="Carpet area">
-                      <Input placeholder="e.g. 620 sq ft" />
+                      <InputNumber style={{ width: "100%" }} min={0} suffix="sq ft" placeholder="e.g. 620" />
                     </Form.Item>
                     <Form.Item name="frontage" label="Frontage">
-                      <Input placeholder="e.g. 18 ft" />
+                      <InputNumber style={{ width: "100%" }} min={0} suffix="ft" placeholder="e.g. 18" />
                     </Form.Item>
                     <Form.Item name="ownership" label="Ownership">
                       <Select allowClear options={["Leased", "Owned"].map((value) => ({ value, label: value }))} />
@@ -615,8 +618,13 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item name="gstNumber" label="GST number">
                       <Input />
                     </Form.Item>
-                    <Form.Item name="panNumber" label="PAN">
-                      <Input />
+                    <Form.Item
+                      name="panNumber"
+                      label="PAN"
+                      rules={[{ pattern: /^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/, message: "Enter a valid PAN (e.g. ABCDE1234F)" }]}
+                      normalize={(value: string) => value?.toUpperCase()}
+                    >
+                      <Input placeholder="ABCDE1234F" maxLength={10} />
                     </Form.Item>
                     <Form.Item name="drugLicenceNumber" label="Drug licence number">
                       <Input />

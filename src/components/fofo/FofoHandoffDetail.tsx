@@ -409,8 +409,13 @@ function ApplicantStep({ leadId, lead, onSaved, onNext }: { leadId: string; lead
       <Form.Item name="email" label="Email">
         <Input />
       </Form.Item>
-      <Form.Item name="panNumber" label="PAN">
-        <Input />
+      <Form.Item
+        name="panNumber"
+        label="PAN"
+        rules={[{ pattern: /^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/, message: "Enter a valid PAN (e.g. ABCDE1234F)" }]}
+        normalize={(value: string) => value?.toUpperCase()}
+      >
+        <Input placeholder="ABCDE1234F" maxLength={10} />
       </Form.Item>
       <Form.Item name="aadhaarNumber" label="Aadhaar">
         <Input />
@@ -489,17 +494,21 @@ function StoreStep({
       </Form.Item>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
         <Form.Item name="carpetArea" label="Carpet area">
-          <Input placeholder="e.g. 620 sq ft" />
+          <InputNumber style={{ width: "100%" }} min={0} suffix="sq ft" placeholder="e.g. 620" />
         </Form.Item>
         <Form.Item name="frontage" label="Frontage">
-          <Input placeholder="e.g. 14 ft" />
+          <InputNumber style={{ width: "100%" }} min={0} suffix="ft" placeholder="e.g. 14" />
         </Form.Item>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
         <Form.Item name="ownership" label="Ownership">
           <Select allowClear options={OWNERSHIP_OPTIONS} placeholder="Select ownership" />
         </Form.Item>
-        <Form.Item name="nearestCocoStore" label="Nearest COCO store">
+        <Form.Item
+          name="nearestCocoStore"
+          label="Nearest COCO store"
+          rules={[{ pattern: /^((?!-\d).)*$/, message: "Can't contain a negative number" }]}
+        >
           <Input placeholder="e.g. Baner - 6.2 km" />
         </Form.Item>
       </div>
@@ -683,7 +692,11 @@ function CommercialsStep({
         </Form.Item>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-        <Form.Item name="marginSlab" label="Margin slab">
+        <Form.Item
+          name="marginSlab"
+          label="Margin slab"
+          rules={[{ pattern: /^((?!-\d).)*$/, message: "Can't contain a negative number" }]}
+        >
           <Input placeholder="e.g. Slab B — 22%" />
         </Form.Item>
         <Form.Item name="creditLimitRequested" label="Credit limit requested">
@@ -694,8 +707,8 @@ function CommercialsStep({
         <Form.Item name="creditCategory" label="Credit category">
           <Input placeholder="e.g. Awaiting finance" />
         </Form.Item>
-        <Form.Item name="paymentTerms" label="Payment terms">
-          <Input placeholder="e.g. Net 21 days" />
+        <Form.Item name="paymentTerms" label="Payment days">
+          <InputNumber style={{ width: "100%" }} min={0} suffix="days" placeholder="e.g. 21" />
         </Form.Item>
       </div>
       <StepFooter onBack={onBack} onNext={onNext} saving={saving} />

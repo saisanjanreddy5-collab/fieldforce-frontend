@@ -99,7 +99,6 @@ export default function LeadsPage() {
       category: quickFilter === "fofo" ? "FOFO" : advancedFilters.category,
       status: advancedFilters.status,
       source: advancedFilters.source,
-      consentPending: advancedFilters.consentPending || undefined,
       createdFrom: advancedFilters.createdFrom,
       createdTo: advancedFilters.createdTo,
     }),
@@ -215,11 +214,6 @@ export default function LeadsPage() {
       key: "source",
       label: `Source: ${advancedFilters.source}`,
       onRemove: () => setAdvancedFilters((v) => ({ ...v, source: undefined })),
-    },
-    advancedFilters.consentPending && {
-      key: "consentPending",
-      label: "Consent pending",
-      onRemove: () => setAdvancedFilters((v) => ({ ...v, consentPending: undefined })),
     },
     (advancedFilters.createdFrom || advancedFilters.createdTo) && {
       key: "createdRange",

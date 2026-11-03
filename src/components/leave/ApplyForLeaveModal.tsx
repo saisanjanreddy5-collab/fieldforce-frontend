@@ -195,13 +195,26 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
           <Text style={{ fontSize: 12.5, fontWeight: 500 }}>
             From <span style={{ color: appTokens.danger }}>*</span>
           </Text>
-          <DatePicker style={{ width: "100%", marginTop: 4 }} value={start} onChange={(v) => setRange([v, isHalfDay ? v : end])} />
+          <DatePicker
+            style={{ width: "100%", marginTop: 4 }}
+            value={start}
+            // Picking a new "From" that lands after the current "To" clears
+            // "To" rather than leaving a now-invalid range sitting there
+            // silently disabling the submit button with no visible reason.
+            onChange={(v) => setRange([v, isHalfDay ? v : end && v && end.isBefore(v, "day") ? null : end])}
+          />
         </div>
         <div>
           <Text style={{ fontSize: 12.5, fontWeight: 500 }}>
             To <span style={{ color: appTokens.danger }}>*</span>
           </Text>
-          <DatePicker style={{ width: "100%", marginTop: 4 }} value={end} disabled={isHalfDay} onChange={(v) => setRange([start, v])} />
+          <DatePicker
+            style={{ width: "100%", marginTop: 4 }}
+            value={end}
+            disabled={isHalfDay}
+            disabledDate={(d) => (start ? d.isBefore(start, "day") : false)}
+            onChange={(v) => setRange([start, v])}
+          />
         </div>
         <div>
           <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Working days</Text>

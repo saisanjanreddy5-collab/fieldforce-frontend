@@ -15,7 +15,7 @@ export function templateTokens(lead: Lead, activityDueDate: string | null): Reco
   return {
     firstName: firstName(lead),
     storeLine: lead.storeName
-      ? `Based on what you've shared, ${lead.storeName}${lead.carpetArea ? ` (${lead.carpetArea})` : ""} looks like a good fit for our franchise format.`
+      ? `Based on what you've shared, ${lead.storeName}${lead.carpetArea ? ` (${lead.carpetArea} sq ft)` : ""} looks like a good fit for our franchise format.`
       : "I'd love to understand your store plans in more detail.",
     storeAddress: lead.storeAddress ?? "your store location",
     visitTime: activityDueDate ? dayjs(activityDueDate).format("dddd, D MMMM [at] h:mm A") : "the time we discussed",

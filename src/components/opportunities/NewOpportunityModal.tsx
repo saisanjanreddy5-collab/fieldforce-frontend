@@ -84,8 +84,19 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
         <Form.Item name="value" label="Deal value">
           <InputNumber style={{ width: "100%" }} prefix="₹" min={0} />
         </Form.Item>
-        <Form.Item name="closeDate" label="Expected close date">
-          <Input type="date" />
+        <Form.Item
+          name="closeDate"
+          label="Expected close date"
+          rules={[
+            {
+              validator: (_, value: string | undefined) =>
+                !value || value >= new Date().toISOString().slice(0, 10)
+                  ? Promise.resolve()
+                  : Promise.reject(new Error("Expected close date can't be in the past")),
+            },
+          ]}
+        >
+          <Input type="date" min={new Date().toISOString().slice(0, 10)} />
         </Form.Item>
       </Form>
     </Modal>
