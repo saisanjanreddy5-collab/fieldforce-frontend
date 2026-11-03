@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, DatePicker, Drawer, Dropdown, Empty, Form, Input, Modal, Select, Table, Tabs, Tag, Typography } from "antd";
+import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Select, Table, Tabs, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as callCenterApi from "../api/call-center-api";
@@ -20,9 +20,9 @@ import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { DuplicateLeadTag } from "../components/leads/DuplicateLeadTag";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
+import { LeadFilters, type AdvancedFilters } from "../components/leads/LeadFilters";
 
 const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
 
 // Red/neutral/green, roughly worst-to-best outcome, so a glance at the
 // queue shows which leads need another push without reading every label.
@@ -549,13 +549,13 @@ function MyQueueTab() {
   const [importOpen, setImportOpen] = useState(false);
   // Client-side only, not sent to the server - the queue is already fully
   // loaded (listAllLeadsForStatus loops through every page up front), so
-  // re-fetching per keystroke would just be slower for no benefit. Same
-  // fields/semantics as the main Leads page's own search + "Date created"
-  // filter (client-confirmed to mean created_at, not last-call date), just
-  // applied locally since this list is already in memory.
+  // re-fetching per keystroke would just be slower for no benefit. Reuses
+  // the exact same AdvancedFilters shape (and the same LeadFilters popover)
+  // the main Leads page already has - client-confirmed: Search + Date was a
+  // good start, but Category/Stage/Source needed to be here too, not just
+  // there.
   const [search, setSearch] = useState("");
-  const [createdFrom, setCreatedFrom] = useState<string | undefined>(undefined);
-  const [createdTo, setCreatedTo] = useState<string | undefined>(undefined);
+  const [filters, setFilters] = useState<AdvancedFilters>({});
 
   const load = () => {
     setLoading(true);
@@ -613,18 +613,21 @@ function MyQueueTab() {
       const haystack = [lead.fullName, lead.phone, lead.email, lead.pincode].map((v) => (v ?? "").toLowerCase());
       if (!haystack.some((v) => v.includes(q))) return false;
     }
-    if (createdFrom || createdTo) {
+    if (filters.category && lead.category !== filters.category) return false;
+    if (filters.status && lead.status !== filters.status) return false;
+    if (filters.source && lead.source !== filters.source) return false;
+    if (filters.createdFrom || filters.createdTo) {
       const created = dayjs(lead.createdAt);
-      if (createdFrom && created.isBefore(dayjs(createdFrom).startOf("day"))) return false;
-      if (createdTo && created.isAfter(dayjs(createdTo).endOf("day"))) return false;
+      if (filters.createdFrom && created.isBefore(dayjs(filters.createdFrom).startOf("day"))) return false;
+      if (filters.createdTo && created.isAfter(dayjs(filters.createdTo).endOf("day"))) return false;
     }
     return true;
   };
 
-  const filteredQualified = useMemo(() => qualifiedLeads.filter(matchesQueueFilters), [qualifiedLeads, search, createdFrom, createdTo]);
-  const filteredCalling = useMemo(() => callingLeads.filter(matchesQueueFilters), [callingLeads, search, createdFrom, createdTo]);
-  const filteredHandedOff = useMemo(() => handedOffLeads.filter(matchesQueueFilters), [handedOffLeads, search, createdFrom, createdTo]);
-  const hasActiveFilters = search.trim() !== "" || createdFrom !== undefined || createdTo !== undefined;
+  const filteredQualified = useMemo(() => qualifiedLeads.filter(matchesQueueFilters), [qualifiedLeads, search, filters]);
+  const filteredCalling = useMemo(() => callingLeads.filter(matchesQueueFilters), [callingLeads, search, filters]);
+  const filteredHandedOff = useMemo(() => handedOffLeads.filter(matchesQueueFilters), [handedOffLeads, search, filters]);
+  const hasActiveFilters = search.trim() !== "" || Object.values(filters).some((v) => v !== undefined && v !== false);
   const filteredTotal = filteredQualified.length + filteredCalling.length + filteredHandedOff.length;
 
   const handleCall = async (leadId: string) => {
@@ -725,14 +728,7 @@ function MyQueueTab() {
             allowClear
             style={{ width: 260 }}
           />
-          <RangePicker
-            placeholder={["Created from", "Created to"]}
-            value={[createdFrom ? dayjs(createdFrom) : null, createdTo ? dayjs(createdTo) : null]}
-            onChange={(dates) => {
-              setCreatedFrom(dates?.[0] ? dates[0].format("YYYY-MM-DD") : undefined);
-              setCreatedTo(dates?.[1] ? dates[1].format("YYYY-MM-DD") : undefined);
-            }}
-          />
+          <LeadFilters value={filters} onChange={setFilters} />
         </div>
         {(canAddToQueue || canBulkImport) && (
           <div style={{ display: "flex", gap: 8 }}>
@@ -760,14 +756,13 @@ function MyQueueTab() {
       {!loading && leads.length > 0 && hasActiveFilters && filteredTotal === 0 && (
         <div style={{ padding: "40px 0", textAlign: "center" }}>
           <Text type="secondary" style={{ fontSize: 13.5, display: "block", marginBottom: 10 }}>
-            No leads match your search or date filter.
+            No leads match your search or filters.
           </Text>
           <Button
             size="small"
             onClick={() => {
               setSearch("");
-              setCreatedFrom(undefined);
-              setCreatedTo(undefined);
+              setFilters({});
             }}
           >
             Clear filters

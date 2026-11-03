@@ -7,7 +7,6 @@ export interface Lead {
   startDate: string | null;
   qualifiedPerson: string | null;
   financialStatus: string | null;
-  welcomeMessageSent: boolean | null;
   status: string;
   prospectStatus: string | null;
   category: string | null;
@@ -66,8 +65,8 @@ export interface Lead {
   storePincode: string | null;
   storeCity: string | null;
   storeState: string | null;
-  carpetArea: string | null;
-  frontage: string | null;
+  carpetArea: number | null;
+  frontage: number | null;
   ownership: string | null;
   investmentCapacity: number | null;
   existingBusiness: string | null;
@@ -85,7 +84,7 @@ export interface Lead {
   marginSlab: string | null;
   creditLimitRequested: number | null;
   creditCategory: string | null;
-  paymentTerms: string | null;
+  paymentTerms: number | null;
   targetGoLive: string | null;
   pushStatus: string;
   onboardingAppId: string | null;
@@ -104,8 +103,6 @@ export interface Lead {
   hasOverdueActivity?: boolean;
   /** Due date of the earliest not-yet-completed activity on this lead. Only present on list responses. */
   nextActivityDueAt?: string | null;
-  /** Only present on list responses. */
-  consentPending?: boolean;
 }
 
 export interface LeadConsent {
@@ -127,7 +124,6 @@ export interface LeadListFilters {
   source?: string;
   overdueOnly?: boolean;
   highScoreOnly?: boolean;
-  consentPending?: boolean;
   unassignedOnly?: boolean;
   // When the lead actually came into the CRM (created_at) - plain calendar
   // dates (YYYY-MM-DD), inclusive on both ends.
@@ -149,7 +145,6 @@ export interface CreateLeadPayload {
   startDate?: string;
   qualifiedPerson?: string;
   financialStatus?: string;
-  welcomeMessageSent?: boolean;
   status?: string;
   prospectStatus?: string;
   category?: string;
@@ -183,8 +178,8 @@ export interface CreateLeadPayload {
   storePincode?: string;
   storeCity?: string;
   storeState?: string;
-  carpetArea?: string;
-  frontage?: string;
+  carpetArea?: number;
+  frontage?: number;
   ownership?: string;
   investmentCapacity?: number;
   existingBusiness?: string;
@@ -202,7 +197,7 @@ export interface CreateLeadPayload {
   marginSlab?: string;
   creditLimitRequested?: number;
   creditCategory?: string;
-  paymentTerms?: string;
+  paymentTerms?: number;
   targetGoLive?: string;
   consent?: {
     captured?: boolean;
