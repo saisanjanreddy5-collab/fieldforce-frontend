@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Select, Table, Tabs, Tag, Typography } from "antd";
+import { App, Avatar, Button, DatePicker, Drawer, Dropdown, Empty, Form, Input, Modal, Select, Table, Tabs, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import * as callCenterApi from "../api/call-center-api";
 import * as smartfloApi from "../api/smartflo-api";
 import * as customerExtrasApi from "../api/customer-extras-api";
@@ -21,6 +22,7 @@ import { DuplicateLeadTag } from "../components/leads/DuplicateLeadTag";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 // Red/neutral/green, roughly worst-to-best outcome, so a glance at the
 // queue shows which leads need another push without reading every label.
@@ -545,6 +547,15 @@ function MyQueueTab() {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  // Client-side only, not sent to the server - the queue is already fully
+  // loaded (listAllLeadsForStatus loops through every page up front), so
+  // re-fetching per keystroke would just be slower for no benefit. Same
+  // fields/semantics as the main Leads page's own search + "Date created"
+  // filter (client-confirmed to mean created_at, not last-call date), just
+  // applied locally since this list is already in memory.
+  const [search, setSearch] = useState("");
+  const [createdFrom, setCreatedFrom] = useState<string | undefined>(undefined);
+  const [createdTo, setCreatedTo] = useState<string | undefined>(undefined);
 
   const load = () => {
     setLoading(true);
@@ -591,8 +602,30 @@ function MyQueueTab() {
   // (sent to field, no longer theirs), it drops out of `leads` on the next
   // reload and this naturally resolves to undefined, which closes the
   // detail drawer instead of leaving it showing a stale, no-longer-owned
-  // lead.
+  // lead. Looked up against the unfiltered list, not the filtered one below -
+  // narrowing the search/date filter while a lead's detail drawer is already
+  // open must never close it out from under the agent.
   const selectedLead = leads.find((l) => l.id === selectedLeadId);
+
+  const matchesQueueFilters = (lead: Lead) => {
+    const q = search.trim().toLowerCase();
+    if (q) {
+      const haystack = [lead.fullName, lead.phone, lead.email, lead.pincode].map((v) => (v ?? "").toLowerCase());
+      if (!haystack.some((v) => v.includes(q))) return false;
+    }
+    if (createdFrom || createdTo) {
+      const created = dayjs(lead.createdAt);
+      if (createdFrom && created.isBefore(dayjs(createdFrom).startOf("day"))) return false;
+      if (createdTo && created.isAfter(dayjs(createdTo).endOf("day"))) return false;
+    }
+    return true;
+  };
+
+  const filteredQualified = useMemo(() => qualifiedLeads.filter(matchesQueueFilters), [qualifiedLeads, search, createdFrom, createdTo]);
+  const filteredCalling = useMemo(() => callingLeads.filter(matchesQueueFilters), [callingLeads, search, createdFrom, createdTo]);
+  const filteredHandedOff = useMemo(() => handedOffLeads.filter(matchesQueueFilters), [handedOffLeads, search, createdFrom, createdTo]);
+  const hasActiveFilters = search.trim() !== "" || createdFrom !== undefined || createdTo !== undefined;
+  const filteredTotal = filteredQualified.length + filteredCalling.length + filteredHandedOff.length;
 
   const handleCall = async (leadId: string) => {
     setCallingLeadId(leadId);
@@ -682,16 +715,36 @@ function MyQueueTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {(canAddToQueue || canBulkImport) && (
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          {canBulkImport && <Button onClick={() => setImportOpen(true)}>Import</Button>}
-          {canAddToQueue && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddLeadOpen(true)}>
-              Add lead
-            </Button>
-          )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Input
+            placeholder="Search name, phone, email, or pincode"
+            prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            allowClear
+            style={{ width: 260 }}
+          />
+          <RangePicker
+            placeholder={["Created from", "Created to"]}
+            value={[createdFrom ? dayjs(createdFrom) : null, createdTo ? dayjs(createdTo) : null]}
+            onChange={(dates) => {
+              setCreatedFrom(dates?.[0] ? dates[0].format("YYYY-MM-DD") : undefined);
+              setCreatedTo(dates?.[1] ? dates[1].format("YYYY-MM-DD") : undefined);
+            }}
+          />
         </div>
-      )}
+        {(canAddToQueue || canBulkImport) && (
+          <div style={{ display: "flex", gap: 8 }}>
+            {canBulkImport && <Button onClick={() => setImportOpen(true)}>Import</Button>}
+            {canAddToQueue && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddLeadOpen(true)}>
+                Add lead
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {loading && leads.length === 0 && <Text type="secondary">Loading your queue...</Text>}
 
@@ -704,31 +757,49 @@ function MyQueueTab() {
         </div>
       )}
 
-      {qualifiedLeads.length > 0 && (
-        <div>
-          <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Qualified - ready for Field Sales ({qualifiedLeads.length})
+      {!loading && leads.length > 0 && hasActiveFilters && filteredTotal === 0 && (
+        <div style={{ padding: "40px 0", textAlign: "center" }}>
+          <Text type="secondary" style={{ fontSize: 13.5, display: "block", marginBottom: 10 }}>
+            No leads match your search or date filter.
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{qualifiedLeads.map((l) => renderRow(l))}</div>
+          <Button
+            size="small"
+            onClick={() => {
+              setSearch("");
+              setCreatedFrom(undefined);
+              setCreatedTo(undefined);
+            }}
+          >
+            Clear filters
+          </Button>
         </div>
       )}
-      {callingLeads.length > 0 && (
+
+      {filteredQualified.length > 0 && (
         <div>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Awaiting {myTierLabel} ({callingLeads.length})
+            Qualified - ready for Field Sales ({filteredQualified.length})
+          </Text>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{filteredQualified.map((l) => renderRow(l))}</div>
+        </div>
+      )}
+      {filteredCalling.length > 0 && (
+        <div>
+          <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
+            Awaiting {myTierLabel} ({filteredCalling.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-            {callingLeads.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
+            {filteredCalling.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
           </div>
         </div>
       )}
-      {handedOffLeads.length > 0 && (
+      {filteredHandedOff.length > 0 && (
         <div>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Already handed off ({handedOffLeads.length})
+            Already handed off ({filteredHandedOff.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
-            {handedOffLeads.map((l) => renderRow(l, { showCallButton: false }))}
+            {filteredHandedOff.map((l) => renderRow(l, { showCallButton: false }))}
           </div>
         </div>
       )}
