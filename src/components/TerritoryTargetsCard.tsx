@@ -139,7 +139,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
         style={{ marginTop: 12 }}
         rowKey={(row) => row.user.id}
         dataSource={rows}
-        pagination={false}
+        pagination={{ pageSize: 20, hideOnSinglePage: true }}
         columns={[
           { title: "Name", key: "name", render: (_, row) => row.user.name },
           { title: "Territory", key: "territory", render: (_, row) => row.user.territory ?? "-" },

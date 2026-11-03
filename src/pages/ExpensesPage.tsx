@@ -246,7 +246,7 @@ export default function ExpensesPage() {
         rowKey="id"
         loading={loading}
         dataSource={filteredClaims}
-        pagination={false}
+        pagination={{ pageSize: 20, hideOnSinglePage: true }}
         onRow={() => ({ className: "table-row-hover" })}
         locale={{ emptyText: "No expense claims yet" }}
         columns={[

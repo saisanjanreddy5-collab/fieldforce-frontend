@@ -45,7 +45,6 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState<QuickFilterKey>("all");
@@ -112,27 +111,27 @@ export default function LeadsPage() {
     [filters, user?.id]
   );
 
-  const load = (targetPage: number, append: boolean) => {
-    if (append) setLoadingMore(true);
-    else setLoading(true);
+  // Real numbered pages, not infinite scroll - each call replaces `leads`
+  // with exactly that one page's rows (never appends), so the rail only
+  // ever needs to render `PAGE_SIZE` rows at a time regardless of how many
+  // pages exist in total.
+  const load = (targetPage: number) => {
+    setLoading(true);
     leadApi
       .listLeads({ ...resolvedFilters, page: targetPage, limit: PAGE_SIZE })
       .then((result) => {
-        setLeads((prev) => (append ? [...prev, ...result.leads] : result.leads));
+        setLeads(result.leads);
         setTotal(result.total);
         setPage(targetPage);
       })
       .catch(() => message.error("Failed to load leads"))
-      .finally(() => {
-        setLoading(false);
-        setLoadingMore(false);
-      });
+      .finally(() => setLoading(false));
   };
 
   // Re-fetch from page 1 whenever search/filters change; debounced so
   // typing in search doesn't fire a request per keystroke.
   useEffect(() => {
-    const handle = setTimeout(() => load(1, false), 300);
+    const handle = setTimeout(() => load(1), 300);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(resolvedFilters)]);
@@ -148,11 +147,7 @@ export default function LeadsPage() {
       .catch(() => undefined);
   }, [total]);
 
-  const hasMore = leads.length < total;
-  const loadMore = () => {
-    if (loadingMore || loading) return;
-    load(page + 1, true);
-  };
+  const handlePageChange = (targetPage: number) => load(targetPage);
 
   // Auto-select the first lead once loaded, so the detail panel isn't
   // empty - skipped on mobile, where list/detail are separate full-width
@@ -187,7 +182,7 @@ export default function LeadsPage() {
   }, [leads, selectedIndex]);
 
   const handleSaved = (lead: Lead, keepOpen: boolean) => {
-    load(1, false);
+    load(1);
     if (keepOpen) return;
     setDrawerOpen(false);
     setEditingLead(null);
@@ -359,9 +354,9 @@ export default function LeadsPage() {
                 leads={leads}
                 total={total}
                 loading={loading}
-                loadingMore={loadingMore}
-                hasMore={hasMore}
-                onLoadMore={loadMore}
+                page={page}
+                pageSize={PAGE_SIZE}
+                onPageChange={handlePageChange}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 showOwner={showOwner}
@@ -396,7 +391,7 @@ export default function LeadsPage() {
                     setDrawerOpen(true);
                   }}
                   initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
-                  onLeadUpdated={() => load(1, false)}
+                  onLeadUpdated={() => load(1)}
                 />
               </div>
             </div>
@@ -552,9 +547,9 @@ export default function LeadsPage() {
                 leads={leads}
                 total={total}
                 loading={loading}
-                loadingMore={loadingMore}
-                hasMore={hasMore}
-                onLoadMore={loadMore}
+                page={page}
+                pageSize={PAGE_SIZE}
+                onPageChange={handlePageChange}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 showOwner={showOwner}
@@ -592,7 +587,7 @@ export default function LeadsPage() {
                     setDrawerOpen(true);
                   }}
                   initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
-                  onLeadUpdated={() => load(1, false)}
+                  onLeadUpdated={() => load(1)}
                 />
               </div>
             ) : (
@@ -611,7 +606,7 @@ export default function LeadsPage() {
         }}
         onSaved={handleSaved}
       />
-      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load(1, false)} />
+      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load(1)} />
     </div>
   );
 }
