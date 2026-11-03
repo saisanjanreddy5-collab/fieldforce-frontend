@@ -12,6 +12,29 @@ export async function listFofoOnboardings(page = 1, limit = 200): Promise<ListFo
   return response.data.data;
 }
 
+// A single listFofoOnboardings() call silently capped at its own default
+// limit (200) - any handoff past that was invisible, not just slow, once
+// FOFO onboarding volume grew past it. Same drain-every-real-page pattern as
+// quote-api.ts's listAllQuotes.
+export async function listAllFofoOnboardings(
+  onProgress?: (loadedSoFar: FofoOnboardingListItem[], total: number) => void
+): Promise<FofoOnboardingListItem[]> {
+  const PAGE_SIZE = 200;
+  const first = await listFofoOnboardings(1, PAGE_SIZE);
+  let all = first.leads;
+  onProgress?.(all, first.total);
+
+  let page = 2;
+  while (all.length < first.total) {
+    const next = await listFofoOnboardings(page, PAGE_SIZE);
+    if (next.leads.length === 0) break;
+    all = [...all, ...next.leads];
+    onProgress?.(all, first.total);
+    page += 1;
+  }
+  return all;
+}
+
 export async function getHandoff(leadId: string): Promise<FofoHandoff> {
   const response = await apiClient.get<ApiSuccess<FofoHandoff>>(`/fofo-onboarding/${leadId}`);
   return response.data.data;

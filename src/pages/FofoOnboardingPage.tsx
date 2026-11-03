@@ -35,14 +35,19 @@ function FofoOnboardingList() {
   const navigate = useNavigate();
   const [items, setItems] = useState<FofoOnboardingListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
 
   useEffect(() => {
     setLoading(true);
+    setStreamProgress(null);
     fofoApi
-      .listFofoOnboardings()
-      .then((res) => setItems(res.leads))
+      .listAllFofoOnboardings((loadedSoFar, total) => {
+        setItems(loadedSoFar);
+        setLoading(false);
+        setStreamProgress(loadedSoFar.length < total ? { loaded: loadedSoFar.length, total } : null);
+      })
       .catch(() => message.error("Failed to load FOFO onboarding handoffs"))
       .finally(() => setLoading(false));
   }, []);
@@ -138,13 +143,44 @@ function FofoOnboardingList() {
         </Space>
       </div>
 
+      {streamProgress && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: "8px 14px",
+            borderRadius: appTokens.radius,
+            background: appTokens.primarySoft,
+            border: `1px solid ${appTokens.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              border: `2px solid ${appTokens.primary}`,
+              borderTopColor: "transparent",
+              flexShrink: 0,
+              animation: "fofo-stream-spin 0.7s linear infinite",
+            }}
+          />
+          <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>
+            Loading the rest of the onboarding handoffs - {streamProgress.loaded.toLocaleString()} of {streamProgress.total.toLocaleString()}
+          </Text>
+          <style>{"@keyframes fofo-stream-spin { to { transform: rotate(360deg); } }"}</style>
+        </div>
+      )}
+
       <Table<FofoOnboardingListItem>
         className="thin-scroll-table"
         size="small"
         rowKey="id"
         loading={loading}
         dataSource={filteredItems}
-        pagination={false}
+        pagination={{ pageSize: 20, hideOnSinglePage: true }}
         onRow={(record) => ({
           onClick: () => navigate(`/fofo-onboarding/${record.id}`),
           className: "table-row-hover",
