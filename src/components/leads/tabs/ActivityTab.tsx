@@ -6,6 +6,7 @@ import type { Activity, ActivityType } from "../../../types/activity";
 import { formatDateTime } from "../../../utils/lead-format";
 import { TYPE_LABEL, TypeBadge } from "../../../utils/activity-shared";
 import { useHasPermission } from "../../../hooks/use-permission";
+import { errorMessageFrom } from "../../../utils/api-error";
 
 const { Text, Title } = Typography;
 
@@ -49,8 +50,8 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
       setModalOpen(false);
       form.resetFields();
       onChanged();
-    } catch {
-      message.error("Failed to add action");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to add action"));
     } finally {
       setSubmitting(false);
     }

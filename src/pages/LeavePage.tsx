@@ -31,8 +31,12 @@ export default function LeavePage() {
   const hasPermission = useHasPermission();
   const canSeeTeam = hasPermission("leave_requests.approve");
   const canGrantCompOff = hasPermission("comp_off_credits.grant");
+  // Admin has no manager, so a leave request of their own would auto-approve
+  // with no real oversight - Admin's role here is oversight only, never a
+  // requester, so the apply/personal-balance UI is hidden for this role.
+  const isAdmin = user?.role === "admin";
 
-  const [activeTab, setActiveTab] = useState<TabKey>("mine");
+  const [activeTab, setActiveTab] = useState<TabKey>(isAdmin ? "team" : "mine");
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
@@ -95,26 +99,40 @@ export default function LeavePage() {
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Balances, requests and approval by the reporting manager</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplyOpen(true)}>
-          Apply for leave
-        </Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {canGrantCompOff && (
+            <Button size="small" onClick={() => setGrantCompOffOpen(true)}>
+              Grant comp-off
+            </Button>
+          )}
+          <Button size="small" onClick={() => setTypesDrawerOpen(true)}>
+            Leave types &amp; policy
+          </Button>
+          {!isAdmin && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplyOpen(true)}>
+              Apply for leave
+            </Button>
+          )}
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        <Button
-          size="small"
-          shape="round"
-          onClick={() => setActiveTab("mine")}
-          style={{
-            background: appTokens.surface,
-            borderWidth: activeTab === "mine" ? 1.5 : 1,
-            borderColor: activeTab === "mine" ? appTokens.primary : appTokens.border,
-            color: activeTab === "mine" ? appTokens.primary : appTokens.textSecondary,
-            fontWeight: activeTab === "mine" ? 600 : 500,
-          }}
-        >
-          My leave {myRequests.length}
-        </Button>
+        {!isAdmin && (
+          <Button
+            size="small"
+            shape="round"
+            onClick={() => setActiveTab("mine")}
+            style={{
+              background: appTokens.surface,
+              borderWidth: activeTab === "mine" ? 1.5 : 1,
+              borderColor: activeTab === "mine" ? appTokens.primary : appTokens.border,
+              color: activeTab === "mine" ? appTokens.primary : appTokens.textSecondary,
+              fontWeight: activeTab === "mine" ? 600 : 500,
+            }}
+          >
+            My leave {myRequests.length}
+          </Button>
+        )}
         {canSeeTeam && (
           <Button
             size="small"
@@ -133,35 +151,81 @@ export default function LeavePage() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
-        {balances.map((b) => (
-          <div
-            key={b.key}
-            style={{
-              flex: "1 1 180px",
-              minWidth: 180,
-              border: `1px solid ${appTokens.border}`,
-              borderRadius: appTokens.radius,
-              padding: "14px 16px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowSm,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>
-              {b.key === "comp_off" ? "Comp off leave" : b.label}
-            </Text>
-            <div style={{ fontSize: 26, fontWeight: 700, color: b.color, letterSpacing: -0.4, lineHeight: 1.25 }}>
-              {b.available}
-              <Text style={{ fontSize: 13, fontWeight: 500, color: appTokens.textTertiary }}>
-                {" "}
-                {b.key === "comp_off" ? "earned" : `of ${b.entitlement}`}
+      {!isAdmin && (
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+          {balances.map((b) => (
+            <div
+              key={b.key}
+              style={{
+                flex: "1 1 180px",
+                minWidth: 180,
+                border: `1px solid ${appTokens.border}`,
+                borderRadius: appTokens.radius,
+                padding: "14px 16px",
+                background: appTokens.surface,
+                boxShadow: appTokens.shadowSm,
+              }}
+            >
+              <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>
+                {b.key === "comp_off" ? "Comp off leave" : b.label}
               </Text>
+              <div style={{ fontSize: 26, fontWeight: 700, color: b.color, letterSpacing: -0.4, lineHeight: 1.25 }}>
+                {b.available}
+                <Text style={{ fontSize: 13, fontWeight: 500, color: appTokens.textTertiary }}>
+                  {" "}
+                  {b.key === "comp_off" ? "earned" : `of ${b.entitlement}`}
+                </Text>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {activeTab === "mine" ? (
+      {canSeeTeam && pendingApprovals.length > 0 && (
+        <div
+          style={{
+            border: `1px solid ${appTokens.border}`,
+            borderRadius: appTokens.radius,
+            background: appTokens.surface,
+            boxShadow: appTokens.shadowSm,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <Text strong style={{ fontSize: 14, display: "block", marginBottom: 8 }}>
+            Waiting on your decision
+          </Text>
+          <Table<LeaveRequest>
+            size="small"
+            rowKey="id"
+            dataSource={pendingApprovals}
+            pagination={false}
+            columns={[
+              { title: "Person", key: "person", render: (_, r) => r.userName },
+              { title: "Type", key: "type", render: (_, r) => kindLabel(r.kind, balances) },
+              { title: "Dates", key: "dates", render: (_, r) => formatDateRange(r.startDate, r.endDate) },
+              { title: "Days", key: "days", render: (_, r) => daysLabel(r.daysCount) },
+              { title: "Reason", dataIndex: "reason" },
+              {
+                title: "",
+                key: "actions",
+                render: (_, r) => (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Button size="small" type="primary" onClick={() => handleDecision(r.id, "approved")}>
+                      Approve
+                    </Button>
+                    <Button size="small" danger onClick={() => handleDecision(r.id, "rejected")}>
+                      Reject
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
+
+      {!isAdmin && activeTab === "mine" ? (
         <div
           style={{
             border: `1px solid ${appTokens.border}`,
@@ -171,24 +235,12 @@ export default function LeavePage() {
             padding: 16,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <div style={{ marginBottom: 12 }}>
+            <Text strong style={{ fontSize: 14 }}>
+              My requests
+            </Text>
             <div>
-              <Text strong style={{ fontSize: 14 }}>
-                My requests
-              </Text>
-              <div>
-                <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Approved leave blocks your calendar and reassigns your activities</Text>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {canGrantCompOff && (
-                <Button size="small" onClick={() => setGrantCompOffOpen(true)}>
-                  Grant comp-off
-                </Button>
-              )}
-              <Button size="small" onClick={() => setTypesDrawerOpen(true)}>
-                Leave types &amp; policy
-              </Button>
+              <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Approved leave blocks your calendar and reassigns your activities</Text>
             </div>
           </div>
 
@@ -253,41 +305,6 @@ export default function LeavePage() {
               },
             ]}
           />
-
-          {canSeeTeam && pendingApprovals.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <Text strong style={{ fontSize: 14, display: "block", marginBottom: 8 }}>
-                Waiting on your decision
-              </Text>
-              <Table<LeaveRequest>
-                size="small"
-                rowKey="id"
-                dataSource={pendingApprovals}
-                pagination={false}
-                columns={[
-                  { title: "Person", key: "person", render: (_, r) => r.userName },
-                  { title: "Type", key: "type", render: (_, r) => kindLabel(r.kind, balances) },
-                  { title: "Dates", key: "dates", render: (_, r) => formatDateRange(r.startDate, r.endDate) },
-                  { title: "Days", key: "days", render: (_, r) => daysLabel(r.daysCount) },
-                  { title: "Reason", dataIndex: "reason" },
-                  {
-                    title: "",
-                    key: "actions",
-                    render: (_, r) => (
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <Button size="small" type="primary" onClick={() => handleDecision(r.id, "approved")}>
-                          Approve
-                        </Button>
-                        <Button size="small" danger onClick={() => handleDecision(r.id, "rejected")}>
-                          Reject
-                        </Button>
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-          )}
         </div>
       ) : (
         <TeamLeaveTimeline requests={teamRequests} />
