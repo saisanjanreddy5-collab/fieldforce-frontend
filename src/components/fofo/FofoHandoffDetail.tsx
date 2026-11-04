@@ -153,7 +153,12 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
             CRM collects and validates, then pushes the store to the onboarding app. Status flows back here.
           </Text>
         </div>
-        {canManage && (
+        {/* Hidden once pushed, not just disabled - a one-way action that's
+            already happened has nothing left to click. Client-confirmed:
+            the same person owning several franchises (several separate
+            leads) is completely fine; it's specifically re-pushing this one
+            lead a second time that's never valid. */}
+        {canManage && lead.pushStatus !== "pushed" && (
           <Button type="primary" loading={pushing} onClick={handlePush}>
             Push to onboarding app
           </Button>
