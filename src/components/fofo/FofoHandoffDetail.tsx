@@ -27,6 +27,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useHasPermission } from "../../hooks/use-permission";
 import { formatDate, initials } from "../../utils/lead-format";
 import { appTokens, avatarGradient } from "../../utils/design-system";
+import { DocumentHistoryButton } from "./DocumentHistoryButton";
 
 const { Text, Title } = Typography;
 
@@ -609,6 +610,7 @@ function DocumentsStep({
             {doc.hasFile && (
               <Button size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(doc)} />
             )}
+            <DocumentHistoryButton leadId={leadId} docType={doc.docType} docLabel={doc.label} onRestored={onChanged} />
             {canManage && doc.hasFile && doc.status !== "verified" && (
               <Button size="small" onClick={() => handleStatus(doc, "verified")}>
                 Verify

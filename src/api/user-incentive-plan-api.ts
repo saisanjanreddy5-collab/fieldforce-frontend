@@ -2,10 +2,10 @@ import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { CreateUserIncentivePlanPayload, UserIncentivePlan } from "../types/user-incentive-plan";
 
-export async function listUserIncentivePlans(userId?: string): Promise<UserIncentivePlan[]> {
+export async function listUserIncentivePlans(userId?: string, archived?: boolean): Promise<UserIncentivePlan[]> {
   const response = await apiClient.get<ApiSuccess<{ userIncentivePlans: UserIncentivePlan[]; total: number }>>(
     "/user-incentive-plans",
-    { params: { limit: 200, ...(userId ? { userId } : {}) } }
+    { params: { limit: 200, ...(userId ? { userId } : {}), ...(archived ? { archived: true } : {}) } }
   );
   return response.data.data.userIncentivePlans;
 }
@@ -17,4 +17,8 @@ export async function createUserIncentivePlan(payload: CreateUserIncentivePlanPa
 
 export async function deleteUserIncentivePlan(id: string): Promise<void> {
   await apiClient.delete<ApiSuccess<null>>(`/user-incentive-plans/${id}`);
+}
+
+export async function restoreUserIncentivePlan(id: string): Promise<void> {
+  await apiClient.patch<ApiSuccess<null>>(`/user-incentive-plans/${id}/restore`);
 }

@@ -35,6 +35,8 @@ export interface ListOpportunitiesFilters {
   territory?: string;
   salesTeamId?: string;
   search?: string;
+  // Shows archived opportunities instead of active ones - never both mixed.
+  archived?: boolean;
 }
 
 export interface CreateOpportunityPayload {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { App, Button, Drawer, Empty, Form, Input, InputNumber, Select, Skeleton, Space, Spin, Tag, Typography } from "antd";
-import { FileDoneOutlined, SwapOutlined } from "@ant-design/icons";
+import { App, Button, Drawer, Empty, Form, Input, InputNumber, Popconfirm, Select, Skeleton, Space, Spin, Tag, Typography } from "antd";
+import { FileDoneOutlined, InboxOutlined, SwapOutlined } from "@ant-design/icons";
 import * as opportunityApi from "../../api/opportunity-api";
 import * as quoteApi from "../../api/quote-api";
 import type { Opportunity } from "../../types/opportunity";
@@ -22,6 +22,7 @@ interface EditOpportunityDrawerProps {
   opportunity: Opportunity | null;
   onClose: () => void;
   onUpdated: (opportunity: Opportunity) => void;
+  onArchived: () => void;
 }
 
 interface FormValues {
@@ -33,10 +34,11 @@ interface FormValues {
   notes?: string;
 }
 
-export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditOpportunityDrawerProps) {
+export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchived }: EditOpportunityDrawerProps) {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
@@ -80,6 +82,20 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity, form]);
 
+  const handleArchive = async () => {
+    if (!opportunity) return;
+    setArchiving(true);
+    try {
+      await opportunityApi.archiveOpportunity(opportunity.id);
+      message.success("Opportunity archived - find it again under \"Archived\" on this page");
+      onArchived();
+    } catch {
+      message.error("Failed to archive this opportunity");
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   const handleSubmit = async (values: FormValues) => {
     if (!opportunity) return;
     setSaving(true);
@@ -116,6 +132,18 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated }: EditO
       onClose={onClose}
       extra={
         <Space>
+          {hasPermission("opportunities.delete") && (
+            <Popconfirm
+              title="Archive this opportunity?"
+              description="It will be hidden from the board but never deleted - you can restore it anytime."
+              onConfirm={handleArchive}
+              okText="Archive"
+            >
+              <Button danger icon={<InboxOutlined />} loading={archiving}>
+                Archive
+              </Button>
+            </Popconfirm>
+          )}
           <Button onClick={onClose}>Cancel</Button>
           {hasPermission("opportunities.update") && (
             <Button type="primary" loading={saving} onClick={() => form.submit()}>

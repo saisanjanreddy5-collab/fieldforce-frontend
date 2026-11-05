@@ -68,3 +68,11 @@ export async function getOpportunityHistory(id: string): Promise<AuditEvent[]> {
   const response = await apiClient.get<ApiSuccess<AuditEvent[]>>(`/opportunities/${id}/history`);
   return response.data.data;
 }
+
+export async function archiveOpportunity(id: string): Promise<void> {
+  await apiClient.delete(`/opportunities/${id}`);
+}
+
+export async function restoreOpportunity(id: string): Promise<void> {
+  await apiClient.patch(`/opportunities/${id}/restore`);
+}

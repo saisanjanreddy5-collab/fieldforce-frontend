@@ -31,6 +31,18 @@ export interface LeadDocument {
   hasFile: boolean;
 }
 
+export interface DocumentArchiveEntry {
+  id: string;
+  leadId: string;
+  docType: string;
+  label: string;
+  originalFilename: string | null;
+  uploadedBy: string | null;
+  uploadedAt: string | null;
+  archivedReason: "deleted" | "replaced";
+  archivedAt: string;
+}
+
 export interface FofoHandoff {
   lead: Lead;
   approvalSteps: ApprovalStep[];

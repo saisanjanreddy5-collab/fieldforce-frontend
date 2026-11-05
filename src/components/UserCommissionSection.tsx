@@ -49,28 +49,39 @@ export function UserCommissionSection({ userId }: UserCommissionSectionProps) {
   const [commissions, setCommissions] = useState<UserCommission[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
   const load = () => {
     setLoading(true);
     userCommissionApi
-      .listUserCommissions(userId)
+      .listUserCommissions(userId, showArchived)
       .then(setCommissions)
       .catch(() => message.error("Failed to load commission arrangements"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [userId]);
+  useEffect(load, [userId, showArchived]);
 
   const canManage = hasPermission("user_commissions.create");
 
   const handleDelete = async (id: string) => {
     try {
       await userCommissionApi.deleteUserCommission(id);
-      message.success("Commission arrangement removed");
+      message.success("Commission arrangement archived");
       load();
     } catch {
-      message.error("Failed to remove commission arrangement");
+      message.error("Failed to archive commission arrangement");
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await userCommissionApi.restoreUserCommission(id);
+      message.success("Commission arrangement restored");
+      load();
+    } catch {
+      message.error("Failed to restore commission arrangement");
     }
   };
 
@@ -126,38 +137,48 @@ export function UserCommissionSection({ userId }: UserCommissionSectionProps) {
         </Form>
       )}
 
-      {commissions.length > 0 && (
-        <>
-          <Text strong style={{ display: "block", marginBottom: 4 }}>
-            Arrangements
-          </Text>
-          <Table<UserCommission>
-            size="small"
-            rowKey="id"
-            loading={loading}
-            dataSource={commissions}
-            pagination={false}
-            columns={[
-              { title: "Basis", key: "basis", render: (_, c) => BASIS_LABELS[c.basis] },
-              { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
-              { title: "Applies to", dataIndex: "appliesTo", render: (v: string | null) => v ?? "-" },
-              { title: "Payout cycle", key: "payoutCycle", render: (_, c) => PAYOUT_CYCLE_LABELS[c.payoutCycle] },
-              {
-                title: "",
-                key: "actions",
-                render: (_, c) =>
-                  canManage && (
-                    <Popconfirm title="Archive this commission arrangement?" onConfirm={() => handleDelete(c.id)}>
-                      <Button type="link" size="small">
-                        Archive
-                      </Button>
-                    </Popconfirm>
-                  ),
-              },
-            ]}
-          />
-        </>
-      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <Text strong>{showArchived ? "Archived arrangements" : "Arrangements"}</Text>
+        {canManage && (
+          <Button size="small" onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? "Show active" : "Show archived"}
+          </Button>
+        )}
+      </div>
+
+      <Table<UserCommission>
+        size="small"
+        rowKey="id"
+        loading={loading}
+        dataSource={commissions}
+        pagination={false}
+        locale={{ emptyText: showArchived ? "No archived arrangements" : "No arrangements yet" }}
+        columns={[
+          { title: "Basis", key: "basis", render: (_, c) => BASIS_LABELS[c.basis] },
+          { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
+          { title: "Applies to", dataIndex: "appliesTo", render: (v: string | null) => v ?? "-" },
+          { title: "Payout cycle", key: "payoutCycle", render: (_, c) => PAYOUT_CYCLE_LABELS[c.payoutCycle] },
+          {
+            title: "",
+            key: "actions",
+            render: (_, c) =>
+              canManage &&
+              (showArchived ? (
+                <Popconfirm title="Restore this commission arrangement?" onConfirm={() => handleRestore(c.id)}>
+                  <Button type="link" size="small">
+                    Restore
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Popconfirm title="Archive this commission arrangement?" onConfirm={() => handleDelete(c.id)}>
+                  <Button type="link" size="small">
+                    Archive
+                  </Button>
+                </Popconfirm>
+              )),
+          },
+        ]}
+      />
     </div>
   );
 }

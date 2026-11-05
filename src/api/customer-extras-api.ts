@@ -13,8 +13,10 @@ import type {
   SalesOrderPayload,
 } from "../types/customer-extras";
 
-export async function listContacts(customerId: string): Promise<CustomerContact[]> {
-  const response = await apiClient.get<ApiSuccess<CustomerContact[]>>(`/customers/${customerId}/contacts`);
+export async function listContacts(customerId: string, archived?: boolean): Promise<CustomerContact[]> {
+  const response = await apiClient.get<ApiSuccess<CustomerContact[]>>(`/customers/${customerId}/contacts`, {
+    params: archived ? { archived: true } : undefined,
+  });
   return response.data.data;
 }
 export async function createContact(customerId: string, payload: ContactPayload): Promise<CustomerContact> {
@@ -28,9 +30,14 @@ export async function updateContact(id: string, payload: Partial<ContactPayload>
 export async function deleteContact(id: string): Promise<void> {
   await apiClient.delete(`/customer-contacts/${id}`);
 }
+export async function restoreContact(id: string): Promise<void> {
+  await apiClient.patch(`/customer-contacts/${id}/restore`);
+}
 
-export async function listAddresses(customerId: string): Promise<CustomerAddress[]> {
-  const response = await apiClient.get<ApiSuccess<CustomerAddress[]>>(`/customers/${customerId}/addresses`);
+export async function listAddresses(customerId: string, archived?: boolean): Promise<CustomerAddress[]> {
+  const response = await apiClient.get<ApiSuccess<CustomerAddress[]>>(`/customers/${customerId}/addresses`, {
+    params: archived ? { archived: true } : undefined,
+  });
   return response.data.data;
 }
 export async function createAddress(customerId: string, payload: AddressPayload): Promise<CustomerAddress> {
@@ -43,6 +50,9 @@ export async function updateAddress(id: string, payload: Partial<AddressPayload>
 }
 export async function deleteAddress(id: string): Promise<void> {
   await apiClient.delete(`/customer-addresses/${id}`);
+}
+export async function restoreAddress(id: string): Promise<void> {
+  await apiClient.patch(`/customer-addresses/${id}/restore`);
 }
 
 export async function listSalesOrders(customerId: string): Promise<SalesOrder[]> {

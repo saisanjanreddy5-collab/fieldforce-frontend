@@ -129,6 +129,8 @@ export interface LeadListFilters {
   // dates (YYYY-MM-DD), inclusive on both ends.
   createdFrom?: string;
   createdTo?: string;
+  // Shows archived leads instead of active ones - never both mixed together.
+  archived?: boolean;
   page?: number;
   limit?: number;
 }

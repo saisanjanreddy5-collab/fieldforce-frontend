@@ -1,6 +1,6 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
-import type { FofoHandoff, FofoOnboardingListItem, LeadDocument } from "../types/fofo-onboarding";
+import type { DocumentArchiveEntry, FofoHandoff, FofoOnboardingListItem, LeadDocument } from "../types/fofo-onboarding";
 
 export interface ListFofoOnboardingsResult {
   leads: FofoOnboardingListItem[];
@@ -87,4 +87,26 @@ export async function downloadDocument(documentId: string, filename: string): Pr
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+}
+
+export async function listDocumentHistory(leadId: string, docType: string): Promise<DocumentArchiveEntry[]> {
+  const response = await apiClient.get<ApiSuccess<DocumentArchiveEntry[]>>(`/fofo-onboarding/${leadId}/documents/${docType}/history`);
+  return response.data.data;
+}
+
+export async function downloadArchivedDocument(archiveId: string, filename: string): Promise<void> {
+  const response = await apiClient.get(`/fofo-onboarding/documents/archive/${archiveId}/file`, { responseType: "blob" });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function restoreArchivedDocument(archiveId: string): Promise<LeadDocument> {
+  const response = await apiClient.patch<ApiSuccess<LeadDocument>>(`/fofo-onboarding/documents/archive/${archiveId}/restore`);
+  return response.data.data;
 }

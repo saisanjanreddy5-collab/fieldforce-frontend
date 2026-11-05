@@ -6,6 +6,7 @@ import type { FofoHandoff, LeadDocument } from "../../../types/fofo-onboarding";
 import type { Lead } from "../../../types/lead";
 import { useHasPermission } from "../../../hooks/use-permission";
 import { appTokens } from "../../../utils/design-system";
+import { DocumentHistoryButton } from "../../fofo/DocumentHistoryButton";
 
 const { Text, Title } = Typography;
 
@@ -143,6 +144,7 @@ export function DocumentsTab({ lead, canView, loading, handoff, onChanged }: Doc
                 {DOC_STATUS_LABELS[doc.status]}
               </Tag>
               {doc.hasFile && <Button size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(doc)} />}
+              <DocumentHistoryButton leadId={lead.id} docType={doc.docType} docLabel={doc.label} onRestored={onChanged} />
               {canManage && doc.hasFile && doc.status !== "verified" && (
                 <Button size="small" onClick={() => handleVerify(doc)}>
                   Verify

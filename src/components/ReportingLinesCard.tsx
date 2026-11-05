@@ -58,6 +58,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
   const [loadingDelegations, setLoadingDelegations] = useState(true);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [delegationModalOpen, setDelegationModalOpen] = useState(false);
+  const [showArchivedDelegations, setShowArchivedDelegations] = useState(false);
   const [transferForm] = Form.useForm<TransferFormValues>();
   const [delegationForm] = Form.useForm<DelegationFormValues>();
   const transferType = Form.useWatch("transferType", transferForm);
@@ -74,14 +75,14 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
   const loadDelegations = () => {
     setLoadingDelegations(true);
     delegationApi
-      .listDelegations()
+      .listDelegations({ archived: showArchivedDelegations })
       .then(setDelegations)
       .catch(() => message.error("Failed to load delegations"))
       .finally(() => setLoadingDelegations(false));
   };
 
   useEffect(loadTransfers, []);
-  useEffect(loadDelegations, []);
+  useEffect(loadDelegations, [showArchivedDelegations]);
 
   const activeUsers = useMemo(() => users.filter((u) => u.isActive), [users]);
   const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? "Unknown" : null);
@@ -157,6 +158,16 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
       loadDelegations();
     } catch {
       message.error("Failed to remove delegation");
+    }
+  };
+
+  const handleRestoreDelegation = async (id: string) => {
+    try {
+      await delegationApi.restoreDelegation(id);
+      message.success("Delegation restored");
+      loadDelegations();
+    } catch {
+      message.error("Failed to restore delegation");
     }
   };
 
@@ -303,17 +314,22 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
             <Text strong style={{ fontSize: 13 }}>
               Cover & delegation
             </Text>
-            {canCreateDelegation && (
-              <Button size="small" icon={<PlusOutlined />} onClick={() => setDelegationModalOpen(true)}>
-                Add
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button size="small" onClick={() => setShowArchivedDelegations((v) => !v)}>
+                {showArchivedDelegations ? "Show active" : "Show archived"}
               </Button>
-            )}
+              {canCreateDelegation && (
+                <Button size="small" icon={<PlusOutlined />} onClick={() => setDelegationModalOpen(true)}>
+                  Add
+                </Button>
+              )}
+            </div>
           </div>
           <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
             Configuration only - FieldForce has no live approval flow for a delegate to receive yet
           </Text>
           {loadingDelegations ? null : delegations.length === 0 ? (
-            <Empty description="No delegations set" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <Empty description={showArchivedDelegations ? "No archived delegations" : "No delegations set"} image={Empty.PRESENTED_IMAGE_SIMPLE} />
           ) : (
             delegations.map((d) => {
               const today = dayjs().format("YYYY-MM-DD");
@@ -333,13 +349,20 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
                   </Text>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Tag style={{ color: statusColor, background: `${statusColor}14`, border: "none" }}>{status}</Tag>
-                    {canCreateDelegation && (
-                      <Popconfirm title="Archive this delegation?" onConfirm={() => handleDeleteDelegation(d.id)}>
-                        <Button type="link" size="small">
-                          Archive
-                        </Button>
-                      </Popconfirm>
-                    )}
+                    {canCreateDelegation &&
+                      (showArchivedDelegations ? (
+                        <Popconfirm title="Restore this delegation?" onConfirm={() => handleRestoreDelegation(d.id)}>
+                          <Button type="link" size="small">
+                            Restore
+                          </Button>
+                        </Popconfirm>
+                      ) : (
+                        <Popconfirm title="Archive this delegation?" onConfirm={() => handleDeleteDelegation(d.id)}>
+                          <Button type="link" size="small">
+                            Archive
+                          </Button>
+                        </Popconfirm>
+                      ))}
                   </div>
                 </div>
               );

@@ -36,11 +36,12 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
   const [rulesByPlan, setRulesByPlan] = useState<Record<string, CommissionRule[]>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
   const load = () => {
     setLoading(true);
-    Promise.all([incentivePlanApi.listIncentivePlans(), userIncentivePlanApi.listUserIncentivePlans(userId)])
+    Promise.all([incentivePlanApi.listIncentivePlans(), userIncentivePlanApi.listUserIncentivePlans(userId, showArchived)])
       .then(([allPlans, userAssignments]) => {
         setPlans(allPlans);
         setAssignments(userAssignments);
@@ -49,7 +50,7 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [userId]);
+  useEffect(load, [userId, showArchived]);
 
   useEffect(() => {
     assignments.forEach((a) => {
@@ -67,10 +68,20 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
   const handleDelete = async (id: string) => {
     try {
       await userIncentivePlanApi.deleteUserIncentivePlan(id);
-      message.success("Incentive plan removed");
+      message.success("Incentive plan archived");
       load();
     } catch {
-      message.error("Failed to remove incentive plan");
+      message.error("Failed to archive incentive plan");
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await userIncentivePlanApi.restoreUserIncentivePlan(id);
+      message.success("Incentive plan restored");
+      load();
+    } catch {
+      message.error("Failed to restore incentive plan");
     }
   };
 
@@ -137,59 +148,69 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
         </Form>
       )}
 
-      {assignments.length > 0 && (
-        <>
-          <Text strong style={{ display: "block", marginBottom: 4 }}>
-            Assigned plans
-          </Text>
-          <Table<UserIncentivePlan>
-            size="small"
-            rowKey="id"
-            loading={loading}
-            dataSource={assignments}
-            pagination={false}
-            columns={[
-              { title: "Plan", key: "plan", render: (_, a) => planName(a.incentivePlanId) },
-              { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
-              { title: "Cap/cycle", dataIndex: "capPerCycle", render: (v: number | null) => (v === null ? "-" : `₹${v}`) },
-              { title: "Pays from", dataIndex: "paysFromAttainmentPercent", render: (v: number | null) => (v === null ? "-" : `${v}%`) },
-              {
-                title: "Effective",
-                key: "effective",
-                render: (_, a) => `${a.effectiveStartDate}${a.effectiveEndDate ? ` to ${a.effectiveEndDate}` : " onward"}`,
-              },
-              {
-                title: "Commission rules",
-                key: "rules",
-                render: (_, a) => {
-                  const rules = rulesByPlan[a.incentivePlanId] ?? [];
-                  return rules.length === 0 ? (
-                    <Text type="secondary">None</Text>
-                  ) : (
-                    <Space size={4} wrap>
-                      {rules.map((r) => (
-                        <Tag key={r.id}>{r.name}</Tag>
-                      ))}
-                    </Space>
-                  );
-                },
-              },
-              {
-                title: "",
-                key: "actions",
-                render: (_, a) =>
-                  canManage && (
-                    <Popconfirm title="Archive this incentive plan assignment?" onConfirm={() => handleDelete(a.id)}>
-                      <Button type="link" size="small">
-                        Archive
-                      </Button>
-                    </Popconfirm>
-                  ),
-              },
-            ]}
-          />
-        </>
-      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <Text strong>{showArchived ? "Archived plan assignments" : "Assigned plans"}</Text>
+        {canManage && (
+          <Button size="small" onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? "Show active" : "Show archived"}
+          </Button>
+        )}
+      </div>
+
+      <Table<UserIncentivePlan>
+        size="small"
+        rowKey="id"
+        loading={loading}
+        dataSource={assignments}
+        pagination={false}
+        locale={{ emptyText: showArchived ? "No archived plan assignments" : "No plans assigned yet" }}
+        columns={[
+          { title: "Plan", key: "plan", render: (_, a) => planName(a.incentivePlanId) },
+          { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
+          { title: "Cap/cycle", dataIndex: "capPerCycle", render: (v: number | null) => (v === null ? "-" : `₹${v}`) },
+          { title: "Pays from", dataIndex: "paysFromAttainmentPercent", render: (v: number | null) => (v === null ? "-" : `${v}%`) },
+          {
+            title: "Effective",
+            key: "effective",
+            render: (_, a) => `${a.effectiveStartDate}${a.effectiveEndDate ? ` to ${a.effectiveEndDate}` : " onward"}`,
+          },
+          {
+            title: "Commission rules",
+            key: "rules",
+            render: (_, a) => {
+              const rules = rulesByPlan[a.incentivePlanId] ?? [];
+              return rules.length === 0 ? (
+                <Text type="secondary">None</Text>
+              ) : (
+                <Space size={4} wrap>
+                  {rules.map((r) => (
+                    <Tag key={r.id}>{r.name}</Tag>
+                  ))}
+                </Space>
+              );
+            },
+          },
+          {
+            title: "",
+            key: "actions",
+            render: (_, a) =>
+              canManage &&
+              (showArchived ? (
+                <Popconfirm title="Restore this incentive plan assignment?" onConfirm={() => handleRestore(a.id)}>
+                  <Button type="link" size="small">
+                    Restore
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Popconfirm title="Archive this incentive plan assignment?" onConfirm={() => handleDelete(a.id)}>
+                  <Button type="link" size="small">
+                    Archive
+                  </Button>
+                </Popconfirm>
+              )),
+          },
+        ]}
+      />
     </div>
   );
 }
