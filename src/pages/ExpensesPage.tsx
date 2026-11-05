@@ -30,6 +30,11 @@ export default function ExpensesPage() {
   const hasPermission = useHasPermission();
   const canApprove = hasPermission("expense_claims.approve");
   const canMarkPaid = hasPermission("expense_claims.mark_paid");
+  // Same reasoning as LeavePage's own isAdmin gate: Admin has no manager, so
+  // a claim of their own would auto-approve with zero real oversight
+  // (createExpenseClaim's autoApprove = managerId === null) - Admin's role
+  // here is to approve everyone else's spend, never to file their own.
+  const isAdmin = user?.role === "admin";
 
   const [types, setTypes] = useState<ExpenseType[]>([]);
   const [myClaims, setMyClaims] = useState<ExpenseClaim[]>([]);
@@ -48,7 +53,7 @@ export default function ExpensesPage() {
   // the modal, while the modal still gets a stable value to prefill from.
   useEffect(() => {
     const param = searchParams.get("newClaim") as ExpenseTypeKey | null;
-    if (!param) return;
+    if (!param || isAdmin) return;
     setPrefillTypeKey(param);
     setNewClaimOpen(true);
     setSearchParams(
@@ -169,9 +174,11 @@ export default function ExpensesPage() {
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Field claims, policy limits and approval by the reporting manager</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewClaimOpen(true)}>
-          New expense claim
-        </Button>
+        {!isAdmin && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewClaimOpen(true)}>
+            New expense claim
+          </Button>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
