@@ -18,9 +18,16 @@ interface NewSupportTicketModalProps {
   defaultLeadId?: string;
 }
 
+// A ticket can only be raised for a lead that's actually a confirmed
+// prospect or customer, not someone still being worked by Call Center -
+// matches the same "Qualified or Converted" rule support-ticket-service.ts
+// enforces server-side in createTicketForLead.
+const TICKET_ELIGIBLE_LEAD_STATUSES = "Qualified,Converted";
+
 export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId }: NewSupportTicketModalProps) {
   const { message } = App.useApp();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadSearch, setLeadSearch] = useState("");
   const [leadId, setLeadId] = useState<string | undefined>();
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -30,15 +37,28 @@ export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId 
   useEffect(() => {
     if (!open) return;
     leadApi
-      .listLeads({ limit: 100 })
+      .listLeads({ status: TICKET_ELIGIBLE_LEAD_STATUSES })
       .then((result) => setLeads(result.leads))
       .catch(() => message.error("Failed to load leads"));
     setLeadId(defaultLeadId);
+    setLeadSearch("");
     setSubject("");
     setDescription("");
     setPriority("Medium");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = setTimeout(() => {
+      leadApi
+        .listLeads({ status: TICKET_ELIGIBLE_LEAD_STATUSES, search: leadSearch || undefined })
+        .then((result) => setLeads(result.leads))
+        .catch(() => undefined);
+    }, 250);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadSearch]);
 
   const canSubmit = Boolean(leadId) && subject.trim().length > 0;
 
@@ -85,15 +105,17 @@ export function NewSupportTicketModal({ open, onClose, onCreated, defaultLeadId 
           <Select
             showSearch
             placeholder="Search by name, company, or city"
-            optionFilterProp="label"
+            filterOption={false}
             disabled={Boolean(defaultLeadId)}
             value={leadId}
+            onSearch={setLeadSearch}
             onChange={setLeadId}
             style={{ width: "100%" }}
             options={leads.map((l) => ({
               value: l.id,
               label: `${l.fullName}${l.companyName ? ` — ${l.companyName}` : ""}${l.storeCity ? ` (${l.storeCity})` : ""}`,
             }))}
+            notFoundContent="No qualified customers match that search"
           />
         </div>
 
