@@ -156,6 +156,17 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
           <Form.Item name="dueDate" label="When" rules={[{ required: true }]}>
             <DatePicker showTime style={{ width: "100%" }} />
           </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.dueDate !== cur.dueDate}>
+            {({ getFieldValue }) => {
+              const dueDate = getFieldValue("dueDate") as dayjs.Dayjs | undefined;
+              if (!dueDate || !dueDate.isBefore(dayjs())) return null;
+              return (
+                <Text type="warning" style={{ fontSize: 12, display: "block", marginTop: -12, marginBottom: 16 }}>
+                  This date is in the past - the action will show as overdue immediately.
+                </Text>
+              );
+            }}
+          </Form.Item>
         </Form>
       </Modal>
     </div>

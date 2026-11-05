@@ -143,7 +143,10 @@ export default function ExpensesPage() {
 
   const handleDownloadReceipt = async (claim: ExpenseClaim) => {
     try {
-      await expenseApi.downloadReceipt(claim.id, `EXP-${claim.claimNumber}`);
+      // Must be the real filename (with its real extension) - an
+      // extension-less synthetic name made the OS/Notepad render the
+      // downloaded binary as garbage text instead of opening it properly.
+      await expenseApi.downloadReceipt(claim.id, claim.receiptOriginalFilename ?? `EXP-${claim.claimNumber}`);
     } catch {
       message.error("Failed to download receipt");
     }

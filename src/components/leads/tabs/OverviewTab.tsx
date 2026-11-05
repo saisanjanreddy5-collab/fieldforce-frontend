@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Col, Descriptions, Progress, Row, Typography, message } from "antd";
+import { Col, Descriptions, Progress, Row, Tag, Typography, message } from "antd";
 import type { Lead, LeadConsent } from "../../../types/lead";
 import * as leadApi from "../../../api/lead-api";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
@@ -219,6 +219,18 @@ export function OverviewTab({ lead }: OverviewTabProps) {
           <Descriptions column={1} size="small" title="Contact & address" bordered>
             <Descriptions.Item label="Phone">{lead.phone ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Alternative Mobile">{lead.altPhone ?? "-"}</Descriptions.Item>
+            {/* Deliberately excluded from SECTION_FIELDS/the fill-count above -
+                this is a system status flag (always true or false), not
+                user-supplied data, so counting it would always read as
+                "filled" and inflate Contact's completion percentage for
+                every lead regardless of whether contact info is real. */}
+            <Descriptions.Item label="Welcome Message">
+              {lead.welcomeMessageSent ? (
+                <Tag color="green">Sent</Tag>
+              ) : (
+                <Tag color="default">{lead.phone ? "Not sent" : "No phone on file"}</Tag>
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label="Email">{lead.email ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Website">{lead.website ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Preferred Language">{lead.preferredLanguage ?? "-"}</Descriptions.Item>

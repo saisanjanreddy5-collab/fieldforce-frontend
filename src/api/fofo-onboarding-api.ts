@@ -45,9 +45,9 @@ export async function decideStep(stepId: string, decision: "approved" | "rejecte
   return response.data.data;
 }
 
-export async function pushToOnboardingApp(leadId: string): Promise<FofoHandoff> {
+export async function pushToOnboardingApp(leadId: string): Promise<{ handoff: FofoHandoff; message: string }> {
   const response = await apiClient.post<ApiSuccess<FofoHandoff>>(`/fofo-onboarding/${leadId}/push`);
-  return response.data.data;
+  return { handoff: response.data.data, message: response.data.message ?? "Pushed to onboarding app" };
 }
 
 export async function uploadDocument(leadId: string, docType: string, file: File): Promise<LeadDocument> {

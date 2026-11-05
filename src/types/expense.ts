@@ -30,6 +30,7 @@ export interface ExpenseClaim {
   linkedOpportunityId: string | null;
   linkedOpportunityLabel: string | null;
   hasReceipt: boolean;
+  receiptOriginalFilename: string | null;
   isPolicyBreach: boolean;
   policyLimitAtSubmission: number | null;
   status: ExpenseClaimStatus;

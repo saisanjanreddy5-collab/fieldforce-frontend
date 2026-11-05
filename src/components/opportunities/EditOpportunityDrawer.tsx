@@ -47,6 +47,12 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchi
   const [openQuoteId, setOpenQuoteId] = useState<string | null>(null);
 
   const [history, setHistory] = useState<AuditEvent[] | null>(null);
+  // Captured when the drawer opens so the close-date validator can tell "the
+  // date already sat in the past before you opened this drawer" (fine - a
+  // deal's close date naturally slips if nobody touches it, same as Update's
+  // backend schema deliberately allows) apart from "you just picked a new
+  // past date yourself" (not fine, same rule Create already enforces).
+  const [originalCloseDate, setOriginalCloseDate] = useState<string | undefined>(undefined);
 
   const loadQuotes = () => {
     if (!opportunity) return;
@@ -77,6 +83,7 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchi
       probability: opportunity.probability ?? undefined,
       notes: opportunity.notes ?? undefined,
     });
+    setOriginalCloseDate(opportunity.closeDate ?? undefined);
     loadQuotes();
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,7 +173,24 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchi
         <Form.Item name="probability" label="Probability (%)">
           <InputNumber style={{ width: "100%" }} min={0} max={100} />
         </Form.Item>
-        <Form.Item name="closeDate" label="Expected close date">
+        <Form.Item
+          name="closeDate"
+          label="Expected close date"
+          dependencies={["stage"]}
+          rules={[
+            {
+              validator: (_, value: string | undefined) => {
+                const stage = form.getFieldValue("stage");
+                const isClosedStage = stage === "won" || stage === "lost";
+                const isPast = !!value && value < new Date().toISOString().slice(0, 10);
+                const activelyChanged = value !== originalCloseDate;
+                return !isClosedStage && isPast && activelyChanged
+                  ? Promise.reject(new Error("Expected close date can't be in the past"))
+                  : Promise.resolve();
+              },
+            },
+          ]}
+        >
           <Input type="date" />
         </Form.Item>
         <Form.Item name="notes" label="Notes">
