@@ -14,6 +14,7 @@ import { ApplyForLeaveModal } from "../components/leave/ApplyForLeaveModal";
 import { GrantCompOffModal } from "../components/leave/GrantCompOffModal";
 import { LeaveTypesDrawer } from "../components/leave/LeaveTypesDrawer";
 import { TeamLeaveTimeline } from "../components/leave/TeamLeaveTimeline";
+import { LeaveHistoryBrowser } from "../components/leave/LeaveHistoryBrowser";
 
 const { Title, Text } = Typography;
 
@@ -24,7 +25,7 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: appTokens.textTertiary,
 };
 
-type TabKey = "mine" | "team";
+type TabKey = "mine" | "team" | "history";
 
 export default function LeavePage() {
   const { user } = useAuth();
@@ -147,6 +148,22 @@ export default function LeavePage() {
             }}
           >
             Team leave — next 30 days {teamRequests.length}
+          </Button>
+        )}
+        {canSeeTeam && (
+          <Button
+            size="small"
+            shape="round"
+            onClick={() => setActiveTab("history")}
+            style={{
+              background: appTokens.surface,
+              borderWidth: activeTab === "history" ? 1.5 : 1,
+              borderColor: activeTab === "history" ? appTokens.primary : appTokens.border,
+              color: activeTab === "history" ? appTokens.primary : appTokens.textSecondary,
+              fontWeight: activeTab === "history" ? 600 : 500,
+            }}
+          >
+            History
           </Button>
         )}
       </div>
@@ -306,6 +323,8 @@ export default function LeavePage() {
             ]}
           />
         </div>
+      ) : activeTab === "history" ? (
+        <LeaveHistoryBrowser balances={balances} directReports={context?.directReports ?? []} />
       ) : (
         <TeamLeaveTimeline requests={teamRequests} />
       )}

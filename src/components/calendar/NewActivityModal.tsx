@@ -179,6 +179,16 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
             When <span style={{ color: appTokens.danger }}>*</span>
           </Text>
           <DatePicker showTime style={{ width: "100%", marginTop: 4 }} value={dueDate} onChange={setDueDate} format="D MMM YYYY, h:mm A" />
+          {/* Real Teams meetings (isMeeting) already get a hard block from
+              createTeamsMeetingSchema - you can't invite people to a meeting
+              that already happened. A logged activity (call/visit/etc.) has
+              no such rule - backdating one to log something that already
+              took place is legitimate, so this is a hint, not a block. */}
+          {!isMeeting && dueDate && dueDate.isBefore(dayjs()) && (
+            <Text type="warning" style={{ fontSize: 11.5, display: "block", marginTop: 4 }}>
+              This date is in the past - the activity will show as overdue immediately.
+            </Text>
+          )}
         </div>
         {isMeeting && (
           <div>

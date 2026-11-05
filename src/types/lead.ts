@@ -36,6 +36,7 @@ export interface Lead {
   leadScore: number | null;
   phone: string | null;
   altPhone: string | null;
+  welcomeMessageSent: boolean;
   email: string | null;
   website: string | null;
   preferredLanguage: string | null;

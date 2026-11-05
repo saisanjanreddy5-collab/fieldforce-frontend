@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Input, Spin, Tag, Tooltip, Typography, message } from "antd";
 import { CheckCircleFilled, ClockCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import * as approvalsInboxApi from "../api/approvals-inbox-api";
 import * as fofoApi from "../api/fofo-onboarding-api";
 import * as leaveApi from "../api/leave-api";
 import * as expenseApi from "../api/expense-api";
-import type { ApprovalItemType, ApprovalInbox, ApprovalQueueItem } from "../types/approval-inbox";
+import type { ApprovalHistoryItem, ApprovalItemType, ApprovalInbox, ApprovalQueueItem } from "../types/approval-inbox";
 import type { LeaveRequest } from "../types/leave";
 import type { ExpenseClaim } from "../types/expense";
 import type { FofoHandoff } from "../types/fofo-onboarding";
@@ -16,7 +17,6 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 const TYPE_FILTERS: { key: ApprovalItemType | "all"; label: string }[] = [
-  { key: "all", label: "All pending" },
   { key: "onboarding_push", label: "Onboarding push" },
   { key: "leave", label: "Leave" },
   { key: "expense", label: "Expense" },
@@ -54,9 +54,14 @@ function formatWaiting(hours: number): string {
   return `${Math.round(hours / 24)}d waiting`;
 }
 
+type ViewKey = "pending" | "history";
+
 export default function ApprovalsPage() {
+  const [view, setView] = useState<ViewKey>("pending");
   const [inbox, setInbox] = useState<ApprovalInbox | null>(null);
+  const [history, setHistory] = useState<ApprovalHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [filter, setFilter] = useState<ApprovalItemType | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -74,9 +79,35 @@ export default function ApprovalsPage() {
       .finally(() => setLoading(false));
   };
 
+  const loadHistory = () => {
+    setHistoryLoading(true);
+    approvalsInboxApi
+      .getApprovalHistory()
+      .then((res) => {
+        setHistory(res.items);
+        setSelectedId(res.items[0]?.id ?? null);
+      })
+      .catch(() => message.error("Failed to load approval history"))
+      .finally(() => setHistoryLoading(false));
+  };
+
   useEffect(() => load(), []);
 
-  const items = inbox?.items ?? [];
+  const switchView = (next: ViewKey) => {
+    setView(next);
+    setFilter("all");
+    if (next === "history" && history === null) {
+      loadHistory();
+    } else {
+      setSelectedId((next === "history" ? history : inbox?.items)?.[0]?.id ?? null);
+    }
+  };
+
+  // Explicitly typed as the union, not left to inference - ApprovalHistoryItem
+  // is structurally assignable to ApprovalQueueItem (it only adds fields), so
+  // the ternary below would otherwise widen to the narrower base type and the
+  // "decidedAt"/"decision" narrowing further down would stop working.
+  const items: ApprovalItem[] = view === "pending" ? inbox?.items ?? [] : history ?? [];
   const filteredItems = useMemo(() => (filter === "all" ? items : items.filter((i) => i.type === filter)), [items, filter]);
   const selected = items.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null;
 
@@ -85,6 +116,7 @@ export default function ApprovalsPage() {
   const handleDecided = () => {
     message.success("Decision recorded");
     load(false);
+    setHistory(null);
   };
 
   return (
@@ -94,7 +126,9 @@ export default function ApprovalsPage() {
           Approvals
         </Title>
         <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
-          Everything waiting on your decision, across leave, expenses and FOFO onboarding handoffs.
+          {view === "pending"
+            ? "Everything waiting on your decision, across leave, expenses and FOFO onboarding handoffs."
+            : "Every decision you've personally made, across leave, expenses and FOFO onboarding handoffs."}
         </Text>
       </div>
 
@@ -118,8 +152,31 @@ export default function ApprovalsPage() {
         />
       </div>
 
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {(["pending", "history"] as ViewKey[]).map((v) => {
+          const active = view === v;
+          return (
+            <Button
+              key={v}
+              size="small"
+              shape="round"
+              onClick={() => switchView(v)}
+              style={{
+                background: appTokens.surface,
+                borderWidth: active ? 1.5 : 1,
+                borderColor: active ? appTokens.primary : appTokens.border,
+                color: active ? appTokens.primary : appTokens.textSecondary,
+                fontWeight: active ? 600 : 500,
+              }}
+            >
+              {v === "pending" ? "Pending" : "History"}
+            </Button>
+          );
+        })}
+      </div>
+
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-        {TYPE_FILTERS.map((f) => {
+        {[{ key: "all" as const, label: view === "pending" ? "All pending" : "All decided" }, ...TYPE_FILTERS].map((f) => {
           const active = filter === f.key;
           return (
             <button
@@ -144,7 +201,7 @@ export default function ApprovalsPage() {
         })}
       </div>
 
-      {loading && !inbox ? (
+      {(view === "pending" ? loading && !inbox : historyLoading && history === null) ? (
         <div style={{ textAlign: "center", padding: 60 }}>
           <Spin />
         </div>
@@ -163,13 +220,15 @@ export default function ApprovalsPage() {
           >
             <div style={{ padding: "12px 16px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between" }}>
               <Text strong style={{ fontSize: 13 }}>
-                Queue
+                {view === "pending" ? "Queue" : "Decided"}
               </Text>
-              <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>Oldest first</Text>
+              <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{view === "pending" ? "Oldest first" : "Newest first"}</Text>
             </div>
             {filteredItems.length === 0 && (
               <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>Nothing waiting on you here.</Text>
+                <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>
+                  {view === "pending" ? "Nothing waiting on you here." : "No decisions recorded yet."}
+                </Text>
               </div>
             )}
             {filteredItems.map((item) => {
@@ -207,10 +266,22 @@ export default function ApprovalsPage() {
                   <Text style={{ fontSize: 11.5, color: appTokens.textTertiary, display: "block", marginTop: 2 }}>{item.subtitle}</Text>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
                     <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{item.stepLabel}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: 600, color: item.isSlaBreach ? appTokens.danger : appTokens.textTertiary }}>
-                      {item.isSlaBreach && <WarningOutlined style={{ marginRight: 3 }} />}
-                      {formatWaiting(item.waitingHours)}
-                    </Text>
+                    {"decidedAt" in item ? (
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: item.decision === "approved" ? appTokens.success : appTokens.danger,
+                        }}
+                      >
+                        {item.decision === "approved" ? "Approved" : "Rejected"} · {dayjs(item.decidedAt).format("D MMM")}
+                      </Text>
+                    ) : (
+                      <Text style={{ fontSize: 11, fontWeight: 600, color: item.isSlaBreach ? appTokens.danger : appTokens.textTertiary }}>
+                        {item.isSlaBreach && <WarningOutlined style={{ marginRight: 3 }} />}
+                        {formatWaiting(item.waitingHours)}
+                      </Text>
+                    )}
                   </div>
                 </div>
               );
@@ -219,7 +290,7 @@ export default function ApprovalsPage() {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             {selected ? (
-              <ApprovalDetail key={selected.id} item={selected} onDecided={handleDecided} />
+              <ApprovalDetail key={selected.id} item={selected} onDecided={view === "pending" ? handleDecided : undefined} />
             ) : (
               <div
                 style={{
@@ -232,7 +303,9 @@ export default function ApprovalsPage() {
               >
                 <CheckCircleFilled style={{ fontSize: 28, color: appTokens.success }} />
                 <div style={{ marginTop: 8 }}>
-                  <Text style={{ color: appTokens.textTertiary }}>Nothing pending - you're caught up.</Text>
+                  <Text style={{ color: appTokens.textTertiary }}>
+                    {view === "pending" ? "Nothing pending - you're caught up." : "No decisions recorded yet."}
+                  </Text>
                 </div>
               </div>
             )}
@@ -308,13 +381,33 @@ function DecisionPanel({
   );
 }
 
-function ApprovalDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: () => void }) {
+type ApprovalItem = ApprovalQueueItem | ApprovalHistoryItem;
+
+// A read-only decision summary in place of the action buttons, for an
+// already-decided History item - same card/field layout, just nothing left
+// to do here.
+function DecidedSummary({ decision, decidedAt }: { decision: "approved" | "rejected"; decidedAt: string }) {
+  const color = decision === "approved" ? appTokens.success : appTokens.danger;
+  return (
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${appTokens.borderLight}` }}>
+      <Text style={{ fontSize: 11, color: appTokens.textTertiary, letterSpacing: 0.4 }}>YOUR DECISION</Text>
+      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+        <Tag style={{ margin: 0, fontWeight: 600, border: "none", color, background: `${color}17` }}>
+          {decision === "approved" ? "Approved" : "Rejected"}
+        </Tag>
+        <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{dayjs(decidedAt).format("D MMM YYYY, h:mm A")}</Text>
+      </div>
+    </div>
+  );
+}
+
+function ApprovalDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
   if (item.type === "leave") return <LeaveDetail item={item} onDecided={onDecided} />;
   if (item.type === "expense") return <ExpenseDetail item={item} onDecided={onDecided} />;
   return <FofoDetail item={item} onDecided={onDecided} />;
 }
 
-function LeaveDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: () => void }) {
+function LeaveDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
   const req = item.raw as LeaveRequest;
   const [saving, setSaving] = useState(false);
 
@@ -322,7 +415,7 @@ function LeaveDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: 
     setSaving(true);
     try {
       await leaveApi.decideLeaveRequest(req.id, decision);
-      onDecided();
+      onDecided?.();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to record decision"));
     } finally {
@@ -349,12 +442,16 @@ function LeaveDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: 
         <Field label="Reason" value={req.reason} />
         <Field label="1st approver" value={req.approverDecision === "approved" ? "Approved" : "Pending"} />
       </div>
-      <DecisionPanel loading={saving} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
+      {onDecided ? (
+        <DecisionPanel loading={saving} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
+      ) : (
+        "decision" in item && <DecidedSummary decision={item.decision} decidedAt={item.decidedAt} />
+      )}
     </DetailCard>
   );
 }
 
-function ExpenseDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: () => void }) {
+function ExpenseDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
   const claim = item.raw as ExpenseClaim;
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState("");
@@ -363,7 +460,7 @@ function ExpenseDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided
     setSaving(true);
     try {
       await expenseApi.decideExpenseClaim(claim.id, decision, note.trim() || undefined);
-      onDecided();
+      onDecided?.();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to record decision"));
     } finally {
@@ -397,7 +494,11 @@ function ExpenseDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided
         <Field label="Linked lead" value={claim.linkedLeadLabel} />
         <Field label="Linked opportunity" value={claim.linkedOpportunityLabel} />
       </div>
-      <DecisionPanel loading={saving} note={note} onNoteChange={setNote} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
+      {onDecided ? (
+        <DecisionPanel loading={saving} note={note} onNoteChange={setNote} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
+      ) : (
+        "decision" in item && <DecidedSummary decision={item.decision} decidedAt={item.decidedAt} />
+      )}
     </DetailCard>
   );
 }
@@ -409,7 +510,7 @@ const CHECK_COLOR: Record<string, string> = {
   not_uploaded: appTokens.textTertiary,
 };
 
-function FofoDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: () => void }) {
+function FofoDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
   const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -436,7 +537,7 @@ function FofoDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: (
     setSaving(true);
     try {
       await fofoApi.decideStep(currentStep.id, decision);
-      onDecided();
+      onDecided?.();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to record decision"));
     } finally {
@@ -544,7 +645,11 @@ function FofoDetail({ item, onDecided }: { item: ApprovalQueueItem; onDecided: (
         </div>
       </div>
 
-      {currentStep && <DecisionPanel loading={saving} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />}
+      {onDecided && currentStep ? (
+        <DecisionPanel loading={saving} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
+      ) : (
+        "decision" in item && <DecidedSummary decision={item.decision} decidedAt={item.decidedAt} />
+      )}
     </DetailCard>
   );
 }

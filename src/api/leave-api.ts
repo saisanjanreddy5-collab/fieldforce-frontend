@@ -67,3 +67,18 @@ export async function grantCompOff(payload: GrantCompOffPayload): Promise<LeaveB
   const response = await apiClient.post<ApiSuccess<LeaveBalance[]>>("/leave/comp-off-credits", payload);
   return response.data.data;
 }
+
+// Was already built backend-side for the mobile app's own "pick any month,
+// past or future" leave history - the web app never called it, which is the
+// real reason an admin/manager had no way to see leave outside the fixed
+// "next 30 days" Team timeline (see TeamLeaveTimeline).
+export async function searchLeaveRequests(params: {
+  userId?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ requests: LeaveRequest[]; total: number }> {
+  const response = await apiClient.get<ApiSuccess<{ requests: LeaveRequest[]; total: number }>>("/leave/search", { params });
+  return response.data.data;
+}

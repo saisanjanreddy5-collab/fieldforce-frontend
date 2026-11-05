@@ -442,8 +442,8 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                   </FormSection>
 
                   <FormSection icon={<EnvironmentOutlined />} iconColor="#eda100" title="Address" description="Where this lead is located">
-                    <Form.Item name="pincode" label="PinCode">
-                      <Input />
+                    <Form.Item name="pincode" label="PinCode" rules={[{ pattern: /^\d{6}$/, message: "Enter a valid 6-digit pincode" }]}>
+                      <Input maxLength={6} />
                     </Form.Item>
                     <Form.Item
                       name="stateId"
@@ -615,8 +615,13 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     title="Compliance & business"
                     description="Only needed for FOFO franchise applications"
                   >
-                    <Form.Item name="gstNumber" label="GST number">
-                      <Input />
+                    <Form.Item
+                      name="gstNumber"
+                      label="GST number"
+                      rules={[{ pattern: /^\d{2}[A-Za-z]{5}\d{4}[A-Za-z][A-Za-z0-9][Zz][A-Za-z0-9]$/, message: "Enter a valid GSTIN" }]}
+                      normalize={(value: string) => value?.toUpperCase()}
+                    >
+                      <Input placeholder="22AAAAA0000A1Z5" maxLength={15} />
                     </Form.Item>
                     <Form.Item
                       name="panNumber"

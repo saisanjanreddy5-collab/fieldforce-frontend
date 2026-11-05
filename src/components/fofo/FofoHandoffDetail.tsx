@@ -119,9 +119,9 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
   const handlePush = async () => {
     setPushing(true);
     try {
-      const updated = await fofoApi.pushToOnboardingApp(leadId);
+      const { handoff: updated, message: successMessage } = await fofoApi.pushToOnboardingApp(leadId);
       setHandoff(updated);
-      message.success("Pushed to onboarding app");
+      message.success(successMessage);
     } catch (err) {
       const description =
         isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : "Failed to push";
@@ -409,8 +409,8 @@ function ApplicantStep({ leadId, lead, onSaved, onNext }: { leadId: string; lead
       <Form.Item name="entityType" label="Entity type">
         <Select allowClear options={ENTITY_TYPE_OPTIONS} placeholder="Select entity type" />
       </Form.Item>
-      <Form.Item name="phone" label="Mobile">
-        <Input />
+      <Form.Item name="phone" label="Mobile" rules={[{ pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" }]}>
+        <Input maxLength={10} />
       </Form.Item>
       <Form.Item name="email" label="Email">
         <Input />
@@ -423,8 +423,12 @@ function ApplicantStep({ leadId, lead, onSaved, onNext }: { leadId: string; lead
       >
         <Input placeholder="ABCDE1234F" maxLength={10} />
       </Form.Item>
-      <Form.Item name="aadhaarNumber" label="Aadhaar">
-        <Input />
+      <Form.Item
+        name="aadhaarNumber"
+        label="Aadhaar"
+        rules={[{ pattern: /^[2-9]\d{11}$/, message: "Enter a valid 12-digit Aadhaar number" }]}
+      >
+        <Input maxLength={12} />
       </Form.Item>
       <StepFooter onNext={onNext} saving={saving} />
     </Form>

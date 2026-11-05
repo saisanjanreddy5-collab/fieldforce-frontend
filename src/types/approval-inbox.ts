@@ -31,3 +31,13 @@ export interface ApprovalInbox {
   items: ApprovalQueueItem[];
   stats: ApprovalInboxStats;
 }
+
+export interface ApprovalHistoryItem extends ApprovalQueueItem {
+  decision: "approved" | "rejected";
+  decidedAt: string;
+}
+
+export interface ApprovalHistoryResult {
+  items: ApprovalHistoryItem[];
+  total: number;
+}
