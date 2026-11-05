@@ -29,18 +29,19 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
   const [loading, setLoading] = useState(true);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
   const load = () => {
     setLoading(true);
     commissionRuleApi
-      .listCommissionRules(incentivePlanId)
+      .listCommissionRules(incentivePlanId, showArchived)
       .then(setRules)
       .catch(() => message.error("Failed to load commission rules"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [incentivePlanId]);
+  useEffect(load, [incentivePlanId, showArchived]);
 
   const startCreate = () => {
     setEditingRuleId(null);
@@ -60,11 +61,21 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
   const handleDelete = async (id: string) => {
     try {
       await commissionRuleApi.deleteCommissionRule(id);
-      message.success("Commission rule deleted");
+      message.success("Commission rule archived");
       if (editingRuleId === id) startCreate();
       load();
     } catch {
-      message.error("Failed to delete commission rule");
+      message.error("Failed to archive commission rule");
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await commissionRuleApi.restoreCommissionRule(id);
+      message.success("Commission rule restored");
+      load();
+    } catch {
+      message.error("Failed to restore commission rule");
     }
   };
 
@@ -100,11 +111,18 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <Text strong>Commission rules</Text>
-      <div>
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Configuration only - no payout is calculated from these yet
-        </Text>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <Text strong>Commission rules</Text>
+          <div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Configuration only - no payout is calculated from these yet
+            </Text>
+          </div>
+        </div>
+        <Button size="small" onClick={() => setShowArchived((v) => !v)}>
+          {showArchived ? "Show active" : "Show archived"}
+        </Button>
       </div>
       <Table<CommissionRule>
         size="small"
@@ -113,7 +131,7 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
         dataSource={rules}
         pagination={false}
         style={{ marginTop: 8, marginBottom: 12 }}
-        locale={{ emptyText: "No commission rules yet - add one below" }}
+        locale={{ emptyText: showArchived ? "No archived commission rules" : "No commission rules yet - add one below" }}
         columns={[
           { title: "Name", dataIndex: "name" },
           { title: "Type", dataIndex: "ruleType", render: (v: string | null) => v ?? "-" },
@@ -126,26 +144,35 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
           {
             title: "",
             key: "actions",
-            render: (_, rule) => (
-              <Space size={4}>
-                {hasPermission("commission_rules.update") && (
-                  <Button type="link" size="small" onClick={() => startEdit(rule)}>
-                    Edit
-                  </Button>
-                )}
-                {hasPermission("commission_rules.delete") && (
-                  <Popconfirm title="Archive this commission rule?" onConfirm={() => handleDelete(rule.id)}>
+            render: (_, rule) =>
+              showArchived ? (
+                hasPermission("commission_rules.delete") && (
+                  <Popconfirm title="Restore this commission rule?" onConfirm={() => handleRestore(rule.id)}>
                     <Button type="link" size="small">
-                      Archive
+                      Restore
                     </Button>
                   </Popconfirm>
-                )}
-              </Space>
-            ),
+                )
+              ) : (
+                <Space size={4}>
+                  {hasPermission("commission_rules.update") && (
+                    <Button type="link" size="small" onClick={() => startEdit(rule)}>
+                      Edit
+                    </Button>
+                  )}
+                  {hasPermission("commission_rules.delete") && (
+                    <Popconfirm title="Archive this commission rule?" onConfirm={() => handleDelete(rule.id)}>
+                      <Button type="link" size="small">
+                        Archive
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </Space>
+              ),
           },
         ]}
       />
-      {(editingRuleId ? hasPermission("commission_rules.update") : hasPermission("commission_rules.create")) && (
+      {!showArchived && (editingRuleId ? hasPermission("commission_rules.update") : hasPermission("commission_rules.create")) && (
         <Form<FormValues> form={form} layout="inline" onFinish={handleSubmit} initialValues={{ isActive: true }}>
           <Form.Item name="name" rules={[{ required: true, message: "Name is required" }]}>
             <Input placeholder="Rule name" style={{ width: 160 }} />

@@ -13,6 +13,7 @@ import type { AdvancedFilters } from "../components/leads/LeadFilters";
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
+import { ArchivedLeadsModal } from "../components/leads/ArchivedLeadsModal";
 import { exportMultiSheetXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 import { errorMessageFrom } from "../utils/api-error";
@@ -53,6 +54,7 @@ export default function LeadsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [quickFilterOpen, setQuickFilterOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -319,6 +321,11 @@ export default function LeadsPage() {
                 Import
               </Button>
             )}
+            {hasPermission("leads.delete") && (
+              <Button style={{ paddingInline: 10 }} onClick={() => setArchivedOpen(true)}>
+                Archived
+              </Button>
+            )}
             {hasPermission("leads.create") && (
               <Button
                 type="primary"
@@ -527,6 +534,11 @@ export default function LeadsPage() {
                     </Button>
                   )}
                 </div>
+                {hasPermission("leads.delete") && (
+                  <Button block onClick={() => setArchivedOpen(true)}>
+                    Archived
+                  </Button>
+                )}
                 {hasPermission("leads.create") && (
                   <Button
                     type="primary"
@@ -607,6 +619,7 @@ export default function LeadsPage() {
         onSaved={handleSaved}
       />
       <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load(1)} />
+      <ArchivedLeadsModal open={archivedOpen} onClose={() => setArchivedOpen(false)} onRestored={() => load(page)} />
     </div>
   );
 }

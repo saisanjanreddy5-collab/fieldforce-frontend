@@ -43,17 +43,18 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingBand, setEditingBand] = useState<ApprovalBand | null>(null);
   const [defaultRequestType, setDefaultRequestType] = useState<ApprovalRequestType>("discount");
+  const [showArchived, setShowArchived] = useState(false);
 
   const load = () => {
     setLoading(true);
     approvalBandApi
-      .listApprovalBands()
+      .listApprovalBands(showArchived)
       .then(setBands)
       .catch(() => message.error("Failed to load approval bands"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(load, [showArchived]);
 
   const byType = useMemo(() => {
     const groups = new Map<ApprovalRequestType, ApprovalBand[]>();
@@ -89,10 +90,20 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
   const handleDelete = async (id: string) => {
     try {
       await approvalBandApi.deleteApprovalBand(id);
-      message.success("Approval band deleted");
+      message.success("Approval band archived");
       load();
     } catch {
-      message.error("Failed to delete approval band");
+      message.error("Failed to archive approval band");
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await approvalBandApi.restoreApprovalBand(id);
+      message.success("Approval band restored");
+      load();
+    } catch {
+      message.error("Failed to restore approval band");
     }
   };
 
@@ -107,7 +118,12 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
             </Text>
           </div>
         </div>
-        <Tag color="gold">Configuration only - not yet wired to a live approval flow</Tag>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Button size="small" onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? "Show active" : "Show archived"}
+          </Button>
+          <Tag color="gold">Configuration only - not yet wired to a live approval flow</Tag>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginTop: 12 }}>
@@ -128,7 +144,7 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
                 <Text strong style={{ fontSize: 13 }}>
                   {opt.label}
                 </Text>
-                {canCreate && (
+                {canCreate && !showArchived && (
                   <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => openCreate(opt.value)}>
                     Add band
                   </Button>
@@ -137,7 +153,7 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
 
               {rows.length === 0 ? (
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  No bands configured
+                  {showArchived ? "No archived bands" : "No bands configured"}
                 </Text>
               ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -167,21 +183,33 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
                         {band.slaHours !== null && (
                           <Text style={{ fontSize: 10.5, color: appTokens.textTertiary }}>SLA {band.slaHours}h</Text>
                         )}
-                        {(canUpdate || canDelete) && (
-                          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                            {canUpdate && (
-                              <Button type="link" size="small" style={{ padding: 0, height: "auto", fontSize: 11 }} onClick={() => openEdit(band)}>
-                                Edit
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Popconfirm title="Archive this approval band?" onConfirm={() => handleDelete(band.id)}>
+                        {showArchived ? (
+                          canDelete && (
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              <Popconfirm title="Restore this approval band?" onConfirm={() => handleRestore(band.id)}>
                                 <Button type="link" size="small" style={{ padding: 0, height: "auto", fontSize: 11 }}>
-                                  Archive
+                                  Restore
                                 </Button>
                               </Popconfirm>
-                            )}
-                          </div>
+                            </div>
+                          )
+                        ) : (
+                          (canUpdate || canDelete) && (
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              {canUpdate && (
+                                <Button type="link" size="small" style={{ padding: 0, height: "auto", fontSize: 11 }} onClick={() => openEdit(band)}>
+                                  Edit
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Popconfirm title="Archive this approval band?" onConfirm={() => handleDelete(band.id)}>
+                                  <Button type="link" size="small" style={{ padding: 0, height: "auto", fontSize: 11 }}>
+                                    Archive
+                                  </Button>
+                                </Popconfirm>
+                              )}
+                            </div>
+                          )
                         )}
                       </div>
                     );

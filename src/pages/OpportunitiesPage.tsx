@@ -18,6 +18,7 @@ import { TeamRollupView } from "../components/opportunities/TeamRollupView";
 import { ForecastView } from "../components/opportunities/ForecastView";
 import { NewOpportunityModal } from "../components/opportunities/NewOpportunityModal";
 import { EditOpportunityDrawer } from "../components/opportunities/EditOpportunityDrawer";
+import { ArchivedOpportunitiesModal } from "../components/opportunities/ArchivedOpportunitiesModal";
 import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY, STAGE_OPTIONS } from "../components/opportunities/stages";
 import { useHasPermission } from "../hooks/use-permission";
 import { exportToXlsx } from "../utils/export-xlsx";
@@ -52,6 +53,7 @@ export default function OpportunitiesPage() {
   const [salesTeamFilter, setSalesTeamFilter] = useState<string | undefined>();
 
   const [newModalOpen, setNewModalOpen] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const [newModalStage, setNewModalStage] = useState<string | undefined>();
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
 
@@ -215,6 +217,7 @@ export default function OpportunitiesPage() {
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           {hasPermission("opportunities.export") && <Button onClick={handleExportOpportunities}>Export</Button>}
+          {hasPermission("opportunities.delete") && <Button onClick={() => setArchivedOpen(true)}>Archived</Button>}
           <Segmented
             value={view}
             onChange={(v) => setView(v as View)}
@@ -411,7 +414,13 @@ export default function OpportunitiesPage() {
           setEditingOpportunity(null);
           load();
         }}
+        onArchived={() => {
+          setEditingOpportunity(null);
+          load();
+        }}
       />
+
+      <ArchivedOpportunitiesModal open={archivedOpen} onClose={() => setArchivedOpen(false)} onRestored={load} />
     </div>
   );
 }

@@ -180,3 +180,11 @@ export async function getLeadTimeline(id: string): Promise<LeadTimelineEntry[]> 
   const response = await apiClient.get<ApiSuccess<LeadTimelineEntry[]>>(`/leads/${id}/timeline`);
   return response.data.data;
 }
+
+export async function archiveLead(id: string): Promise<void> {
+  await apiClient.delete(`/leads/${id}`);
+}
+
+export async function restoreLead(id: string): Promise<void> {
+  await apiClient.patch(`/leads/${id}/restore`);
+}

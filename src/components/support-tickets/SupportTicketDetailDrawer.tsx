@@ -67,7 +67,13 @@ export function SupportTicketDetailDrawer({ ticketId, onClose, onChanged }: Supp
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    userApi.listUsers().then(setUsers).catch(() => setUsers([]));
+    userApi
+      .listUsers()
+      // Call Center has no support_tickets.view at all, so assigning a
+      // ticket to one would hand it to someone who can never see or act on
+      // it anywhere in the app - only offer the roles that can.
+      .then((all) => setUsers(all.filter((u) => u.role !== "call_center")))
+      .catch(() => setUsers([]));
   }, []);
 
   const load = () => {

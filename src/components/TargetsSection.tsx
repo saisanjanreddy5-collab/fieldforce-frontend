@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Form, Input, InputNumber, Popconfirm, Progress, Radio, Space, Table, Typography, message } from "antd";
+import { Button, DatePicker, Empty, Form, Input, InputNumber, Popconfirm, Progress, Radio, Space, Table, Typography, message } from "antd";
 import { isAxiosError } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import * as targetApi from "../api/target-api";
@@ -54,19 +54,20 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
   const [loading, setLoading] = useState(true);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [form] = Form.useForm<FormValues>();
   const periodType = Form.useWatch("periodType", form) ?? "monthly";
 
   const load = () => {
     setLoading(true);
     targetApi
-      .listTargets(userId)
+      .listTargets(userId, { archived: showArchived })
       .then(setTargets)
       .catch(() => message.error("Failed to load targets"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [userId]);
+  useEffect(load, [userId, showArchived]);
 
   const startCreate = () => {
     setEditingTargetId(null);
@@ -91,6 +92,16 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
       load();
     } catch {
       message.error("Failed to delete target");
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await targetApi.restoreTarget(id);
+      message.success("Target restored");
+      load();
+    } catch {
+      message.error("Failed to restore target");
     }
   };
 
@@ -158,37 +169,49 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
         </Form>
       )}
 
-      {targets.length > 0 && (
-        <>
-          <Text strong style={{ display: "block", marginTop: 16, marginBottom: 4 }}>
-            History
-          </Text>
-          <Table<Target>
-            size="small"
-            rowKey="id"
-            loading={loading}
-            dataSource={targets}
-            pagination={false}
-            locale={{ emptyText: "No targets yet" }}
-            columns={[
-              {
-                title: "Period",
-                key: "period",
-                render: (_, t) => `${PERIOD_LABEL[t.periodType]} - ${t.periodStart} to ${t.periodEnd}`,
-              },
-              { title: "Target", dataIndex: "targetAmount", render: (v: number) => formatCompactCurrency(v) },
-              { title: "Unit target", dataIndex: "unitTarget", render: (v: string | null) => v ?? "-" },
-              { title: "Achieved", dataIndex: "achievedAmount", render: (v: number) => formatCompactCurrency(v) },
-              {
-                title: "%",
-                dataIndex: "achievementPercent",
-                width: 140,
-                render: (v: number) => <Progress percent={Math.min(v, 100)} size="small" format={() => `${v}%`} />,
-              },
-              {
-                title: "",
-                key: "actions",
-                render: (_, t) => (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, marginBottom: 4 }}>
+        <Text strong>History</Text>
+        <Button size="small" onClick={() => setShowArchived((v) => !v)}>
+          {showArchived ? "Show active" : "Show archived"}
+        </Button>
+      </div>
+      {targets.length === 0 ? (
+        <Empty description={showArchived ? "No archived targets" : "No targets yet"} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <Table<Target>
+          size="small"
+          rowKey="id"
+          loading={loading}
+          dataSource={targets}
+          pagination={false}
+          columns={[
+            {
+              title: "Period",
+              key: "period",
+              render: (_, t) => `${PERIOD_LABEL[t.periodType]} - ${t.periodStart} to ${t.periodEnd}`,
+            },
+            { title: "Target", dataIndex: "targetAmount", render: (v: number) => formatCompactCurrency(v) },
+            { title: "Unit target", dataIndex: "unitTarget", render: (v: string | null) => v ?? "-" },
+            { title: "Achieved", dataIndex: "achievedAmount", render: (v: number) => formatCompactCurrency(v) },
+            {
+              title: "%",
+              dataIndex: "achievementPercent",
+              width: 140,
+              render: (v: number) => <Progress percent={Math.min(v, 100)} size="small" format={() => `${v}%`} />,
+            },
+            {
+              title: "",
+              key: "actions",
+              render: (_, t) =>
+                showArchived ? (
+                  hasPermission("targets.delete") && (
+                    <Popconfirm title="Restore this target?" onConfirm={() => handleRestore(t.id)}>
+                      <Button type="link" size="small">
+                        Restore
+                      </Button>
+                    </Popconfirm>
+                  )
+                ) : (
                   <Space size={4}>
                     {hasPermission("targets.update") && (
                       <Button type="link" size="small" onClick={() => startEdit(t)}>
@@ -204,10 +227,9 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
                     )}
                   </Space>
                 ),
-              },
-            ]}
-          />
-        </>
+            },
+          ]}
+        />
       )}
     </div>
   );

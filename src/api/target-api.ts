@@ -2,9 +2,9 @@ import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { CreateTargetPayload, Target, UpdateTargetPayload } from "../types/target";
 
-export async function listTargets(userId?: string): Promise<Target[]> {
+export async function listTargets(userId?: string, opts?: { archived?: boolean }): Promise<Target[]> {
   const response = await apiClient.get<ApiSuccess<{ targets: Target[]; total: number }>>("/targets", {
-    params: { limit: 200, ...(userId ? { userId } : {}) },
+    params: { limit: 200, ...(userId ? { userId } : {}), archived: opts?.archived },
   });
   return response.data.data.targets;
 }
@@ -21,4 +21,8 @@ export async function updateTarget(id: string, payload: UpdateTargetPayload): Pr
 
 export async function deleteTarget(id: string): Promise<void> {
   await apiClient.delete(`/targets/${id}`);
+}
+
+export async function restoreTarget(id: string): Promise<void> {
+  await apiClient.patch(`/targets/${id}/restore`);
 }

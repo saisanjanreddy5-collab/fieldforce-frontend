@@ -388,14 +388,16 @@ function ContactsTab({
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [callingId, setCallingId] = useState<string | null>(null);
   const [emailContact, setEmailContact] = useState<CustomerContact | null>(null);
+  const [showArchivedContacts, setShowArchivedContacts] = useState(false);
+  const [showArchivedAddresses, setShowArchivedAddresses] = useState(false);
   const { connected: microsoftConnected } = useMicrosoftConnection();
 
   const load = () => {
-    customerExtrasApi.listContacts(customerId).then(setContacts).catch(() => setContacts([]));
-    customerExtrasApi.listAddresses(customerId).then(setAddresses).catch(() => setAddresses([]));
+    customerExtrasApi.listContacts(customerId, showArchivedContacts).then(setContacts).catch(() => setContacts([]));
+    customerExtrasApi.listAddresses(customerId, showArchivedAddresses).then(setAddresses).catch(() => setAddresses([]));
   };
 
-  useEffect(load, [customerId]);
+  useEffect(load, [customerId, showArchivedContacts, showArchivedAddresses]);
 
   const removeContact = async (id: string) => {
     try {
@@ -403,6 +405,26 @@ function ContactsTab({
       load();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to remove contact"));
+    }
+  };
+
+  const restoreContact = async (id: string) => {
+    try {
+      await customerExtrasApi.restoreContact(id);
+      message.success("Contact restored");
+      load();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to restore contact"));
+    }
+  };
+
+  const restoreAddress = async (id: string) => {
+    try {
+      await customerExtrasApi.restoreAddress(id);
+      message.success("Address restored");
+      load();
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to restore address"));
     }
   };
 
@@ -437,17 +459,22 @@ function ContactsTab({
       <div>
         <SectionLabel
           action={
-            canUpdate && (
-              <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => { setEditingContact(null); setContactModalOpen(true); }}>
-                Add
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Button size="small" type="link" onClick={() => setShowArchivedContacts((v) => !v)}>
+                {showArchivedContacts ? "Show active" : "Show archived"}
               </Button>
-            )
+              {canUpdate && !showArchivedContacts && (
+                <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => { setEditingContact(null); setContactModalOpen(true); }}>
+                  Add
+                </Button>
+              )}
+            </div>
           }
         >
           Contacts
         </SectionLabel>
         {contacts.length === 0 ? (
-          <Text type="secondary">No contacts added yet</Text>
+          <Text type="secondary">{showArchivedContacts ? "No archived contacts" : "No contacts added yet"}</Text>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {contacts.map((c) => (
@@ -468,43 +495,53 @@ function ContactsTab({
                       Primary
                     </Tag>
                   )}
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<PhoneOutlined />}
-                    disabled={!c.phone}
-                    loading={callingId === c.id}
-                    onClick={() => handleCallContact(c)}
-                    title={c.phone ? `Call ${c.name}` : "No phone on file"}
-                  />
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<OutlookLogo size={13} />}
-                    disabled={!c.email || !microsoftConnected}
-                    onClick={() => c.email && setEmailContact(c)}
-                    title={c.email ? `Email ${c.name}` : "No email on file"}
-                  />
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<WhatsAppLogo size={13} />}
-                    onClick={onOpenWhatsApp}
-                    title="WhatsApp (shared thread with this account's registered number)"
-                  />
-                  {canUpdate && (
-                    <Button
-                      size="small"
-                      type="text"
-                      icon={<EditOutlined />}
-                      onClick={() => { setEditingContact(c); setContactModalOpen(true); }}
-                      title={`Edit ${c.name}`}
-                    />
-                  )}
-                  {canUpdate && (
-                    <Popconfirm title="Archive this contact?" onConfirm={() => removeContact(c.id)}>
-                      <Button size="small" type="text" icon={<InboxOutlined />} title="Archive" />
-                    </Popconfirm>
+                  {showArchivedContacts ? (
+                    canUpdate && (
+                      <Popconfirm title="Restore this contact?" onConfirm={() => restoreContact(c.id)}>
+                        <Button size="small">Restore</Button>
+                      </Popconfirm>
+                    )
+                  ) : (
+                    <>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<PhoneOutlined />}
+                        disabled={!c.phone}
+                        loading={callingId === c.id}
+                        onClick={() => handleCallContact(c)}
+                        title={c.phone ? `Call ${c.name}` : "No phone on file"}
+                      />
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<OutlookLogo size={13} />}
+                        disabled={!c.email || !microsoftConnected}
+                        onClick={() => c.email && setEmailContact(c)}
+                        title={c.email ? `Email ${c.name}` : "No email on file"}
+                      />
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<WhatsAppLogo size={13} />}
+                        onClick={onOpenWhatsApp}
+                        title="WhatsApp (shared thread with this account's registered number)"
+                      />
+                      {canUpdate && (
+                        <Button
+                          size="small"
+                          type="text"
+                          icon={<EditOutlined />}
+                          onClick={() => { setEditingContact(c); setContactModalOpen(true); }}
+                          title={`Edit ${c.name}`}
+                        />
+                      )}
+                      {canUpdate && (
+                        <Popconfirm title="Archive this contact?" onConfirm={() => removeContact(c.id)}>
+                          <Button size="small" type="text" icon={<InboxOutlined />} title="Archive" />
+                        </Popconfirm>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -516,17 +553,22 @@ function ContactsTab({
       <div>
         <SectionLabel
           action={
-            canUpdate && (
-              <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => setAddressModalOpen(true)}>
-                Add
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Button size="small" type="link" onClick={() => setShowArchivedAddresses((v) => !v)}>
+                {showArchivedAddresses ? "Show active" : "Show archived"}
               </Button>
-            )
+              {canUpdate && !showArchivedAddresses && (
+                <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => setAddressModalOpen(true)}>
+                  Add
+                </Button>
+              )}
+            </div>
           }
         >
           Addresses
         </SectionLabel>
         {addresses.length === 0 ? (
-          <Text type="secondary">No addresses added yet</Text>
+          <Text type="secondary">{showArchivedAddresses ? "No archived addresses" : "No addresses added yet"}</Text>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {addresses.map((a) => (
@@ -544,11 +586,17 @@ function ContactsTab({
                     </Text>
                   </div>
                 </div>
-                {canUpdate && (
-                  <Popconfirm title="Archive this address?" onConfirm={() => removeAddress(a.id)}>
-                    <Button size="small" type="text" icon={<InboxOutlined />} title="Archive" />
-                  </Popconfirm>
-                )}
+                {showArchivedAddresses
+                  ? canUpdate && (
+                      <Popconfirm title="Restore this address?" onConfirm={() => restoreAddress(a.id)}>
+                        <Button size="small">Restore</Button>
+                      </Popconfirm>
+                    )
+                  : canUpdate && (
+                      <Popconfirm title="Archive this address?" onConfirm={() => removeAddress(a.id)}>
+                        <Button size="small" type="text" icon={<InboxOutlined />} title="Archive" />
+                      </Popconfirm>
+                    )}
               </div>
             ))}
           </div>

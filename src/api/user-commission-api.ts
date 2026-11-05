@@ -2,9 +2,9 @@ import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
 import type { CreateUserCommissionPayload, UserCommission } from "../types/user-commission";
 
-export async function listUserCommissions(userId?: string): Promise<UserCommission[]> {
+export async function listUserCommissions(userId?: string, archived?: boolean): Promise<UserCommission[]> {
   const response = await apiClient.get<ApiSuccess<{ userCommissions: UserCommission[]; total: number }>>("/user-commissions", {
-    params: { limit: 200, ...(userId ? { userId } : {}) },
+    params: { limit: 200, ...(userId ? { userId } : {}), ...(archived ? { archived: true } : {}) },
   });
   return response.data.data.userCommissions;
 }
@@ -16,4 +16,8 @@ export async function createUserCommission(payload: CreateUserCommissionPayload)
 
 export async function deleteUserCommission(id: string): Promise<void> {
   await apiClient.delete<ApiSuccess<null>>(`/user-commissions/${id}`);
+}
+
+export async function restoreUserCommission(id: string): Promise<void> {
+  await apiClient.patch<ApiSuccess<null>>(`/user-commissions/${id}/restore`);
 }

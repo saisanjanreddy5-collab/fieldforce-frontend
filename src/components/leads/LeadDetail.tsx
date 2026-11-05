@@ -18,6 +18,7 @@ import { errorMessageFrom } from "../../utils/api-error";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { LeadSnapshot } from "./LeadSnapshot";
 import { LeadAssignmentPanel } from "./LeadAssignmentPanel";
+import { LeadArchiveAction } from "./LeadArchiveAction";
 import { CallCenterStageActions } from "./CallCenterStageActions";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
@@ -255,6 +256,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           <>
             <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} variant="secondary" />
             <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} variant="secondary" />
+            <LeadArchiveAction lead={lead} onChanged={() => onLeadUpdated?.()} />
           </>
         }
         availability={{
