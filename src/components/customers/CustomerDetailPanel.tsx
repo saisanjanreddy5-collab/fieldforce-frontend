@@ -361,8 +361,8 @@ function AddAddressModal({ open, onClose, onCreated, customerId }: { open: boole
         <Form.Item name="state" label="State">
           <Input />
         </Form.Item>
-        <Form.Item name="pincode" label="Pincode">
-          <Input />
+        <Form.Item name="pincode" label="Pincode" rules={[{ pattern: /^\d{6}$/, message: "Enter a valid 6-digit pincode" }]}>
+          <Input maxLength={6} />
         </Form.Item>
       </Form>
     </Modal>

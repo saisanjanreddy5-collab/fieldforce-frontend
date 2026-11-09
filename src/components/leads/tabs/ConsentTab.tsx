@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { Empty, Spin, Tag, Typography, message } from "antd";
-import { CheckCircleFilled, SafetyCertificateOutlined } from "@ant-design/icons";
+import { Button, Empty, Space, Spin, Tag, Typography, Upload, message } from "antd";
+import { CheckCircleFilled, DownloadOutlined, InboxOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import * as leadApi from "../../../api/lead-api";
+import * as leadDocumentApi from "../../../api/lead-document-api";
 import type { LeadConsent } from "../../../types/lead";
+import type { LeadDocument } from "../../../types/fofo-onboarding";
+import { useHasPermission } from "../../../hooks/use-permission";
 import { formatDateTime } from "../../../utils/lead-format";
 
 const { Text } = Typography;
@@ -28,6 +31,88 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ConsentEvidenceUpload({ leadId }: { leadId: string }) {
+  const hasPermission = useHasPermission();
+  const canUpload = hasPermission("leads.update");
+  const [doc, setDoc] = useState<LeadDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    leadDocumentApi
+      .listDocuments(leadId)
+      .then((docs) => setDoc(docs.find((d) => d.docType === "consent_form") ?? null))
+      .catch(() => message.error("Failed to load consent evidence"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, [leadId]);
+
+  const handleUpload = async (file: File) => {
+    try {
+      await leadDocumentApi.uploadDocument(leadId, "consent_form", file);
+      message.success("Consent evidence uploaded");
+      load();
+    } catch {
+      message.error("Failed to upload consent evidence");
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!doc) return;
+    try {
+      await leadDocumentApi.downloadDocument(doc.id, doc.originalFilename ?? "consent-evidence");
+    } catch {
+      message.error("Failed to download consent evidence");
+    }
+  };
+
+  if (loading) return <Spin size="small" />;
+
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+        padding: "10px 14px",
+        border: "1px solid #d9d9d9",
+        borderRadius: 8,
+      }}
+    >
+      <div>
+        <Text strong style={{ fontSize: 13, display: "block" }}>
+          Consent evidence file
+        </Text>
+        <Text type="secondary" style={{ fontSize: 11 }}>
+          {doc?.hasFile ? doc.originalFilename : "No file uploaded yet"}
+        </Text>
+      </div>
+      <Space size={8}>
+        {doc?.hasFile && <Button size="small" icon={<DownloadOutlined />} onClick={handleDownload} />}
+        {canUpload && (
+          <Upload
+            showUploadList={false}
+            customRequest={(options) => {
+              const file = options.file as File;
+              handleUpload(file).then(
+                () => options.onSuccess?.({}),
+                (err) => options.onError?.(err as Error)
+              );
+            }}
+          >
+            <Button size="small" icon={<InboxOutlined />}>
+              {doc?.hasFile ? "Replace" : "Upload"}
+            </Button>
+          </Upload>
+        )}
+      </Space>
+    </div>
+  );
+}
+
 export function ConsentTab({ leadId, consent: consentProp }: ConsentTabProps) {
   const [fetchedConsent, setFetchedConsent] = useState<LeadConsent | null>(null);
   const [loading, setLoading] = useState(consentProp === undefined);
@@ -46,7 +131,12 @@ export function ConsentTab({ leadId, consent: consentProp }: ConsentTabProps) {
   if (loading) return <Spin />;
 
   if (!consent || !consent.captured) {
-    return <Empty description="No DPDP consent captured yet for this lead" style={{ padding: 24 }} />;
+    return (
+      <div style={{ maxWidth: 640 }}>
+        <Empty description="No DPDP consent captured yet for this lead" style={{ padding: 24 }} />
+        <ConsentEvidenceUpload leadId={leadId} />
+      </div>
+    );
   }
 
   return (
@@ -94,6 +184,8 @@ export function ConsentTab({ leadId, consent: consentProp }: ConsentTabProps) {
           Consent covers: {consent.purposes ?? "not specified"}
         </Tag>
       </div>
+
+      <ConsentEvidenceUpload leadId={leadId} />
     </div>
   );
 }

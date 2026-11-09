@@ -3,6 +3,7 @@ import { Typography } from "antd";
 import { appTokens } from "../utils/design-system";
 import { StagesTab } from "../components/settings/StagesTab";
 import { CategoriesTab } from "../components/settings/CategoriesTab";
+import { InquiryOptionsTab } from "../components/settings/InquiryOptionsTab";
 import { AssignmentRulesTab } from "../components/settings/AssignmentRulesTab";
 import { ApprovalsTab } from "../components/settings/ApprovalsTab";
 import { SlaEscalationTab } from "../components/settings/SlaEscalationTab";
@@ -18,6 +19,7 @@ const { Title, Text } = Typography;
 type TabKey =
   | "stages"
   | "categories"
+  | "inquiry_options"
   | "assignment_rules"
   | "approvals"
   | "sla"
@@ -32,6 +34,7 @@ const TAB_ROWS: { key: TabKey; label: string }[][] = [
   [
     { key: "stages", label: "Stages" },
     { key: "categories", label: "Categories" },
+    { key: "inquiry_options", label: "Inquiry options" },
     { key: "assignment_rules", label: "Assignment rules" },
     { key: "approvals", label: "Approvals" },
     { key: "sla", label: "SLA & escalation" },
@@ -96,6 +99,7 @@ export default function SettingsPage() {
       <div>
         {tab === "stages" && <StagesTab />}
         {tab === "categories" && <CategoriesTab />}
+        {tab === "inquiry_options" && <InquiryOptionsTab />}
         {tab === "assignment_rules" && <AssignmentRulesTab />}
         {tab === "approvals" && <ApprovalsTab />}
         {tab === "sla" && <SlaEscalationTab />}

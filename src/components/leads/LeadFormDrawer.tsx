@@ -22,6 +22,7 @@ import type { State } from "../../types/sales-team";
 import type { TeamMember } from "../../types/user";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
+import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
 import { errorMessageFrom } from "../../utils/api-error";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
 import { ConsentTab } from "./tabs/ConsentTab";
@@ -64,7 +65,9 @@ interface FormValues {
   companyName?: string;
   source?: string;
   inquiryCategory?: string;
+  inquiryCategoryOther?: string;
   inquirySource?: string;
+  inquirySourceOther?: string;
   captureChannel?: string;
   utmTags?: string;
   expectedValue?: number;
@@ -113,9 +116,15 @@ const CAPTURE_CHANNEL_OPTIONS = [
 
 const emptyValues: FormValues = { fullName: "" };
 
+// Sentinel for "pick from the list" vs "type your own" in the Inquiry
+// Category/Source selects - never sent to the backend, handleSubmit resolves
+// it to the real typed value first (see OTHER_VALUE usages below).
+const OTHER_VALUE = "__other__";
+
 export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerProps) {
   const { stages } = usePipelineStages();
   const { categories } = useLeadCategories();
+  const { categoryOptions, sourceOptions, loading: inquiryOptionsLoading } = useLeadInquiryOptions();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const isEdit = lead !== null;
@@ -205,6 +214,29 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
     }
   }, [open, lead, form]);
 
+  // Inquiry Category/Source now come from an admin-editable list (manual-
+  // entry leads only) instead of being pure free text - a lead's existing
+  // value might predate the list or just not be on it, so that case falls
+  // back to "Other" with the real value pre-filled in the text box rather
+  // than silently showing nothing or forcing a destructive reset. Waits on
+  // inquiryOptionsLoading so this doesn't fire (and flash "Other") before
+  // the real options have even loaded once.
+  useEffect(() => {
+    if (!open || inquiryOptionsLoading) return;
+    if (!lead) {
+      form.setFieldsValue({ inquiryCategory: undefined, inquiryCategoryOther: undefined, inquirySource: undefined, inquirySourceOther: undefined });
+      return;
+    }
+    const categoryKnown = !lead.inquiryCategory || categoryOptions.some((o) => o.label === lead.inquiryCategory);
+    const sourceKnown = !lead.inquirySource || sourceOptions.some((o) => o.label === lead.inquirySource);
+    form.setFieldsValue({
+      inquiryCategory: categoryKnown ? lead.inquiryCategory ?? undefined : OTHER_VALUE,
+      inquiryCategoryOther: categoryKnown ? undefined : lead.inquiryCategory ?? undefined,
+      inquirySource: sourceKnown ? lead.inquirySource ?? undefined : OTHER_VALUE,
+      inquirySourceOther: sourceKnown ? undefined : lead.inquirySource ?? undefined,
+    });
+  }, [open, lead, inquiryOptionsLoading, categoryOptions, sourceOptions, form]);
+
   const handleSubmit = async (values: FormValues, mode: "save" | "saveAndAddAnother") => {
     setSubmitting(mode);
 
@@ -234,8 +266,8 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       territory: values.territory,
       companyName: values.companyName,
       source: values.source,
-      inquiryCategory: values.inquiryCategory,
-      inquirySource: values.inquirySource,
+      inquiryCategory: values.inquiryCategory === OTHER_VALUE ? values.inquiryCategoryOther?.trim() : values.inquiryCategory,
+      inquirySource: values.inquirySource === OTHER_VALUE ? values.inquirySourceOther?.trim() : values.inquirySource,
       captureChannel: values.captureChannel,
       utmTags: values.utmTags,
       expectedValue: values.expectedValue,
@@ -419,7 +451,15 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item
                       name="phone"
                       label="Phone Number"
-                      rules={[{ pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" }]}
+                      rules={[
+                        { pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" },
+                        // Required on create only, matching the backend
+                        // (updateLeadSchema's .partial() does the same) - an
+                        // older lead saved before this rule existed can still
+                        // be edited for anything else without first having
+                        // to go track down a phone number for it.
+                        ...(!isEdit ? [{ required: true, message: "Phone number is required" }] : []),
+                      ]}
                     >
                       <Input maxLength={10} />
                     </Form.Item>
@@ -519,8 +559,30 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                         </span>
                       }
                     >
-                      <Input disabled={inquiryFieldsLocked} />
+                      {inquiryFieldsLocked ? (
+                        <Input disabled />
+                      ) : (
+                        <Select
+                          allowClear
+                          placeholder="Optional"
+                          options={[
+                            ...categoryOptions.filter((o) => o.isActive).map((o) => ({ value: o.label, label: o.label })),
+                            { value: OTHER_VALUE, label: "Other" },
+                          ]}
+                        />
+                      )}
                     </Form.Item>
+                    {!inquiryFieldsLocked && (
+                      <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inquiryCategory !== cur.inquiryCategory}>
+                        {({ getFieldValue }) =>
+                          getFieldValue("inquiryCategory") === OTHER_VALUE && (
+                            <Form.Item name="inquiryCategoryOther" label="Inquiry Category (specify)">
+                              <Input placeholder="Type the category" />
+                            </Form.Item>
+                          )
+                        }
+                      </Form.Item>
+                    )}
                     <Form.Item
                       name="inquirySource"
                       label={
@@ -536,8 +598,30 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                         </span>
                       }
                     >
-                      <Input disabled={inquiryFieldsLocked} />
+                      {inquiryFieldsLocked ? (
+                        <Input disabled />
+                      ) : (
+                        <Select
+                          allowClear
+                          placeholder="Optional"
+                          options={[
+                            ...sourceOptions.filter((o) => o.isActive).map((o) => ({ value: o.label, label: o.label })),
+                            { value: OTHER_VALUE, label: "Other" },
+                          ]}
+                        />
+                      )}
                     </Form.Item>
+                    {!inquiryFieldsLocked && (
+                      <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inquirySource !== cur.inquirySource}>
+                        {({ getFieldValue }) =>
+                          getFieldValue("inquirySource") === OTHER_VALUE && (
+                            <Form.Item name="inquirySourceOther" label="Inquiry Source (specify)">
+                              <Input placeholder="e.g. Instagram, Referral, Walk-in" />
+                            </Form.Item>
+                          )
+                        }
+                      </Form.Item>
+                    )}
                     <Form.Item name="utmTags" label="UTM / campaign tags">
                       <Input />
                     </Form.Item>
@@ -577,8 +661,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item name="storeAddress" label="Store address">
                       <Input />
                     </Form.Item>
-                    <Form.Item name="storePincode" label="Store pin code">
-                      <Input />
+                    <Form.Item
+                      name="storePincode"
+                      label="Store pin code"
+                      rules={[{ pattern: /^\d{6}$/, message: "Enter a valid 6-digit pincode" }]}
+                    >
+                      <Input maxLength={6} />
                     </Form.Item>
                     <Form.Item name="storeCity" label="Store city">
                       <Input />
@@ -605,7 +693,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                       <Input />
                     </Form.Item>
                     <Form.Item name="expectedOpening" label="Expected opening">
-                      <DatePicker style={{ width: "100%" }} />
+                      <DatePicker style={{ width: "100%" }} format="D MMM YYYY" disabledDate={(d) => d.isBefore(dayjs(), "day")} />
                     </Form.Item>
                   </FormSection>
 

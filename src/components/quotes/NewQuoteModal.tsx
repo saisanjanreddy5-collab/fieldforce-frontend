@@ -38,12 +38,23 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
       .listLeads({ limit: 100 })
       .then((result) => setLeads(result.leads))
       .catch(() => message.error("Failed to load leads"));
+    // The generic 100-lead list above has no guarantee of including the
+    // specific lead this modal was launched from (e.g. opened from an
+    // opportunity whose lead isn't among the 100 most relevant leads) - the
+    // Select would then hold defaultLeadId with no matching option and
+    // silently render blank. Fetch that one lead directly and merge it in.
+    if (defaultLeadId) {
+      leadApi
+        .getLead(defaultLeadId)
+        .then((lead) => setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev])))
+        .catch(() => message.error("Failed to load this lead's details"));
+    }
     setLeadId(defaultLeadId);
     setOpportunityId(defaultOpportunityId);
     setLineItems([emptyLineItem()]);
     setNotes("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, defaultLeadId]);
 
   useEffect(() => {
     if (!leadId) {
