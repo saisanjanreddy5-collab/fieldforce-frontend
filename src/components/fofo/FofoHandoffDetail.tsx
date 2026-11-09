@@ -18,6 +18,7 @@ import {
 } from "antd";
 import { CheckCircleFilled, DownloadOutlined, ExclamationCircleFilled, InboxOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
+import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import * as fofoApi from "../../api/fofo-onboarding-api";
 import * as leadApi from "../../api/lead-api";
@@ -74,6 +75,7 @@ interface FofoHandoffDetailProps {
 
 export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const hasPermission = useHasPermission();
   const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
   const [consent, setConsent] = useState<LeadConsent | null>(null);
@@ -122,6 +124,9 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
       const { handoff: updated, message: successMessage } = await fofoApi.pushToOnboardingApp(leadId);
       setHandoff(updated);
       message.success(successMessage);
+      // Back to the list so the newly-pushed record is visible there right
+      // away, instead of leaving the user stranded on this detail screen.
+      navigate("/fofo-onboarding");
     } catch (err) {
       const description =
         isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : "Failed to push";
@@ -292,7 +297,7 @@ function PayloadRow({ label, complete, detail }: { label: string; complete: bool
 }
 
 function HandoffPayloadCard({ lead, documents, consent }: { lead: FofoHandoff["lead"]; documents: LeadDocument[]; consent: LeadConsent | null }) {
-  const applicantFields = [lead.fullName, lead.entityType, lead.phone, lead.email, lead.panNumber, lead.aadhaarNumber];
+  const applicantFields = [lead.fullName, lead.entityType, lead.phone, lead.email, lead.panNumber, lead.aadhaarNumber, lead.gstNumber];
   const applicantFilled = applicantFields.filter(Boolean).length;
 
   const storeFields = [
@@ -401,6 +406,7 @@ function ApplicantStep({ leadId, lead, onSaved, onNext }: { leadId: string; lead
         email: lead.email ?? undefined,
         panNumber: lead.panNumber ?? undefined,
         aadhaarNumber: lead.aadhaarNumber ?? undefined,
+        gstNumber: lead.gstNumber ?? undefined,
       }}
     >
       <Form.Item name="fullName" label="Applicant name" rules={[{ required: true, message: "Required" }]}>
@@ -429,6 +435,14 @@ function ApplicantStep({ leadId, lead, onSaved, onNext }: { leadId: string; lead
         rules={[{ pattern: /^[2-9]\d{11}$/, message: "Enter a valid 12-digit Aadhaar number" }]}
       >
         <Input maxLength={12} />
+      </Form.Item>
+      <Form.Item
+        name="gstNumber"
+        label="GST number"
+        rules={[{ pattern: /^\d{2}[A-Za-z]{5}\d{4}[A-Za-z][A-Za-z0-9][Zz][A-Za-z0-9]$/, message: "Enter a valid GSTIN" }]}
+        normalize={(value: string) => value?.toUpperCase()}
+      >
+        <Input placeholder="22AAAAA0000A1Z5" maxLength={15} />
       </Form.Item>
       <StepFooter onNext={onNext} saving={saving} />
     </Form>
@@ -774,7 +788,7 @@ function ApprovalPushStep({
         </Form.Item>
       ))}
       <Form.Item name="targetGoLive" label="Target go-live">
-        <DatePicker style={{ width: "100%" }} />
+        <DatePicker style={{ width: "100%" }} format="D MMM YYYY" disabledDate={(d) => d.isBefore(dayjs(), "day")} />
       </Form.Item>
       <Form.Item label="Onboarding app ID">
         <Input disabled value={lead.onboardingAppId ?? "Not yet created"} />

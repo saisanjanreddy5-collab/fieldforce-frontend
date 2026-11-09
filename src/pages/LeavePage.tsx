@@ -48,6 +48,16 @@ export default function LeavePage() {
   const [grantCompOffOpen, setGrantCompOffOpen] = useState(false);
   const [typesDrawerOpen, setTypesDrawerOpen] = useState(false);
 
+  // The 30-day Team view's own timeline already includes decided requests in
+  // that window, but only as an unlabeled colored bar - no reason, no dates
+  // as text, nothing to read. This is the same data, just also rendered the
+  // same readable way every other view in this app already shows a request
+  // (Mine tab, History tab, the whole Expenses module), instead of only
+  // existing as a hard-to-notice bar you have to already know to decode.
+  const recentlyDecided = teamRequests
+    .filter((r) => r.status !== "pending")
+    .sort((a, b) => (b.approverDecidedAt ?? "").localeCompare(a.approverDecidedAt ?? ""));
+
   const load = () => {
     setLoading(true);
     Promise.all([
@@ -326,7 +336,52 @@ export default function LeavePage() {
       ) : activeTab === "history" ? (
         <LeaveHistoryBrowser balances={balances} directReports={context?.directReports ?? []} />
       ) : (
-        <TeamLeaveTimeline requests={teamRequests} />
+        <>
+          {recentlyDecided.length > 0 && (
+            <div
+              style={{
+                border: `1px solid ${appTokens.border}`,
+                borderRadius: appTokens.radius,
+                background: appTokens.surface,
+                boxShadow: appTokens.shadowSm,
+                padding: 16,
+                marginBottom: 16,
+              }}
+            >
+              <Text strong style={{ fontSize: 14, display: "block" }}>
+                Recently decided
+              </Text>
+              <div style={{ marginBottom: 8 }}>
+                <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
+                  Approved/rejected requests in this 30-day window - see History for any month, any status
+                </Text>
+              </div>
+              <Table<LeaveRequest>
+                size="small"
+                rowKey="id"
+                dataSource={recentlyDecided}
+                pagination={false}
+                columns={[
+                  { title: "Person", key: "person", render: (_, r) => r.userName },
+                  { title: "Type", key: "type", render: (_, r) => kindLabel(r.kind, balances) },
+                  { title: "Dates", key: "dates", render: (_, r) => formatDateRange(r.startDate, r.endDate) },
+                  { title: "Days", key: "days", render: (_, r) => daysLabel(r.daysCount) },
+                  { title: "Reason", dataIndex: "reason" },
+                  {
+                    title: "Status",
+                    key: "status",
+                    render: (_, r) => (
+                      <Tag style={{ color: STATUS_COLOR[r.status], background: `${STATUS_COLOR[r.status]}17`, border: "none", fontWeight: 600 }}>
+                        {r.status[0].toUpperCase() + r.status.slice(1)}
+                      </Tag>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          )}
+          <TeamLeaveTimeline requests={teamRequests} />
+        </>
       )}
 
       <ApplyForLeaveModal
