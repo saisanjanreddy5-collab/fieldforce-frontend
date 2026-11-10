@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Select, Table, Tabs, Tag, Typography } from "antd";
+import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Popover, Select, Table, Tabs, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as callCenterApi from "../api/call-center-api";
@@ -307,9 +307,24 @@ export default function CallCenterPage() {
                 width: "16%",
                 render: (_, c) =>
                   c.recordingUrl ? (
-                    <a href={c.recordingUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
-                      <PlayCircleOutlined /> Play
-                    </a>
+                    // Real fix for "Play redirects to an external website" -
+                    // this used to be a plain <a target="_blank"> to the raw
+                    // recording file, navigating the whole tab away. A
+                    // Popover with a real <audio> element plays it in place,
+                    // never leaving this page.
+                    <Popover
+                      trigger="click"
+                      placement="left"
+                      content={
+                        <audio controls autoPlay style={{ width: 260 }}>
+                          <source src={c.recordingUrl} />
+                        </audio>
+                      }
+                    >
+                      <Button type="link" size="small" style={{ fontSize: 12.5, whiteSpace: "nowrap", padding: 0 }} icon={<PlayCircleOutlined />}>
+                        Play
+                      </Button>
+                    </Popover>
                   ) : (
                     <Text type="secondary">—</Text>
                   ),

@@ -9,7 +9,7 @@ import * as salesTeamApi from "../api/sales-team-api";
 import * as teamRollupApi from "../api/team-rollup-api";
 import type { Opportunity } from "../types/opportunity";
 import type { TeamMember } from "../types/user";
-import type { SalesTeam, Zone } from "../types/sales-team";
+import type { Zone } from "../types/sales-team";
 import type { TeamRollupGroup } from "../types/team-rollup";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { KanbanBoard } from "../components/opportunities/KanbanBoard";
@@ -39,7 +39,6 @@ export default function OpportunitiesPage() {
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
-  const [salesTeams, setSalesTeams] = useState<SalesTeam[]>([]);
   const [territories, setTerritories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("kanban");
@@ -50,7 +49,6 @@ export default function OpportunitiesPage() {
   const [stageFilter, setStageFilter] = useState<string | undefined>();
   const [zoneFilter, setZoneFilter] = useState<string | undefined>();
   const [territoryFilter, setTerritoryFilter] = useState<string | undefined>();
-  const [salesTeamFilter, setSalesTeamFilter] = useState<string | undefined>();
 
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -134,7 +132,6 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     userApi.listUsers().then(setUsers).catch(() => undefined);
     salesTeamApi.listZones().then(setZones).catch(() => undefined);
-    salesTeamApi.listSalesTeams().then(setSalesTeams).catch(() => undefined);
     leadApi.listTerritories().then(setTerritories).catch(() => undefined);
   }, []);
 
@@ -147,14 +144,13 @@ export default function OpportunitiesPage() {
       if (stageFilter && o.stage !== stageFilter) return false;
       if (zoneFilter && o.leadZoneId !== zoneFilter) return false;
       if (territoryFilter && o.leadTerritory !== territoryFilter) return false;
-      if (salesTeamFilter && o.leadSalesTeamId !== salesTeamFilter) return false;
       if (managerFilter) {
         const owner = users.find((u) => u.id === o.ownerId);
         if (!owner || owner.managerId !== managerFilter) return false;
       }
       return true;
     });
-  }, [opportunities, categoryFilter, ownerFilter, stageFilter, zoneFilter, territoryFilter, salesTeamFilter, managerFilter, users]);
+  }, [opportunities, categoryFilter, ownerFilter, stageFilter, zoneFilter, territoryFilter, managerFilter, users]);
 
   const stats = useMemo(() => {
     const open = filtered.filter((o) => o.stage !== "won" && o.stage !== "lost");
@@ -167,8 +163,7 @@ export default function OpportunitiesPage() {
     return { openCount: open.length, pipelineValue, weightedForecast, avgDealSize };
   }, [filtered]);
 
-  const hasActiveFilters =
-    categoryFilter || ownerFilter || managerFilter || stageFilter || zoneFilter || territoryFilter || salesTeamFilter;
+  const hasActiveFilters = categoryFilter || ownerFilter || managerFilter || stageFilter || zoneFilter || territoryFilter;
   const clearFilters = () => {
     setCategoryFilter(undefined);
     setOwnerFilter(undefined);
@@ -176,7 +171,6 @@ export default function OpportunitiesPage() {
     setStageFilter(undefined);
     setZoneFilter(undefined);
     setTerritoryFilter(undefined);
-    setSalesTeamFilter(undefined);
   };
 
   const handleMoveStage = async (opportunityId: string, stageKey: string) => {
@@ -304,16 +298,6 @@ export default function OpportunitiesPage() {
             value={territoryFilter ?? "all"}
             onChange={(v) => setTerritoryFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All territories" }, ...territories.map((t) => ({ value: t, label: t }))]}
-          />
-          <Select
-            prefix={FILTER_DOT}
-            style={{ minWidth: 130, flexShrink: 0 }}
-            value={salesTeamFilter ?? "all"}
-            onChange={(v) => setSalesTeamFilter(v === "all" ? undefined : v)}
-            options={[
-              { value: "all", label: "All sales teams" },
-              ...salesTeams.map((t) => ({ value: t.id, label: t.region ? `${t.name} (${t.region})` : t.name })),
-            ]}
           />
           <Select
             prefix={FILTER_DOT}

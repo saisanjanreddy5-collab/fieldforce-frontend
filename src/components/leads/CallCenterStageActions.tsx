@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { App, Button, DatePicker, Input, Popover, Select, Typography } from "antd";
+import { App, Button, DatePicker, Input, Popover, Select, Tooltip, Typography } from "antd";
 import { PhoneOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as leadApi from "../../api/lead-api";
@@ -161,11 +161,21 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
       );
     }
     if (canQualify && isSlc) {
+      // Real fix, not just a frontend nicety - the backend now rejects this
+      // too (qualifyLead's own check) if the last logged call wasn't "Call
+      // Done And Interested". Disabling it here instead of letting the
+      // click fail is just the honest version of the same rule - a lead
+      // that was never actually reached, or was reached and not
+      // interested, should never look one click away from being handed to
+      // Field Sales.
+      const canActuallyQualify = lead.lastCallOutcome === "Call Done And Interested";
       return (
         <NextStepSlot>
-          <Button size="small" type="primary" loading={qualifying} onClick={handleQualify}>
-            Mark Qualified
-          </Button>
+          <Tooltip title={canActuallyQualify ? undefined : "Log a call with outcome \"Call Done And Interested\" first"}>
+            <Button size="small" type="primary" loading={qualifying} disabled={!canActuallyQualify} onClick={handleQualify}>
+              Mark Qualified
+            </Button>
+          </Tooltip>
         </NextStepSlot>
       );
     }

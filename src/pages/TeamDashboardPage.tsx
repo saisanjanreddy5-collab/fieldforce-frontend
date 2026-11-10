@@ -110,12 +110,20 @@ export default function TeamDashboardPage() {
               : "Leave and field activity per salesperson"}
           </Text>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button onClick={() => setLeaveOpen(true)}>Apply for leave</Button>
-          <Button type="primary" onClick={() => setExpenseOpen(true)}>
-            + New expense claim
-          </Button>
-        </div>
+        {/* Same reasoning as LeavePage/ExpensesPage's own isAdmin gate: Admin
+            has no manager, so a request/claim of their own would auto-
+            approve with zero real oversight - Admin's role is to approve
+            everyone else's, never to file their own. This shortcut lives on
+            its own local modal state (not ExpensesPage's ?newClaim= deep
+            link), so it needed this same check added here independently. */}
+        {user?.role !== "admin" && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button onClick={() => setLeaveOpen(true)}>Apply for leave</Button>
+            <Button type="primary" onClick={() => setExpenseOpen(true)}>
+              + New expense claim
+            </Button>
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>

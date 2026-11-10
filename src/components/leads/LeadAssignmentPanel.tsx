@@ -114,7 +114,7 @@ export function LeadAssignmentPanel({ lead, onChanged, variant }: LeadAssignment
     <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 8 }}>
       <Text type="secondary" style={{ fontSize: 12 }}>
         {CALLING_TIER_STAGES[lead.status]
-          ? `Any active ${lead.status} team employee can take this lead.`
+          ? "Any active Call Center Executive can take this lead."
           : "Only field employees who cover this lead's pincode are listed."}
       </Text>
       <Select

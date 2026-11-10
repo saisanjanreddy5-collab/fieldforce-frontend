@@ -70,13 +70,29 @@ interface CustomerDetailPanelProps {
   onChanged?: () => void;
 }
 
-function SectionLabel({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+function SectionLabel({
+  children,
+  action,
+  description,
+}: {
+  children: React.ReactNode;
+  action?: React.ReactNode;
+  /** Same convention Settings tabs already use (e.g. CategoriesTab, InquiryOptionsTab) -
+   * a one-line caption under the heading saying what this section actually is. Every
+   * section on this page used to have none at all (the real "purpose unclear" complaint). */
+  description?: React.ReactNode;
+}) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-      <Text style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: appTokens.textTertiary }}>
-        {children}
-      </Text>
-      {action}
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Text style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: appTokens.textTertiary }}>
+          {children}
+        </Text>
+        {action}
+      </div>
+      {description && (
+        <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{description}</Text>
+      )}
     </div>
   );
 }
@@ -128,7 +144,9 @@ function OverviewTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <SectionLabel>Account summary</SectionLabel>
+        <SectionLabel description="Live totals computed from this customer's real orders, invoices and tickets">
+          Account summary
+        </SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <MetricBox label="Lifetime value" value={formatCompactCurrency(customer.lifetimeValue ?? 0)} />
           <MetricBox label="Open orders" value={customer.openOrdersCount ?? 0} />
@@ -138,7 +156,9 @@ function OverviewTab({
       </div>
 
       <div>
-        <SectionLabel>Credit position</SectionLabel>
+        <SectionLabel description="Set by your team below - not synced automatically from invoices or payments">
+          Credit position
+        </SectionLabel>
         <div style={{ background: appTokens.surfaceMuted, borderRadius: appTokens.radius, padding: 14 }}>
           <div style={{ height: 8, borderRadius: 999, background: appTokens.border, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${utilization}%`, background: barColor, borderRadius: 999, transition: "width 0.3s" }} />
@@ -205,7 +225,7 @@ function OverviewTab({
       </div>
 
       <div>
-        <SectionLabel>Account</SectionLabel>
+        <SectionLabel description="Who owns this account and how it's categorized">Account</SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {customer.companyName && customer.companyName !== customer.fullName && (
             <Field label="Company" value={customer.companyName} />
@@ -470,6 +490,7 @@ function ContactsTab({
               )}
             </div>
           }
+          description="People at this account - who to call or email, separate from the owning salesperson above"
         >
           Contacts
         </SectionLabel>
@@ -564,6 +585,7 @@ function ContactsTab({
               )}
             </div>
           }
+          description="Billing and shipping addresses for this account, used on invoices and deliveries"
         >
           Addresses
         </SectionLabel>

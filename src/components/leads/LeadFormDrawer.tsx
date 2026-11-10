@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tabs, Tooltip, Typography, message } from "antd";
+import { Button, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tabs, Typography, message } from "antd";
 import {
   BankOutlined,
   ContactsOutlined,
@@ -128,12 +128,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const isEdit = lead !== null;
-
-  // Auto-captured fields (Inquiry Category/Source) are locked whenever the
-  // channel that produced this lead isn't manual entry - real fields, just
-  // a new honest interaction: switching to Manual entry unlocks them.
-  const captureChannel = Form.useWatch("captureChannel", form);
-  const inquiryFieldsLocked = Boolean(captureChannel) && captureChannel !== "manual_entry";
 
   // Flat list, not region-filtered - the state itself (not which zone it's
   // in) is what assignment_rules actually matches a new lead's owner
@@ -519,22 +513,14 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                   <FormSection
                     icon={<FileTextOutlined />}
                     iconColor="#2a78d6"
-                    title="Captured automatically"
-                    description="Category and source come from where the lead arrived"
+                    title="How this lead arrived"
+                    description="Which channel brought this lead in"
                   >
                     <FormSectionFullWidth>
                       <Form.Item name="captureChannel" label="Capture channel">
                         <Select allowClear options={CAPTURE_CHANNEL_OPTIONS} />
                       </Form.Item>
                     </FormSectionFullWidth>
-                    {inquiryFieldsLocked && (
-                      <FormSectionFullWidth>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          Inquiry Category and Inquiry Source are filled from the capture channel and locked. Switch to Manual entry to set them
-                          yourself.
-                        </Text>
-                      </FormSectionFullWidth>
-                    )}
                   </FormSection>
 
                   <FormSection icon={<BankOutlined />} iconColor="#1677ff" title="Inquiry details" description="Category and source of the enquiry">
@@ -544,84 +530,44 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item name="expectedValue" label="Expected value">
                       <InputNumber style={{ width: "100%" }} min={0} prefix="₹" />
                     </Form.Item>
-                    <Form.Item
-                      name="inquiryCategory"
-                      label={
-                        <span>
-                          Inquiry Category{" "}
-                          {inquiryFieldsLocked && (
-                            <Tooltip title="Locked because this lead's capture channel isn't Manual entry">
-                              <span style={{ fontSize: 10, color: "#ad6800", background: "#fff7ec", border: "1px solid #ffe7ba", borderRadius: 999, padding: "0 6px" }}>
-                                AUTO
-                              </span>
-                            </Tooltip>
-                          )}
-                        </span>
-                      }
-                    >
-                      {inquiryFieldsLocked ? (
-                        <Input disabled />
-                      ) : (
-                        <Select
-                          allowClear
-                          placeholder="Optional"
-                          options={[
-                            ...categoryOptions.filter((o) => o.isActive).map((o) => ({ value: o.label, label: o.label })),
-                            { value: OTHER_VALUE, label: "Other" },
-                          ]}
-                        />
-                      )}
+                    <Form.Item name="inquiryCategory" label="Inquiry Category">
+                      <Select
+                        allowClear
+                        placeholder="Optional"
+                        options={[
+                          ...categoryOptions.filter((o) => o.isActive).map((o) => ({ value: o.label, label: o.label })),
+                          { value: OTHER_VALUE, label: "Other" },
+                        ]}
+                      />
                     </Form.Item>
-                    {!inquiryFieldsLocked && (
-                      <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inquiryCategory !== cur.inquiryCategory}>
-                        {({ getFieldValue }) =>
-                          getFieldValue("inquiryCategory") === OTHER_VALUE && (
-                            <Form.Item name="inquiryCategoryOther" label="Inquiry Category (specify)">
-                              <Input placeholder="Type the category" />
-                            </Form.Item>
-                          )
-                        }
-                      </Form.Item>
-                    )}
-                    <Form.Item
-                      name="inquirySource"
-                      label={
-                        <span>
-                          Inquiry Source{" "}
-                          {inquiryFieldsLocked && (
-                            <Tooltip title="Locked because this lead's capture channel isn't Manual entry">
-                              <span style={{ fontSize: 10, color: "#ad6800", background: "#fff7ec", border: "1px solid #ffe7ba", borderRadius: 999, padding: "0 6px" }}>
-                                AUTO
-                              </span>
-                            </Tooltip>
-                          )}
-                        </span>
+                    <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inquiryCategory !== cur.inquiryCategory}>
+                      {({ getFieldValue }) =>
+                        getFieldValue("inquiryCategory") === OTHER_VALUE && (
+                          <Form.Item name="inquiryCategoryOther" label="Inquiry Category (specify)">
+                            <Input placeholder="Type the category" />
+                          </Form.Item>
+                        )
                       }
-                    >
-                      {inquiryFieldsLocked ? (
-                        <Input disabled />
-                      ) : (
-                        <Select
-                          allowClear
-                          placeholder="Optional"
-                          options={[
-                            ...sourceOptions.filter((o) => o.isActive).map((o) => ({ value: o.label, label: o.label })),
-                            { value: OTHER_VALUE, label: "Other" },
-                          ]}
-                        />
-                      )}
                     </Form.Item>
-                    {!inquiryFieldsLocked && (
-                      <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inquirySource !== cur.inquirySource}>
-                        {({ getFieldValue }) =>
-                          getFieldValue("inquirySource") === OTHER_VALUE && (
-                            <Form.Item name="inquirySourceOther" label="Inquiry Source (specify)">
-                              <Input placeholder="e.g. Instagram, Referral, Walk-in" />
-                            </Form.Item>
-                          )
-                        }
-                      </Form.Item>
-                    )}
+                    <Form.Item name="inquirySource" label="Inquiry Source">
+                      <Select
+                        allowClear
+                        placeholder="Optional"
+                        options={[
+                          ...sourceOptions.filter((o) => o.isActive).map((o) => ({ value: o.label, label: o.label })),
+                          { value: OTHER_VALUE, label: "Other" },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item noStyle shouldUpdate={(prev, cur) => prev.inquirySource !== cur.inquirySource}>
+                      {({ getFieldValue }) =>
+                        getFieldValue("inquirySource") === OTHER_VALUE && (
+                          <Form.Item name="inquirySourceOther" label="Inquiry Source (specify)">
+                            <Input placeholder="e.g. Instagram, Referral, Walk-in" />
+                          </Form.Item>
+                        )
+                      }
+                    </Form.Item>
                     <Form.Item name="utmTags" label="UTM / campaign tags">
                       <Input />
                     </Form.Item>
