@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { App, Button, Drawer, Empty, Form, Input, InputNumber, Popconfirm, Select, Skeleton, Space, Spin, Tag, Typography } from "antd";
-import { FileDoneOutlined, InboxOutlined, SwapOutlined } from "@ant-design/icons";
+import { FileDoneOutlined, InboxOutlined, PlusCircleOutlined, SwapOutlined } from "@ant-design/icons";
 import * as opportunityApi from "../../api/opportunity-api";
 import * as quoteApi from "../../api/quote-api";
 import type { Opportunity } from "../../types/opportunity";
@@ -260,6 +260,45 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchi
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {history.map((event) => {
+              // "created" (the opportunity's own creation, now logged too -
+              // see opportunity-service.ts's own fix for History never
+              // showing who created it) has no from/to stage at all, unlike
+              // every other event here (a real stage move) - a different,
+              // dedicated render, not the "? → ?" the stage-arrow renderer
+              // below would otherwise produce for it.
+              if (event.action === "created") {
+                return (
+                  <div key={event.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        background: appTokens.surfaceMuted,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        fontSize: 12,
+                        color: appTokens.textSecondary,
+                      }}
+                    >
+                      <PlusCircleOutlined />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <Text strong style={{ fontSize: 13.5 }}>
+                        {event.summary}
+                      </Text>
+                      <div>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {formatDateTime(event.createdAt)}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               const fromLabel = STAGE_LABEL[event.oldValue ?? ""] ?? event.oldValue ?? "?";
               const toLabel = STAGE_LABEL[event.newValue ?? ""] ?? event.newValue ?? "?";
               return (

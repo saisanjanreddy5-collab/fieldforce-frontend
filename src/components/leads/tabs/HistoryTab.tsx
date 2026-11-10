@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Badge, Button, Checkbox, Dropdown, Empty, Input, Modal, Segmented, Skeleton, Tag, Tooltip, Typography, message } from "antd";
+import { Avatar, Badge, Button, Checkbox, Dropdown, Empty, Input, Modal, Popover, Segmented, Skeleton, Tag, Tooltip, Typography, message } from "antd";
 import {
   DeleteOutlined,
   DownOutlined,
@@ -220,10 +220,22 @@ function ActivityEntry({ activity }: { activity: Activity }) {
       {activity.type === "call" && !isScheduled && (
         <div style={{ marginTop: 8 }}>
           {recordingUrl ? (
-            <a href={recordingUrl} target="_blank" rel="noreferrer">
-              <PlayCircleOutlined /> Recording
-              {durationSeconds !== undefined ? ` · ${formatDurationSeconds(durationSeconds)}` : ""}
-            </a>
+            // Same fix as CallCenterPage.tsx's own Play button - plays in
+            // place via a real <audio> element instead of navigating this
+            // whole tab away to the raw recording file.
+            <Popover
+              trigger="click"
+              content={
+                <audio controls autoPlay style={{ width: 260 }}>
+                  <source src={recordingUrl} />
+                </audio>
+              }
+            >
+              <Button type="link" size="small" style={{ padding: 0, height: "auto" }}>
+                <PlayCircleOutlined /> Recording
+                {durationSeconds !== undefined ? ` · ${formatDurationSeconds(durationSeconds)}` : ""}
+              </Button>
+            </Popover>
           ) : (
             <Tooltip title="Recording will appear here once the telephony integration is connected">
               <Text type="secondary" style={{ fontSize: 12 }}>

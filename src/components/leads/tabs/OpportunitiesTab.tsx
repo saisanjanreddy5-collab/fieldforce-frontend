@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Button, Empty, Form, Input, InputNumber, Modal, Spin, Tag, Typography, message } from "antd";
+import { Button, Empty, Form, Input, InputNumber, Modal, Spin, Tag, Tooltip, Typography, message } from "antd";
 import { RiseOutlined } from "@ant-design/icons";
 import * as opportunityApi from "../../../api/opportunity-api";
 import type { Opportunity } from "../../../types/opportunity";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
 import { useHasPermission } from "../../../hooks/use-permission";
+import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../../utils/lead-constants";
 
 const { Text, Title } = Typography;
+
+const CALL_CENTER_TIER_STAGES: string[] = [NEW_STAGE, FLC_STAGE, SLC_STAGE];
 
 interface OpportunitiesTabProps {
   leadId: string;
@@ -16,6 +19,11 @@ interface OpportunitiesTabProps {
   opportunities: Opportunity[];
   loading: boolean;
   onChanged: () => void;
+  /** Drives the stage gate below - an opportunity can't exist for a lead
+   * Call Center hasn't qualified yet (see opportunity-service.ts's own
+   * backend check, the real enforcement; this is just the honest frontend
+   * reflection of it). */
+  leadStatus: string;
 }
 
 interface NewOpportunityFormValues {
@@ -24,8 +32,9 @@ interface NewOpportunityFormValues {
   closeDate?: string;
 }
 
-export function OpportunitiesTab({ leadId, opportunities, loading, onChanged }: OpportunitiesTabProps) {
+export function OpportunitiesTab({ leadId, opportunities, loading, onChanged, leadStatus }: OpportunitiesTabProps) {
   const hasPermission = useHasPermission();
+  const notYetQualified = CALL_CENTER_TIER_STAGES.includes(leadStatus);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<NewOpportunityFormValues>();
@@ -79,9 +88,11 @@ export function OpportunitiesTab({ leadId, opportunities, loading, onChanged }: 
           </div>
         </div>
         {hasPermission("opportunities.create") && (
-          <Button type="primary" onClick={() => setModalOpen(true)}>
-            + New opportunity
-          </Button>
+          <Tooltip title={notYetQualified ? "Available once this lead reaches Qualified" : undefined}>
+            <Button type="primary" disabled={notYetQualified} onClick={() => setModalOpen(true)}>
+              + New opportunity
+            </Button>
+          </Tooltip>
         )}
       </div>
 

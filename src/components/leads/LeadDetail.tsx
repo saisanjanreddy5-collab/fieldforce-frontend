@@ -282,7 +282,13 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         <div style={{ marginTop: 16 }}>
           {activeTabKey === "overview" && <OverviewTab lead={lead} />}
           {activeTabKey === "opportunities" && (
-            <OpportunitiesTab leadId={lead.id} opportunities={opportunities} loading={opportunitiesLoading} onChanged={loadOpportunities} />
+            <OpportunitiesTab
+              leadId={lead.id}
+              opportunities={opportunities}
+              loading={opportunitiesLoading}
+              onChanged={loadOpportunities}
+              leadStatus={lead.status}
+            />
           )}
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
