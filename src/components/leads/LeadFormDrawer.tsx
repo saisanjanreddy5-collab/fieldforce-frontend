@@ -539,12 +539,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                       label="Phone Number"
                       rules={[
                         { pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" },
-                        // Required on create only, matching the backend
-                        // (updateLeadSchema's .partial() does the same) - an
-                        // older lead saved before this rule existed can still
-                        // be edited for anything else without first having
-                        // to go track down a phone number for it.
-                        ...(!isEdit ? [{ required: true, message: "Phone number is required" }] : []),
+                        // Required on both create and edit, matching the
+                        // backend (updateLeadSchema re-applies this after its
+                        // own .partial()) - a client decision: an older lead
+                        // saved before this rule existed must get a real
+                        // phone number added the next time anyone edits it.
+                        { required: true, message: "Phone number is required" },
                       ]}
                     >
                       <Input maxLength={10} />
