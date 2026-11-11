@@ -32,12 +32,8 @@ export default function LeavePage() {
   const hasPermission = useHasPermission();
   const canSeeTeam = hasPermission("leave_requests.approve");
   const canGrantCompOff = hasPermission("comp_off_credits.grant");
-  // Admin has no manager, so a leave request of their own would auto-approve
-  // with no real oversight - Admin's role here is oversight only, never a
-  // requester, so the apply/personal-balance UI is hidden for this role.
-  const isAdmin = user?.role === "admin";
 
-  const [activeTab, setActiveTab] = useState<TabKey>(isAdmin ? "team" : "mine");
+  const [activeTab, setActiveTab] = useState<TabKey>("mine");
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
@@ -119,31 +115,27 @@ export default function LeavePage() {
           <Button size="small" onClick={() => setTypesDrawerOpen(true)}>
             Leave types &amp; policy
           </Button>
-          {!isAdmin && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplyOpen(true)}>
-              Apply for leave
-            </Button>
-          )}
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplyOpen(true)}>
+            Apply for leave
+          </Button>
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {!isAdmin && (
-          <Button
-            size="small"
-            shape="round"
-            onClick={() => setActiveTab("mine")}
-            style={{
-              background: appTokens.surface,
-              borderWidth: activeTab === "mine" ? 1.5 : 1,
-              borderColor: activeTab === "mine" ? appTokens.primary : appTokens.border,
-              color: activeTab === "mine" ? appTokens.primary : appTokens.textSecondary,
-              fontWeight: activeTab === "mine" ? 600 : 500,
-            }}
-          >
-            My leave {myRequests.length}
-          </Button>
-        )}
+        <Button
+          size="small"
+          shape="round"
+          onClick={() => setActiveTab("mine")}
+          style={{
+            background: appTokens.surface,
+            borderWidth: activeTab === "mine" ? 1.5 : 1,
+            borderColor: activeTab === "mine" ? appTokens.primary : appTokens.border,
+            color: activeTab === "mine" ? appTokens.primary : appTokens.textSecondary,
+            fontWeight: activeTab === "mine" ? 600 : 500,
+          }}
+        >
+          My leave {myRequests.length}
+        </Button>
         {canSeeTeam && (
           <Button
             size="small"
@@ -178,9 +170,8 @@ export default function LeavePage() {
         )}
       </div>
 
-      {!isAdmin && (
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
-          {balances.map((b) => (
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+        {balances.map((b) => (
             <div
               key={b.key}
               style={{
@@ -205,8 +196,7 @@ export default function LeavePage() {
               </div>
             </div>
           ))}
-        </div>
-      )}
+      </div>
 
       {canSeeTeam && pendingApprovals.length > 0 && (
         <div
@@ -252,7 +242,7 @@ export default function LeavePage() {
         </div>
       )}
 
-      {!isAdmin && activeTab === "mine" ? (
+      {activeTab === "mine" ? (
         <div
           style={{
             border: `1px solid ${appTokens.border}`,

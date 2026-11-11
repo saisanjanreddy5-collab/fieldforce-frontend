@@ -183,6 +183,30 @@ export default function LeadsPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [leads, selectedIndex]);
 
+  // Patches the one changed lead in place instead of refetching the whole
+  // page - a full load(page) on every stage click (Escalate, Qualify, Send
+  // to Field, Reassign...) was the real cause of the visible "refreshing"
+  // lag those actions used to have. Falls back to a real reload only when
+  // the action genuinely has no updated lead to hand back (e.g. Archive).
+  const handleLeadUpdated = (updated?: Lead) => {
+    if (!updated) {
+      load(page);
+      return;
+    }
+    if (deepLinkedLead?.id === updated.id) {
+      setDeepLinkedLead(updated);
+    }
+    // A stage/owner change that no longer matches the active filter means
+    // a real refetch would drop this row from this page too - remove it
+    // locally instead of leaving a stale, filtered-out lead on screen.
+    const stillMatchesFilters =
+      (!resolvedFilters.status || updated.status === resolvedFilters.status) &&
+      (!resolvedFilters.ownerId || updated.ownerId === resolvedFilters.ownerId);
+    setLeads((prev) =>
+      stillMatchesFilters ? prev.map((l) => (l.id === updated.id ? updated : l)) : prev.filter((l) => l.id !== updated.id)
+    );
+  };
+
   const handleSaved = (lead: Lead, keepOpen: boolean) => {
     load(1);
     if (keepOpen) return;
@@ -398,7 +422,7 @@ export default function LeadsPage() {
                     setDrawerOpen(true);
                   }}
                   initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
-                  onLeadUpdated={() => load(1)}
+                  onLeadUpdated={handleLeadUpdated}
                 />
               </div>
             </div>
@@ -599,7 +623,7 @@ export default function LeadsPage() {
                     setDrawerOpen(true);
                   }}
                   initialTab={selectedLead.id === deepLinkedLead?.id ? deepLinkedTab : undefined}
-                  onLeadUpdated={() => load(1)}
+                  onLeadUpdated={handleLeadUpdated}
                 />
               </div>
             ) : (

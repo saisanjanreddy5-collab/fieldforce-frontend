@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Input, Table, Tag, Typography } from "antd";
+import { App, Button, Input, Pagination, Table, Tag, Typography } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import * as quoteApi from "../api/quote-api";
 import type { QuoteListItem } from "../types/quote";
@@ -21,6 +21,12 @@ export default function QuotesPage() {
   const [search, setSearch] = useState("");
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const [openQuoteId, setOpenQuoteId] = useState<string | null>(null);
+  // Pagination controls used to be antd Table's own internal/uncontrolled
+  // page state - lifted out here so the Pagination control below can be
+  // rendered as its own always-visible footer instead of inline with the
+  // table rows (see the Table wrapper below).
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Same race-guard as OpportunitiesPage's own multi-page load - only the
   // most recently started load's progress callbacks are allowed to touch
@@ -71,7 +77,7 @@ export default function QuotesPage() {
   }, [quotes]);
 
   return (
-    <div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -167,24 +173,32 @@ export default function QuotesPage() {
           background: appTokens.surface,
           boxShadow: appTokens.shadowXs,
           overflow: "hidden",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}` }}>
+        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}`, flexShrink: 0 }}>
           <Input
             placeholder="Search quote number, lead, or opportunity"
             prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             allowClear
             style={{ maxWidth: 360 }}
           />
         </div>
 
+        <div style={{ flex: 1, minHeight: 200, overflowY: "auto" }}>
         <Table<QuoteListItem>
           rowKey="id"
           loading={loading}
-          dataSource={filtered}
-          pagination={filtered.length > 20 ? { pageSize: 20 } : false}
+          dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+          pagination={false}
           onRow={(record) => ({ onClick: () => setOpenQuoteId(record.id), style: { cursor: "pointer" } })}
           className="thin-scroll-table table-row-hover"
           locale={{ emptyText: loading ? " " : "No quotes yet - create one from a lead's opportunity" }}
@@ -227,6 +241,21 @@ export default function QuotesPage() {
             { title: "By", key: "createdBy", render: (_, q) => q.createdByName ?? "—" },
           ]}
         />
+        </div>
+
+        {filtered.length > PAGE_SIZE && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "12px 0",
+              flexShrink: 0,
+              borderTop: `1px solid ${appTokens.borderLight}`,
+            }}
+          >
+            <Pagination current={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} showSizeChanger={false} />
+          </div>
+        )}
       </div>
 
       <NewQuoteModal

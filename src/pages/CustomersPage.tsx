@@ -111,7 +111,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -198,7 +198,7 @@ export default function CustomersPage() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flex: 1, minHeight: 0 }}>
         <div
           style={{
             flex: "1 1 50%",
@@ -208,9 +208,11 @@ export default function CustomersPage() {
             background: appTokens.surface,
             boxShadow: appTokens.shadowXs,
             overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}` }}>
+          <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}`, flexShrink: 0 }}>
             <Input
               placeholder="Search name, company, or phone"
               prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
@@ -221,13 +223,14 @@ export default function CustomersPage() {
             />
           </div>
 
-          <div>
+          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
             <Table<Customer>
               rowKey="id"
               size="small"
               loading={loading}
               dataSource={filtered}
               pagination={filtered.length > 20 ? { pageSize: 20 } : false}
+              scroll={{ y: "calc(100vh - 420px)" }}
               tableLayout="fixed"
               onRow={(record) => ({
                 onClick: () => setSelectedId(record.id),

@@ -146,39 +146,44 @@ export function UserCommissionSection({ userId }: UserCommissionSectionProps) {
         )}
       </div>
 
-      <Table<UserCommission>
-        size="small"
-        rowKey="id"
-        loading={loading}
-        dataSource={commissions}
-        pagination={false}
-        locale={{ emptyText: showArchived ? "No archived arrangements" : "No arrangements yet" }}
-        columns={[
-          { title: "Basis", key: "basis", render: (_, c) => BASIS_LABELS[c.basis] },
-          { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
-          { title: "Applies to", dataIndex: "appliesTo", render: (v: string | null) => v ?? "-" },
-          { title: "Payout cycle", key: "payoutCycle", render: (_, c) => PAYOUT_CYCLE_LABELS[c.payoutCycle] },
-          {
-            title: "",
-            key: "actions",
-            render: (_, c) =>
-              canManage &&
-              (showArchived ? (
-                <Popconfirm title="Restore this commission arrangement?" onConfirm={() => handleRestore(c.id)}>
-                  <Button type="link" size="small">
-                    Restore
-                  </Button>
-                </Popconfirm>
-              ) : (
-                <Popconfirm title="Archive this commission arrangement?" onConfirm={() => handleDelete(c.id)}>
-                  <Button type="link" size="small">
-                    Archive
-                  </Button>
-                </Popconfirm>
-              )),
-          },
-        ]}
-      />
+      {/* Bounded + internally scrollable, same reasoning as LeadQueue.tsx's
+          own row list - an employee with many arrangements over the years
+          must never force this whole settings tab to grow without limit. */}
+      <div style={{ maxHeight: 420, overflowY: "auto" }}>
+        <Table<UserCommission>
+          size="small"
+          rowKey="id"
+          loading={loading}
+          dataSource={commissions}
+          pagination={false}
+          locale={{ emptyText: showArchived ? "No archived arrangements" : "No arrangements yet" }}
+          columns={[
+            { title: "Basis", key: "basis", render: (_, c) => BASIS_LABELS[c.basis] },
+            { title: "Rate", dataIndex: "rate", render: (v: string | null) => v ?? "-" },
+            { title: "Applies to", dataIndex: "appliesTo", render: (v: string | null) => v ?? "-" },
+            { title: "Payout cycle", key: "payoutCycle", render: (_, c) => PAYOUT_CYCLE_LABELS[c.payoutCycle] },
+            {
+              title: "",
+              key: "actions",
+              render: (_, c) =>
+                canManage &&
+                (showArchived ? (
+                  <Popconfirm title="Restore this commission arrangement?" onConfirm={() => handleRestore(c.id)}>
+                    <Button type="link" size="small">
+                      Restore
+                    </Button>
+                  </Popconfirm>
+                ) : (
+                  <Popconfirm title="Archive this commission arrangement?" onConfirm={() => handleDelete(c.id)}>
+                    <Button type="link" size="small">
+                      Archive
+                    </Button>
+                  </Popconfirm>
+                )),
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 }

@@ -124,54 +124,58 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
           {showArchived ? "Show active" : "Show archived"}
         </Button>
       </div>
-      <Table<CommissionRule>
-        size="small"
-        rowKey="id"
-        loading={loading}
-        dataSource={rules}
-        pagination={false}
-        style={{ marginTop: 8, marginBottom: 12 }}
-        locale={{ emptyText: showArchived ? "No archived commission rules" : "No commission rules yet - add one below" }}
-        columns={[
-          { title: "Name", dataIndex: "name" },
-          { title: "Type", dataIndex: "ruleType", render: (v: string | null) => v ?? "-" },
-          { title: "Description", dataIndex: "description", render: (v: string | null) => v ?? "-" },
-          {
-            title: "Status",
-            dataIndex: "isActive",
-            render: (isActive: boolean) => <Tag color={isActive ? "green" : "default"}>{isActive ? "Active" : "Inactive"}</Tag>,
-          },
-          {
-            title: "",
-            key: "actions",
-            render: (_, rule) =>
-              showArchived ? (
-                hasPermission("commission_rules.delete") && (
-                  <Popconfirm title="Restore this commission rule?" onConfirm={() => handleRestore(rule.id)}>
-                    <Button type="link" size="small">
-                      Restore
-                    </Button>
-                  </Popconfirm>
-                )
-              ) : (
-                <Space size={4}>
-                  {hasPermission("commission_rules.update") && (
-                    <Button type="link" size="small" onClick={() => startEdit(rule)}>
-                      Edit
-                    </Button>
-                  )}
-                  {hasPermission("commission_rules.delete") && (
-                    <Popconfirm title="Archive this commission rule?" onConfirm={() => handleDelete(rule.id)}>
+      {/* Bounded + internally scrollable, same reasoning as LeadQueue.tsx's
+          own row list - a plan with many rules over time must never force
+          this whole settings tab to grow without limit. */}
+      <div style={{ maxHeight: 420, overflowY: "auto", marginTop: 8, marginBottom: 12 }}>
+        <Table<CommissionRule>
+          size="small"
+          rowKey="id"
+          loading={loading}
+          dataSource={rules}
+          pagination={false}
+          locale={{ emptyText: showArchived ? "No archived commission rules" : "No commission rules yet - add one below" }}
+          columns={[
+            { title: "Name", dataIndex: "name" },
+            { title: "Type", dataIndex: "ruleType", render: (v: string | null) => v ?? "-" },
+            { title: "Description", dataIndex: "description", render: (v: string | null) => v ?? "-" },
+            {
+              title: "Status",
+              dataIndex: "isActive",
+              render: (isActive: boolean) => <Tag color={isActive ? "green" : "default"}>{isActive ? "Active" : "Inactive"}</Tag>,
+            },
+            {
+              title: "",
+              key: "actions",
+              render: (_, rule) =>
+                showArchived ? (
+                  hasPermission("commission_rules.delete") && (
+                    <Popconfirm title="Restore this commission rule?" onConfirm={() => handleRestore(rule.id)}>
                       <Button type="link" size="small">
-                        Archive
+                        Restore
                       </Button>
                     </Popconfirm>
-                  )}
-                </Space>
-              ),
-          },
-        ]}
-      />
+                  )
+                ) : (
+                  <Space size={4}>
+                    {hasPermission("commission_rules.update") && (
+                      <Button type="link" size="small" onClick={() => startEdit(rule)}>
+                        Edit
+                      </Button>
+                    )}
+                    {hasPermission("commission_rules.delete") && (
+                      <Popconfirm title="Archive this commission rule?" onConfirm={() => handleDelete(rule.id)}>
+                        <Button type="link" size="small">
+                          Archive
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </Space>
+                ),
+            },
+          ]}
+        />
+      </div>
       {!showArchived && (editingRuleId ? hasPermission("commission_rules.update") : hasPermission("commission_rules.create")) && (
         <Form<FormValues> form={form} layout="inline" onFinish={handleSubmit} initialValues={{ isActive: true }}>
           <Form.Item name="name" rules={[{ required: true, message: "Name is required" }]}>

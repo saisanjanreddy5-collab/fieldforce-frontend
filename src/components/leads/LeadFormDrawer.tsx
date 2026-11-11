@@ -23,7 +23,7 @@ import type { TeamMember } from "../../types/user";
 import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
-import { errorMessageFrom } from "../../utils/api-error";
+import { errorMessageFrom, fieldErrorsFrom } from "../../utils/api-error";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
 import { ConsentTab } from "./tabs/ConsentTab";
 
@@ -121,12 +121,37 @@ const emptyValues: FormValues = { fullName: "" };
 // it to the real typed value first (see OTHER_VALUE usages below).
 const OTHER_VALUE = "__other__";
 
+// Wizard step order - "Save & Next" walks forward through these, validating
+// only the tab being left; "Save lead" (the real submit) only ever lives on
+// the last one. Matches the Tabs `items` key order below exactly.
+const TAB_KEYS = ["customer", "contact", "inquiry", "store", "consent"] as const;
+type TabKey = (typeof TAB_KEYS)[number];
+
+// Every Form.Item name that lives on each tab, so "Save & Next" can validate
+// just that tab's own fields (not the whole form), and so a validation error
+// - whichever tab it's actually on - can be routed back to the right pane.
+const TAB_FIELDS: Record<TabKey, (keyof FormValues)[]> = {
+  customer: ["fullName", "contactName", "profession", "startDate", "qualifiedPerson", "financialStatus", "status", "prospectStatus", "category", "leadScore", "ownerId"],
+  contact: ["phone", "altPhone", "email", "website", "preferredLanguage", "pincode", "stateId", "territory", "addressLine1", "addressLine2"],
+  inquiry: ["captureChannel", "companyName", "expectedValue", "inquiryCategory", "inquiryCategoryOther", "inquirySource", "inquirySourceOther", "utmTags", "receivedAt", "internalNotes", "rmRemark", "lgRemark"],
+  store: ["hasStoreLocation", "storeName", "storeAddress", "storePincode", "storeCity", "storeState", "carpetArea", "frontage", "ownership", "investmentCapacity", "existingBusiness", "expectedOpening", "gstNumber", "panNumber", "drugLicenceNumber", "fssaiNumber"],
+  consent: ["consentCaptured", "consentMethod", "consentPurposes", "consentEvidenceRef", "consentNotes"],
+};
+
+const FIELD_TO_TAB = new Map<string, TabKey>();
+for (const tab of TAB_KEYS) {
+  for (const field of TAB_FIELDS[tab]) {
+    FIELD_TO_TAB.set(field, tab);
+  }
+}
+
 export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerProps) {
   const { stages } = usePipelineStages();
   const { categories } = useLeadCategories();
   const { categoryOptions, sourceOptions, loading: inquiryOptionsLoading } = useLeadInquiryOptions();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("customer");
   const isEdit = lead !== null;
 
   // Flat list, not region-filtered - the state itself (not which zone it's
@@ -152,6 +177,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
 
   useEffect(() => {
     if (!open) return;
+    setActiveTab("customer");
 
     if (lead) {
       form.setFieldsValue({
@@ -309,9 +335,65 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         onSaved(saved, false);
       }
     } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to save lead"));
+      // validate-middleware.ts's own 422 already carries which field(s) are
+      // wrong (zod's flattened fieldErrors) - route straight to the first
+      // one instead of leaving the user with just a generic toast and no
+      // idea where to look.
+      const backendErrors = fieldErrorsFrom(err);
+      const firstEntry = backendErrors ? Object.entries(backendErrors)[0] : undefined;
+      if (firstEntry) {
+        const [firstField, firstMessages] = firstEntry;
+        form.setFields(Object.entries(backendErrors!).map(([name, errors]) => ({ name, errors })));
+        goToFieldsOwningTab(firstField);
+        message.error(firstMessages[0] ?? "Failed to save lead");
+      } else {
+        message.error(errorMessageFrom(err, "Failed to save lead"));
+      }
     } finally {
       setSubmitting(null);
+    }
+  };
+
+  // Switches to whichever tab owns this field name, then scrolls/focuses it
+  // once that pane has actually mounted - Tabs here keeps inactive panes
+  // mounted but hidden (display:none, not unmounted), so scrolling has to
+  // happen a tick after the switch, not in the same render.
+  const goToFieldsOwningTab = (fieldName: string) => {
+    const tab = FIELD_TO_TAB.get(fieldName);
+    if (!tab) return;
+    setActiveTab(tab);
+    setTimeout(() => form.scrollToField(fieldName, { behavior: "smooth", block: "center" }), 50);
+  };
+
+  const handleSaveLead = async (mode: "save" | "saveAndAddAnother") => {
+    let values: FormValues;
+    try {
+      values = await form.validateFields();
+    } catch (err) {
+      // antd's own client-side rejection - fields on the active tab already
+      // show their red error text as a side effect of validateFields() above;
+      // this just covers the case where the first invalid field is on a
+      // DIFFERENT (hidden) tab, which would otherwise show nothing at all.
+      const errorFields = (err as { errorFields?: { name: (string | number)[]; errors: string[] }[] }).errorFields;
+      const first = errorFields?.[0];
+      if (first) {
+        const fieldName = String(first.name[0]);
+        goToFieldsOwningTab(fieldName);
+      }
+      return;
+    }
+    await handleSubmit(values, mode);
+  };
+
+  const handleSaveAndNext = async () => {
+    try {
+      await form.validateFields(TAB_FIELDS[activeTab]);
+    } catch {
+      return; // Invalid fields are on this same (already visible) tab.
+    }
+    const nextIndex = TAB_KEYS.indexOf(activeTab) + 1;
+    if (nextIndex < TAB_KEYS.length) {
+      setActiveTab(TAB_KEYS[nextIndex]);
     }
   };
 
@@ -335,28 +417,38 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       footer={
         <Space style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
           <Button onClick={onClose}>Cancel</Button>
-          {!isEdit && (
-            <Button
-              loading={submitting === "saveAndAddAnother"}
-              disabled={submitting === "save"}
-              onClick={() => form.validateFields().then((values) => handleSubmit(values, "saveAndAddAnother"))}
-            >
-              Save & add another
+          {activeTab !== "consent" ? (
+            <Button type="primary" onClick={handleSaveAndNext}>
+              Save & Next
             </Button>
+          ) : (
+            <>
+              {!isEdit && (
+                <Button
+                  loading={submitting === "saveAndAddAnother"}
+                  disabled={submitting === "save"}
+                  onClick={() => handleSaveLead("saveAndAddAnother")}
+                >
+                  Save & add another
+                </Button>
+              )}
+              <Button
+                type="primary"
+                loading={submitting === "save"}
+                disabled={submitting === "saveAndAddAnother"}
+                onClick={() => handleSaveLead("save")}
+              >
+                Save lead
+              </Button>
+            </>
           )}
-          <Button
-            type="primary"
-            loading={submitting === "save"}
-            disabled={submitting === "saveAndAddAnother"}
-            onClick={() => form.validateFields().then((values) => handleSubmit(values, "save"))}
-          >
-            Save lead
-          </Button>
         </Space>
       }
     >
       <Form form={form} layout="vertical">
         <Tabs
+          activeKey={activeTab}
+          onChange={(key) => setActiveTab(key as TabKey)}
           items={[
             {
               key: "customer",

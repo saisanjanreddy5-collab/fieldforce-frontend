@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { App, Button, DatePicker, Input, Popover, Select, Tooltip, Typography } from "antd";
+import { App, Button, DatePicker, Input, Popover, Select, Typography } from "antd";
 import { PhoneOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as leadApi from "../../api/lead-api";
@@ -24,7 +24,11 @@ const { Text } = Typography;
 
 interface CallCenterStageActionsProps {
   lead: Lead;
-  onChanged: () => void;
+  // Receives the mutation's own returned lead, so a caller can patch local
+  // state directly instead of refetching the whole list/page on every stage
+  // click (that refetch, not the mutation itself, was the real source of the
+  // lag these buttons used to have).
+  onChanged: (updated?: Lead) => void;
   // "nextStep" - the ONE primary button that moves this lead to its next
   // stage (FLC / Escalate to SLC / Mark Qualified). Rendered by LeadDetail
   // right next to the stage tag in LeadSnapshot's header, with a connecting
@@ -86,14 +90,14 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
     if (isCallBack && !callbackAt) return;
     setSubmitting(true);
     try {
-      await leadApi.logCallDisposition(lead.id, {
+      const updated = await leadApi.logCallDisposition(lead.id, {
         disposition,
         notes: notes.trim() || undefined,
         callbackAt: isCallBack ? callbackAt!.toISOString() : undefined,
       });
       message.success(isCallBack ? `Call logged - callback scheduled for ${callbackAt!.format("D MMM, h:mm A")}` : "Call logged");
       setDispositionOpen(false);
-      onChanged();
+      onChanged(updated);
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to log this call"));
     } finally {
@@ -104,9 +108,9 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
   const handleQualify = async () => {
     setQualifying(true);
     try {
-      await leadApi.qualifyLead(lead.id);
+      const updated = await leadApi.qualifyLead(lead.id);
       message.success("Marked Qualified - ready to send to Field Sales");
-      onChanged();
+      onChanged(updated);
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to mark this lead Qualified"));
     } finally {
@@ -117,9 +121,9 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
   const handleStartFlc = async () => {
     setStartingFlc(true);
     try {
-      await leadApi.startFlc(lead.id);
+      const updated = await leadApi.startFlc(lead.id);
       message.success("Moved to FLC");
-      onChanged();
+      onChanged(updated);
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to move this lead to FLC"));
     } finally {
@@ -131,9 +135,9 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
     if (!nextTier) return;
     setEscalating(true);
     try {
-      await nextTier.action(lead.id);
+      const updated = await nextTier.action(lead.id);
       message.success(`Escalated to ${nextTier.label}`);
-      onChanged();
+      onChanged(updated);
     } catch (err) {
       message.error(errorMessageFrom(err, `Failed to escalate to ${nextTier.label}`));
     } finally {
@@ -161,21 +165,11 @@ export function CallCenterStageActions({ lead, onChanged, variant }: CallCenterS
       );
     }
     if (canQualify && isSlc) {
-      // Real fix, not just a frontend nicety - the backend now rejects this
-      // too (qualifyLead's own check) if the last logged call wasn't "Call
-      // Done And Interested". Disabling it here instead of letting the
-      // click fail is just the honest version of the same rule - a lead
-      // that was never actually reached, or was reached and not
-      // interested, should never look one click away from being handed to
-      // Field Sales.
-      const canActuallyQualify = lead.lastCallOutcome === "Call Done And Interested";
       return (
         <NextStepSlot>
-          <Tooltip title={canActuallyQualify ? undefined : "Log a call with outcome \"Call Done And Interested\" first"}>
-            <Button size="small" type="primary" loading={qualifying} disabled={!canActuallyQualify} onClick={handleQualify}>
-              Mark Qualified
-            </Button>
-          </Tooltip>
+          <Button size="small" type="primary" loading={qualifying} onClick={handleQualify}>
+            Mark Qualified
+          </Button>
         </NextStepSlot>
       );
     }

@@ -77,42 +77,48 @@ export function IncentivePlansCard() {
           </Button>
         )}
       </div>
-      <Table<IncentivePlan>
-        size="small"
-        rowKey="id"
-        dataSource={plans}
-        pagination={false}
-        locale={{ emptyText: "No incentive plans yet - create one above" }}
-        columns={[
-          { title: "Name", dataIndex: "name" },
-          { title: "Description", dataIndex: "description", render: (v: string | null) => v ?? "-" },
-          {
-            title: "Effective",
-            key: "effective",
-            render: (_, plan) => `${plan.effectiveStartDate} ${plan.effectiveEndDate ? `to ${plan.effectiveEndDate}` : "onward"}`,
-          },
-          {
-            title: "Status",
-            dataIndex: "isActive",
-            render: (isActive: boolean) => <Tag color={isActive ? "green" : "default"}>{isActive ? "Active" : "Inactive"}</Tag>,
-          },
-          {
-            title: "",
-            key: "actions",
-            render: (_, plan) =>
-              hasPermission("incentive_plans.update") ? (
-                <Space size={4}>
-                  <Button type="link" size="small" onClick={() => openEdit(plan)}>
-                    Edit
-                  </Button>
-                  <Button type="link" size="small" onClick={() => toggleActive(plan)}>
-                    {plan.isActive ? "Deactivate" : "Activate"}
-                  </Button>
-                </Space>
-              ) : null,
-          },
-        ]}
-      />
+      {/* Bounded + internally scrollable, same reasoning as LeadQueue.tsx's
+          own row list - the company-wide plan catalog must never force this
+          whole card (and the settings page it sits in) to grow without
+          limit as more plans accumulate. */}
+      <div style={{ maxHeight: 420, overflowY: "auto" }}>
+        <Table<IncentivePlan>
+          size="small"
+          rowKey="id"
+          dataSource={plans}
+          pagination={false}
+          locale={{ emptyText: "No incentive plans yet - create one above" }}
+          columns={[
+            { title: "Name", dataIndex: "name" },
+            { title: "Description", dataIndex: "description", render: (v: string | null) => v ?? "-" },
+            {
+              title: "Effective",
+              key: "effective",
+              render: (_, plan) => `${plan.effectiveStartDate} ${plan.effectiveEndDate ? `to ${plan.effectiveEndDate}` : "onward"}`,
+            },
+            {
+              title: "Status",
+              dataIndex: "isActive",
+              render: (isActive: boolean) => <Tag color={isActive ? "green" : "default"}>{isActive ? "Active" : "Inactive"}</Tag>,
+            },
+            {
+              title: "",
+              key: "actions",
+              render: (_, plan) =>
+                hasPermission("incentive_plans.update") ? (
+                  <Space size={4}>
+                    <Button type="link" size="small" onClick={() => openEdit(plan)}>
+                      Edit
+                    </Button>
+                    <Button type="link" size="small" onClick={() => toggleActive(plan)}>
+                      {plan.isActive ? "Deactivate" : "Activate"}
+                    </Button>
+                  </Space>
+                ) : null,
+            },
+          ]}
+        />
+      </div>
       <IncentivePlanDrawer open={drawerOpen} plan={editingPlan} onClose={closeDrawer} onSaved={handleSaved} />
     </Card>
   );

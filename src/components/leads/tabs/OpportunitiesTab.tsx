@@ -24,6 +24,11 @@ interface OpportunitiesTabProps {
    * backend check, the real enforcement; this is just the honest frontend
    * reflection of it). */
   leadStatus: string;
+  /** The real "actually with Field Sales" signal (see opportunity-service.ts's
+   * own comment) - sendToField never changes status, so a lead can read
+   * "Qualified" while still sitting with Call Center, not yet pushed. Owner
+   * role only becomes "agent" once a field employee actually owns it. */
+  leadOwnerRole: string | null;
 }
 
 interface NewOpportunityFormValues {
@@ -32,9 +37,11 @@ interface NewOpportunityFormValues {
   closeDate?: string;
 }
 
-export function OpportunitiesTab({ leadId, opportunities, loading, onChanged, leadStatus }: OpportunitiesTabProps) {
+export function OpportunitiesTab({ leadId, opportunities, loading, onChanged, leadStatus, leadOwnerRole }: OpportunitiesTabProps) {
   const hasPermission = useHasPermission();
   const notYetQualified = CALL_CENTER_TIER_STAGES.includes(leadStatus);
+  const notYetSentToField = !notYetQualified && leadOwnerRole !== "agent";
+  const createDisabled = notYetQualified || notYetSentToField;
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<NewOpportunityFormValues>();
@@ -88,8 +95,16 @@ export function OpportunitiesTab({ leadId, opportunities, loading, onChanged, le
           </div>
         </div>
         {hasPermission("opportunities.create") && (
-          <Tooltip title={notYetQualified ? "Available once this lead reaches Qualified" : undefined}>
-            <Button type="primary" disabled={notYetQualified} onClick={() => setModalOpen(true)}>
+          <Tooltip
+            title={
+              notYetQualified
+                ? "Available once this lead reaches Qualified"
+                : notYetSentToField
+                  ? "Available once this lead is sent to Field Sales"
+                  : undefined
+            }
+          >
+            <Button type="primary" disabled={createDisabled} onClick={() => setModalOpen(true)}>
               + New opportunity
             </Button>
           </Tooltip>

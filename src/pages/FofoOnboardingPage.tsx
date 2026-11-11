@@ -69,7 +69,7 @@ function FofoOnboardingList() {
   }, [items, search, statusFilter]);
 
   return (
-    <div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
         FOFO onboarding
       </Title>
@@ -181,6 +181,8 @@ function FofoOnboardingList() {
         loading={loading}
         dataSource={filteredItems}
         pagination={{ pageSize: 20, hideOnSinglePage: true }}
+        style={{ flex: 1, minHeight: 0 }}
+        scroll={{ y: "calc(100vh - 380px)" }}
         onRow={(record) => ({
           onClick: () => navigate(`/fofo-onboarding/${record.id}`),
           className: "table-row-hover",
