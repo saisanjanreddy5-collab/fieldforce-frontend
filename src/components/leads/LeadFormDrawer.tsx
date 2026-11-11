@@ -343,7 +343,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       const firstEntry = backendErrors ? Object.entries(backendErrors)[0] : undefined;
       if (firstEntry) {
         const [firstField, firstMessages] = firstEntry;
-        form.setFields(Object.entries(backendErrors!).map(([name, errors]) => ({ name, errors })));
+        form.setFields(Object.entries(backendErrors!).map(([name, errors]) => ({ name: name as keyof FormValues, errors })));
         goToFieldsOwningTab(firstField);
         message.error(firstMessages[0] ?? "Failed to save lead");
       } else {
