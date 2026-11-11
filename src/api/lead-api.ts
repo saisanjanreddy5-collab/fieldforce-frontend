@@ -20,15 +20,18 @@ export async function listAllLeadsForStatus(filters: Omit<LeadListFilters, "page
   // validator caps limit at 100 (listLeadsQuerySchema) - 200 here 422s.
   const PAGE_SIZE = 100;
   const first = await listLeads({ ...filters, page: 1, limit: PAGE_SIZE });
-  let all = first.leads;
-  let page = 2;
-  while (all.length < first.total) {
-    const next = await listLeads({ ...filters, page, limit: PAGE_SIZE });
-    if (next.leads.length === 0) break;
-    all = [...all, ...next.leads];
-    page += 1;
-  }
-  return all;
+  const remainingPages = Math.ceil(first.total / PAGE_SIZE) - 1;
+  if (remainingPages <= 0) return first.leads;
+  // All remaining pages in parallel, not a serial page-by-page loop - this
+  // was the real cause of the multi-second wait on every Call Center stage
+  // action (whose onChanged re-runs this): awaiting one page at a time made
+  // the round-trip latency add up per page instead of overlapping. Safe to
+  // do all at once - each page is an independent, already-known-to-exist
+  // offset from `first.total`, not a cursor that depends on the page before it.
+  const rest = await Promise.all(
+    Array.from({ length: remainingPages }, (_, i) => listLeads({ ...filters, page: i + 2, limit: PAGE_SIZE }))
+  );
+  return [...first.leads, ...rest.flatMap((r) => r.leads)];
 }
 
 // Same filters as listLeads, minus page/limit - returns every matching lead

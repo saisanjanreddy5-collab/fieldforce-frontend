@@ -240,6 +240,7 @@ export default function CallCenterPage() {
             loading={loading}
             dataSource={filtered}
             pagination={filtered.length > 20 ? { pageSize: 20 } : false}
+            scroll={{ y: "calc(100vh - 460px)" }}
             tableLayout="fixed"
             className="thin-scroll-table table-row-hover"
             locale={{ emptyText: loading ? " " : "No calls yet - calls placed from a lead's page will show up here" }}

@@ -49,7 +49,7 @@ export function OpportunityListView({ opportunities, loading, onEdit }: Opportun
         pageSizeOptions: [20, 50, 100, 200],
         showTotal: (total, range) => `${range[0]}-${range[1]} of ${total.toLocaleString()} opportunities`,
       }}
-      scroll={{ x: 820 }}
+      scroll={{ x: 820, y: "calc(100vh - 460px)" }}
       className="thin-scroll-table"
       onRow={() => ({ className: "table-row-hover" })}
       columns={[

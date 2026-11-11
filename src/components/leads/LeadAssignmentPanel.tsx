@@ -16,7 +16,10 @@ const { Text } = Typography;
 
 interface LeadAssignmentPanelProps {
   lead: Lead;
-  onChanged: () => void;
+  // Receives the mutation's own returned lead, so a caller can patch local
+  // state directly instead of refetching the whole list/page (same reasoning
+  // as CallCenterStageActions' own onChanged).
+  onChanged: (updated?: Lead) => void;
   // "nextStep" - Send to Field Sales, the one primary action once a lead is
   // Qualified, rendered next to the stage tag like every other stage's
   // progression button (see CallCenterStageActions). "secondary" -
@@ -73,9 +76,9 @@ export function LeadAssignmentPanel({ lead, onChanged, variant }: LeadAssignment
   const handleClaim = async () => {
     setClaiming(true);
     try {
-      await leadApi.claimLead(lead.id);
+      const updated = await leadApi.claimLead(lead.id);
       message.success("Lead picked up");
-      onChanged();
+      onChanged(updated);
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to pick up this lead"));
     } finally {
@@ -99,10 +102,10 @@ export function LeadAssignmentPanel({ lead, onChanged, variant }: LeadAssignment
     if (!chosenId) return;
     setReassigning(true);
     try {
-      await leadApi.reassignLead(lead.id, chosenId);
+      const updated = await leadApi.reassignLead(lead.id, chosenId);
       message.success("Lead reassigned");
       setReassignOpen(false);
-      onChanged();
+      onChanged(updated);
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to reassign this lead"));
     } finally {

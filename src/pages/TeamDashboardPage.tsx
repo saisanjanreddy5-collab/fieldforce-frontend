@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Tooltip, Typography, message } from "antd";
+import { Button, Pagination, Tooltip, Typography, message } from "antd";
 import dayjs from "dayjs";
 import * as teamDashboardApi from "../api/team-dashboard-api";
 import * as leaveApi from "../api/leave-api";
@@ -56,11 +56,14 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
+const PAGE_SIZE = 10;
+
 export default function TeamDashboardPage() {
   const { user } = useAuth();
   const hasPermission = useHasPermission();
   const [data, setData] = useState<TeamAvailability | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
@@ -96,10 +99,14 @@ export default function TeamDashboardPage() {
 
   const stats = data?.stats;
   const weekDates = data?.team[0]?.days.map((d) => d.date) ?? [];
+  const team = data?.team ?? [];
+  const pageCount = Math.max(1, Math.ceil(team.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedTeam = team.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Team availability
@@ -110,23 +117,19 @@ export default function TeamDashboardPage() {
               : "Leave and field activity per salesperson"}
           </Text>
         </div>
-        {/* Same reasoning as LeavePage/ExpensesPage's own isAdmin gate: Admin
-            has no manager, so a request/claim of their own would auto-
-            approve with zero real oversight - Admin's role is to approve
-            everyone else's, never to file their own. This shortcut lives on
-            its own local modal state (not ExpensesPage's ?newClaim= deep
-            link), so it needed this same check added here independently. */}
-        {user?.role !== "admin" && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <Button onClick={() => setLeaveOpen(true)}>Apply for leave</Button>
-            <Button type="primary" onClick={() => setExpenseOpen(true)}>
-              + New expense claim
-            </Button>
-          </div>
-        )}
+        {/* Everyone, including Admin, can apply for leave/file an expense of
+            their own - Admin having no manager just means their own request
+            auto-approves (the same backend behavior any manager-less account
+            already gets), not that they're barred from filing one. */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button onClick={() => setLeaveOpen(true)}>Apply for leave</Button>
+          <Button type="primary" onClick={() => setExpenseOpen(true)}>
+            + New expense claim
+          </Button>
+        </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16, flexShrink: 0 }}>
         <StatCard label="Available today" value={stats ? `${stats.availableToday} of ${stats.headcount}` : "—"} />
         <StatCard
           label="On leave"
@@ -151,8 +154,20 @@ export default function TeamDashboardPage() {
         />
       </div>
 
-      <div style={{ border: `1px solid ${appTokens.border}`, borderRadius: appTokens.radius, background: appTokens.surface, boxShadow: appTokens.shadowSm, overflow: "hidden" }}>
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+      <div
+        style={{
+          border: `1px solid ${appTokens.border}`,
+          borderRadius: appTokens.radius,
+          background: appTokens.surface,
+          boxShadow: appTokens.shadowSm,
+          overflow: "hidden",
+          flex: 1,
+          minHeight: 200,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
           <div>
             <Text strong style={{ fontSize: 14 }}>
               Availability calendar
@@ -176,7 +191,7 @@ export default function TeamDashboardPage() {
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", flexShrink: 0 }}>
           <div style={{ display: "flex", padding: "10px 18px", background: appTokens.surfaceMuted, borderBottom: `1px solid ${appTokens.borderLight}`, minWidth: 720 }}>
             <div style={{ width: 190, flexShrink: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: appTokens.textTertiary, textTransform: "uppercase" }}>
               Salesperson
@@ -191,14 +206,20 @@ export default function TeamDashboardPage() {
               Load
             </div>
           </div>
+        </div>
 
-          {!loading && data?.team.length === 0 && (
+        {/* Only this row area scrolls (vertically for more rows than fit, and
+            horizontally in sync with its own content) - the column header
+            above and the pager below (see the end of this card) both stay
+            fixed in view, same reasoning/pattern as LeadQueue.tsx's list. */}
+        <div style={{ flex: 1, minHeight: 120, overflowY: "auto", overflowX: "auto" }}>
+          {!loading && team.length === 0 && (
             <div style={{ padding: "40px 18px", textAlign: "center" }}>
               <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>No direct reports yet.</Text>
             </div>
           )}
 
-          {data?.team.map((member, idx) => (
+          {pagedTeam.map((member, idx) => (
             <div
               key={member.id}
               style={{
@@ -206,7 +227,7 @@ export default function TeamDashboardPage() {
                 alignItems: "center",
                 padding: "12px 18px",
                 minWidth: 720,
-                borderBottom: idx === data.team.length - 1 ? "none" : `1px solid ${appTokens.borderLight}`,
+                borderBottom: idx === pagedTeam.length - 1 ? "none" : `1px solid ${appTokens.borderLight}`,
               }}
             >
               <div style={{ width: 190, flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
@@ -266,6 +287,20 @@ export default function TeamDashboardPage() {
             </div>
           ))}
         </div>
+
+        {pageCount > 1 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "12px 18px",
+              borderTop: `1px solid ${appTokens.borderLight}`,
+              flexShrink: 0,
+            }}
+          >
+            <Pagination current={currentPage} pageSize={PAGE_SIZE} total={team.length} onChange={setPage} showSizeChanger={false} />
+          </div>
+        )}
       </div>
 
       <ApplyForLeaveModal

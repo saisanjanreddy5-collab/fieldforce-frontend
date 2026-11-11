@@ -8,3 +8,12 @@ import { isAxiosError } from "axios";
 export function errorMessageFrom(err: unknown, fallback: string): string {
   return isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : fallback;
 }
+
+// validate-middleware.ts's own 422 response already carries this (zod's
+// flattened fieldErrors, keyed by the exact schema field name) alongside the
+// generic "Validation failed" message - callers that only read the message
+// above throw this detail away. Returns undefined for anything else (a non-
+// validation error, or one with no field-level detail).
+export function fieldErrorsFrom(err: unknown): Record<string, string[]> | undefined {
+  return isAxiosError<{ errors?: Record<string, string[]> }>(err) ? err.response?.data.errors : undefined;
+}

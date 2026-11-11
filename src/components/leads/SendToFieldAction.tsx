@@ -3,6 +3,7 @@ import { App, Button, Popover, Select, Skeleton, Typography } from "antd";
 import { isAxiosError } from "axios";
 import { SendOutlined } from "@ant-design/icons";
 import * as leadApi from "../../api/lead-api";
+import type { Lead } from "../../types/lead";
 import { errorMessageFrom } from "../../utils/api-error";
 
 const { Text } = Typography;
@@ -10,7 +11,9 @@ const { Text } = Typography;
 interface SendToFieldActionProps {
   leadId: string;
   size?: "small" | "middle";
-  onDone: () => void;
+  // Receives the mutation's own returned lead, so a caller can patch local
+  // state directly instead of refetching the whole list/page.
+  onDone: (updated?: Lead) => void;
 }
 
 // A single compact button that handles its own disambiguation - tries the
@@ -30,10 +33,10 @@ export function SendToFieldAction({ leadId, size = "middle", onDone }: SendToFie
   const attempt = async (ownerId?: string) => {
     setSending(true);
     try {
-      await leadApi.sendToField(leadId, ownerId);
+      const updated = await leadApi.sendToField(leadId, ownerId);
       message.success("Sent to Field Sales");
       setOpen(false);
-      onDone();
+      onDone(updated);
     } catch (err) {
       if (isAxiosError<{ errors?: { candidates?: leadApi.SwapCandidate[] } }>(err) && err.response?.data.errors?.candidates) {
         setCandidates(err.response.data.errors.candidates);

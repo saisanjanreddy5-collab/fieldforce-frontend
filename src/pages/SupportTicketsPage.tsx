@@ -85,7 +85,7 @@ export default function SupportTicketsPage() {
   }
 
   return (
-    <div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -182,9 +182,13 @@ export default function SupportTicketsPage() {
           background: appTokens.surface,
           boxShadow: appTokens.shadowXs,
           overflow: "hidden",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", flexShrink: 0 }}>
           <Input
             placeholder="Search ticket, customer, or subject"
             prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
@@ -204,6 +208,8 @@ export default function SupportTicketsPage() {
           loading={loading}
           dataSource={filtered}
           pagination={filtered.length > 20 ? { pageSize: 20 } : false}
+          scroll={{ y: "calc(100vh - 460px)" }}
+          style={{ flex: 1, minHeight: 0 }}
           tableLayout="fixed"
           onRow={(record) => ({ onClick: () => setOpenTicketId(record.id), style: { cursor: "pointer" } })}
           className="thin-scroll-table table-row-hover"

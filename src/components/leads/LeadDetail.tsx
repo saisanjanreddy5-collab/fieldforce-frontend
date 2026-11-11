@@ -37,10 +37,14 @@ interface LeadDetailProps {
   showOwner: boolean;
   onEdit: () => void;
   initialTab?: string;
-  // Re-fetches the lead list so this lead's owner/status reflect a change
-  // made right here (Send to Field Sales, Reassign) - optional since not
-  // every place that renders LeadDetail needs this (e.g. a read-only embed).
-  onLeadUpdated?: () => void;
+  // Lets the caller's lead list reflect a change made right here (Send to
+  // Field Sales, Reassign, a stage move) - optional since not every place
+  // that renders LeadDetail needs this (e.g. a read-only embed). Receives the
+  // mutation's own returned lead when the action produced one, so the caller
+  // can patch its list locally instead of refetching everything; omitted
+  // (e.g. after an archive, which returns no lead) when a full refresh is
+  // the only safe option.
+  onLeadUpdated?: (updated?: Lead) => void;
 }
 
 const BASE_DETAIL_TABS = [
@@ -195,6 +199,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       message.success("Teams meeting created");
       meetingForm.resetFields();
       setMeetingOpen(false);
+      loadActivities();
       Modal.success({
         title: "Teams meeting created",
         content: (
@@ -248,14 +253,14 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         showOwner={showOwner}
         nextStepAction={
           <>
-            <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} variant="nextStep" />
-            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} variant="nextStep" />
+            <CallCenterStageActions lead={lead} onChanged={(updated) => onLeadUpdated?.(updated)} variant="nextStep" />
+            <LeadAssignmentPanel lead={lead} onChanged={(updated) => onLeadUpdated?.(updated)} variant="nextStep" />
           </>
         }
         assignmentActions={
           <>
-            <CallCenterStageActions lead={lead} onChanged={() => onLeadUpdated?.()} variant="secondary" />
-            <LeadAssignmentPanel lead={lead} onChanged={() => onLeadUpdated?.()} variant="secondary" />
+            <CallCenterStageActions lead={lead} onChanged={(updated) => onLeadUpdated?.(updated)} variant="secondary" />
+            <LeadAssignmentPanel lead={lead} onChanged={(updated) => onLeadUpdated?.(updated)} variant="secondary" />
             <LeadArchiveAction lead={lead} onChanged={() => onLeadUpdated?.()} />
           </>
         }
@@ -288,6 +293,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
               loading={opportunitiesLoading}
               onChanged={loadOpportunities}
               leadStatus={lead.status}
+              leadOwnerRole={lead.ownerRole}
             />
           )}
           {activeTabKey === "activity" && (
@@ -320,7 +326,10 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         onClose={() => setEmailOpen(false)}
         leadId={lead.id}
         activityDueDate={null}
-        onSent={() => setEmailOpen(false)}
+        onSent={() => {
+          setEmailOpen(false);
+          loadActivities();
+        }}
       />
 
       <Modal
