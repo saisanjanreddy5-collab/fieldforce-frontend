@@ -64,8 +64,8 @@ export function SalesTeamsCard({ refreshKey, onChange }: SalesTeamsCardProps) {
         borderRadius: appTokens.radius,
         background: appTokens.surface,
         boxShadow: appTokens.shadowSm,
-        padding: "10px 14px",
-        marginBottom: 14,
+        padding: "8px 14px",
+        marginBottom: 10,
         opacity: loading ? 0.6 : 1,
       }}
     >

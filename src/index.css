@@ -100,6 +100,16 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 7px 10px !important;
+}
+
+/* Denser rows across every list page (client-confirmed: too few rows fit
+   before needing to scroll/paginate) - antd's own "small" size table still
+   defaults to ~8px vertical cell padding, which adds up fast over many
+   rows. Shared here rather than per-page, same reasoning as the header
+   rule above. */
+.thin-scroll-table .ant-table-tbody > tr > td {
+  padding: 6px 10px !important;
 }
 
 /* Leads workspace: dense list row hover state. */

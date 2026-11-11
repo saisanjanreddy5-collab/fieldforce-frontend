@@ -45,8 +45,8 @@ export function StatsRow({ stats, loading }: StatsRowProps) {
         borderRadius: appTokens.radius,
         background: appTokens.surface,
         boxShadow: appTokens.shadowSm,
-        padding: "18px 24px",
-        gap: "20px 40px",
+        padding: "13px 22px",
+        gap: "14px 32px",
       }}
     >
       {stats.map((stat) => (
@@ -76,8 +76,8 @@ export function StatsRow({ stats, loading }: StatsRowProps) {
                   {stat.label}
                 </Text>
               )}
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 24, fontWeight: 700, color: stat.valueColor ?? appTokens.textPrimary, letterSpacing: -0.4, lineHeight: 1.3 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 21, fontWeight: 700, color: stat.valueColor ?? appTokens.textPrimary, letterSpacing: -0.3, lineHeight: 1.25 }}>
                   {stat.value}
                 </span>
                 {stat.subtitle && <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{stat.subtitle}</Text>}

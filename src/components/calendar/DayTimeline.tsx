@@ -74,7 +74,7 @@ export function DayTimeline({ userName, zoneName, officeName, date, activities, 
         )}
       </div>
 
-      <div style={{ padding: activities.length === 0 ? 14 : "2px 14px" }}>
+      <div style={{ padding: activities.length === 0 ? 14 : "2px 14px", maxHeight: 520, overflowY: "auto" }}>
         {activities.length === 0 ? (
           <Text style={{ color: appTokens.textTertiary, fontSize: 13 }}>Nothing scheduled for this day</Text>
         ) : (

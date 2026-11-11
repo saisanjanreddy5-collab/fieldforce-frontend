@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Input, Switch, Table, Tag, Typography } from "antd";
+import { App, Button, Input, Pagination, Switch, Table, Tag, Typography } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import * as supportTicketApi from "../api/support-ticket-api";
 import type { SupportTicket } from "../types/support-ticket";
@@ -25,6 +25,12 @@ export default function SupportTicketsPage() {
   const [mineOnly, setMineOnly] = useState(false);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
+  // Pagination lifted out of antd Table's own internal/uncontrolled page
+  // state - rendered as its own always-visible footer below a bounded,
+  // internally-scrolling row area instead of inline with the table rows
+  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Same race-guard as OpportunitiesPage's own multi-page load - only the
   // most recently started load's progress callbacks are allowed to touch
@@ -177,23 +183,32 @@ export default function SupportTicketsPage() {
             placeholder="Search ticket, customer, or subject"
             prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             allowClear
             style={{ maxWidth: 360 }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Switch size="small" checked={mineOnly} onChange={setMineOnly} />
+            <Switch
+              size="small"
+              checked={mineOnly}
+              onChange={(checked) => {
+                setMineOnly(checked);
+                setPage(1);
+              }}
+            />
             <Text style={{ fontSize: 13 }}>My tickets</Text>
           </div>
         </div>
 
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         <Table<SupportTicket>
           rowKey="id"
           loading={loading}
-          dataSource={filtered}
-          pagination={filtered.length > 20 ? { pageSize: 20 } : false}
-          scroll={{ y: "calc(100vh - 460px)" }}
-          style={{ flex: 1, minHeight: 0 }}
+          dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+          pagination={false}
           tableLayout="fixed"
           onRow={(record) => ({ onClick: () => setOpenTicketId(record.id), style: { cursor: "pointer" } })}
           className="thin-scroll-table table-row-hover"
@@ -299,6 +314,21 @@ export default function SupportTicketsPage() {
             },
           ]}
         />
+        </div>
+
+        {filtered.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "12px 0",
+              flexShrink: 0,
+              borderTop: `1px solid ${appTokens.borderLight}`,
+            }}
+          >
+            <Pagination current={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} showSizeChanger={false} />
+          </div>
+        )}
       </div>
 
       <NewSupportTicketModal

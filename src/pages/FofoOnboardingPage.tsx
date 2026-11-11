@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Avatar, Input, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Input, Pagination, Space, Table, Tag, Typography, message } from "antd";
 import { HourglassOutlined } from "@ant-design/icons";
 import * as fofoApi from "../api/fofo-onboarding-api";
 import type { FofoOnboardingListItem } from "../types/fofo-onboarding";
@@ -39,6 +39,16 @@ function FofoOnboardingList() {
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
+  // Pagination lifted out of antd Table's own internal/uncontrolled page
+  // state - rendered as its own always-visible footer below a bounded,
+  // internally-scrolling row area instead of inline with the table rows
+  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
+  const [page, setPage] = useState(1);
+  // Onboarding handoffs are a narrower, lower-volume list than a lead/quote
+  // queue by nature (one per FOFO-category lead that's reached "Onboard"),
+  // so this uses a smaller page size than the 20 other modules use - sized
+  // to this list's real shape, not copy-pasted from a bigger-volume module.
+  const PAGE_SIZE = 8;
 
   useEffect(() => {
     setLoading(true);
@@ -76,7 +86,7 @@ function FofoOnboardingList() {
       </Title>
       <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Franchise store applications walked from applicant to onboarding-app push</Text>
 
-      <div style={{ margin: "18px 0" }}>
+      <div style={{ margin: "14px 0 12px", flexShrink: 0 }}>
         <StatsRow
           stats={[
             { label: "Handoffs", value: String(items.length), subtitle: "FOFO leads in your scope" },
@@ -87,22 +97,43 @@ function FofoOnboardingList() {
         />
       </div>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center", flexShrink: 0 }}>
         <Input.Search
           placeholder="Search store, applicant, owner, location"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           style={{ maxWidth: 360 }}
           allowClear
         />
         <Space size={6} wrap>
-          <Tag.CheckableTag checked={statusFilter === null} onChange={() => setStatusFilter(null)}>
+          <Tag.CheckableTag
+            checked={statusFilter === null}
+            onChange={() => {
+              setStatusFilter(null);
+              setPage(1);
+            }}
+          >
             All {items.length}
           </Tag.CheckableTag>
-          <Tag.CheckableTag checked={statusFilter === "pushed"} onChange={(checked) => setStatusFilter(checked ? "pushed" : null)}>
+          <Tag.CheckableTag
+            checked={statusFilter === "pushed"}
+            onChange={(checked) => {
+              setStatusFilter(checked ? "pushed" : null);
+              setPage(1);
+            }}
+          >
             Pushed {pushedCount}
           </Tag.CheckableTag>
-          <Tag.CheckableTag checked={statusFilter === "not_pushed"} onChange={(checked) => setStatusFilter(checked ? "not_pushed" : null)}>
+          <Tag.CheckableTag
+            checked={statusFilter === "not_pushed"}
+            onChange={(checked) => {
+              setStatusFilter(checked ? "not_pushed" : null);
+              setPage(1);
+            }}
+          >
             Not pushed {notPushedCount}
           </Tag.CheckableTag>
         </Space>
@@ -139,15 +170,14 @@ function FofoOnboardingList() {
         </div>
       )}
 
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
       <Table<FofoOnboardingListItem>
         className="thin-scroll-table"
         size="small"
         rowKey="id"
         loading={loading}
-        dataSource={filteredItems}
-        pagination={{ pageSize: 20, hideOnSinglePage: true }}
-        style={{ flex: 1, minHeight: 0 }}
-        scroll={{ y: "calc(100vh - 380px)" }}
+        dataSource={filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+        pagination={false}
         onRow={(record) => ({
           onClick: () => navigate(`/fofo-onboarding/${record.id}`),
           className: "table-row-hover",
@@ -211,6 +241,13 @@ function FofoOnboardingList() {
           },
         ]}
       />
+      </div>
+
+      {filteredItems.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0", flexShrink: 0 }}>
+          <Pagination current={page} pageSize={PAGE_SIZE} total={filteredItems.length} onChange={setPage} showSizeChanger={false} />
+        </div>
+      )}
     </div>
   );
 }

@@ -49,7 +49,14 @@ export function OpportunityListView({ opportunities, loading, onEdit }: Opportun
         pageSizeOptions: [20, 50, 100, 200],
         showTotal: (total, range) => `${range[0]}-${range[1]} of ${total.toLocaleString()} opportunities`,
       }}
-      scroll={{ x: 820, y: "calc(100vh - 460px)" }}
+      // A fixed pixel value, not a viewport-relative calc() - this component
+      // has no page chrome of its own (OpportunitiesPage.tsx, its caller,
+      // shares one layout across 4 view modes) so there's no reliable "100vh
+      // minus known chrome" to calculate here. antd's own scroll.y already
+      // keeps the pagination footer below outside this bounded region
+      // natively (that part was never the problem) - a fixed, reasonable
+      // body height is what actually needed to stop being a guess.
+      scroll={{ x: 820, y: 480 }}
       className="thin-scroll-table"
       onRow={() => ({ className: "table-row-hover" })}
       columns={[

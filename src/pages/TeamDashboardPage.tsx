@@ -195,7 +195,7 @@ export default function TeamDashboardPage() {
             horizontally in sync with its own content) - the column header
             above and the pager below (see the end of this card) both stay
             fixed in view, same reasoning/pattern as LeadQueue.tsx's list. */}
-        <div style={{ flex: 1, minHeight: 120, overflowY: "auto", overflowX: "auto" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
           {!loading && team.length === 0 && (
             <div style={{ padding: "40px 18px", textAlign: "center" }}>
               <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>No direct reports yet.</Text>

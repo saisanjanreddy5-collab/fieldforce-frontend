@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Table, Tag, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Avatar, Button, Drawer, Pagination, Table, Tag, Typography, message } from "antd";
+import { PlusOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import * as expenseApi from "../api/expense-api";
@@ -38,8 +38,15 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [newClaimOpen, setNewClaimOpen] = useState(false);
+  const [policyDrawerOpen, setPolicyDrawerOpen] = useState(false);
   const [prefillTypeKey, setPrefillTypeKey] = useState<ExpenseTypeKey | undefined>();
   const [searchParams, setSearchParams] = useSearchParams();
+  // Pagination lifted out of antd Table's own internal/uncontrolled page
+  // state - rendered as its own always-visible footer below a bounded,
+  // internally-scrolling row area instead of inline with the table rows
+  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Opens pre-filled when arriving from a cross-module handoff (the Activity
   // calendar's site-visit "Log fuel expense" button). The param is captured
@@ -170,9 +177,14 @@ export default function ExpensesPage() {
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Field claims, policy limits and approval by the reporting manager</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewClaimOpen(true)}>
-          New expense claim
-        </Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button icon={<InfoCircleOutlined />} onClick={() => setPolicyDrawerOpen(true)}>
+            Expense types &amp; policy
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewClaimOpen(true)}>
+            New expense claim
+          </Button>
+        </div>
       </div>
 
       <div style={{ marginBottom: 16, flexShrink: 0 }}>
@@ -212,7 +224,10 @@ export default function ExpensesPage() {
               key={tab.key}
               size="small"
               shape="round"
-              onClick={() => setStatusFilter(tab.key)}
+              onClick={() => {
+                setStatusFilter(tab.key);
+                setPage(1);
+              }}
               style={{
                 background: appTokens.surface,
                 borderWidth: active ? 1.5 : 1,
@@ -227,14 +242,27 @@ export default function ExpensesPage() {
         })}
       </div>
 
+      <div
+        style={{
+          border: `1px solid ${appTokens.border}`,
+          borderRadius: appTokens.radius,
+          background: appTokens.surface,
+          boxShadow: appTokens.shadowXs,
+          overflow: "hidden",
+          flex: 1,
+          minHeight: 260,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
       <Table<ExpenseClaim>
         className="thin-scroll-table"
         size="small"
         rowKey="id"
         loading={loading}
-        dataSource={filteredClaims}
-        pagination={{ pageSize: 20, hideOnSinglePage: true }}
-        scroll={{ y: "calc(100vh - 460px)" }}
+        dataSource={filteredClaims.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+        pagination={false}
         onRow={() => ({ className: "table-row-hover" })}
         locale={{ emptyText: "No expense claims yet" }}
         columns={[
@@ -242,15 +270,19 @@ export default function ExpensesPage() {
             title: "Claim",
             key: "claim",
             render: (_, c) => (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Avatar size={26} style={{ background: avatarGradient(c.userName ?? "?"), fontSize: 11, fontWeight: 600 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+                <Avatar size={26} style={{ background: avatarGradient(c.userName ?? "?"), fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
                   {initials(c.userName ?? "?")}
                 </Avatar>
-                <div>
-                  <Text strong style={{ fontSize: 13, display: "block" }}>
+                <div style={{ minWidth: 0, overflow: "hidden" }}>
+                  <Text
+                    strong
+                    style={{ fontSize: 13, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                    title={c.title}
+                  >
                     {c.title}
                   </Text>
-                  <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>
+                  <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>
                     {c.userName ?? user?.name} · EXP-{c.claimNumber}
                   </Text>
                 </div>
@@ -339,28 +371,25 @@ export default function ExpensesPage() {
           },
         ]}
       />
+      </div>
 
-      <div
-        style={{
-          marginTop: 20,
-          border: `1px solid ${appTokens.border}`,
-          borderRadius: appTokens.radius,
-          background: appTokens.surface,
-          boxShadow: appTokens.shadowSm,
-          padding: 16,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-          <div>
-            <Text strong style={{ fontSize: 14 }}>
-              Expense types & policy
-            </Text>
-            <div>
-              <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Limits are checked when the claim is filed</Text>
-            </div>
-          </div>
+      {filteredClaims.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
+          <Pagination current={page} pageSize={PAGE_SIZE} total={filteredClaims.length} onChange={setPage} showSizeChanger={false} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      )}
+      </div>
+
+      <Drawer
+        title="Expense types & policy"
+        open={policyDrawerOpen}
+        onClose={() => setPolicyDrawerOpen(false)}
+        width={420}
+      >
+        <Text style={{ fontSize: 12.5, color: appTokens.textTertiary, display: "block", marginBottom: 16 }}>
+          Limits are checked when the claim is filed
+        </Text>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {types.map((t) => (
             <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div
@@ -395,7 +424,7 @@ export default function ExpensesPage() {
             </div>
           ))}
         </div>
-      </div>
+      </Drawer>
 
       <NewExpenseClaimModal
         open={newClaimOpen}

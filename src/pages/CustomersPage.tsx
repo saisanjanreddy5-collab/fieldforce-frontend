@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Avatar, Button, Input, Table, Tag, Typography } from "antd";
+import { App, Avatar, Button, Input, Pagination, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as customerApi from "../api/customer-api";
 import * as salesTeamApi from "../api/sales-team-api";
@@ -23,6 +23,12 @@ export default function CustomersPage() {
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Pagination lifted out of antd Table's own internal/uncontrolled page
+  // state - rendered as its own always-visible footer below a bounded,
+  // internally-scrolling row area instead of inline with the table rows
+  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   // Same race-guard as OpportunitiesPage's own multi-page load - only the
   // most recently started load's progress callbacks are allowed to touch
@@ -201,20 +207,22 @@ export default function CustomersPage() {
               placeholder="Search name, company, or phone"
               prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               allowClear
               style={{ maxWidth: 360 }}
             />
           </div>
 
-          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             <Table<Customer>
               rowKey="id"
               size="small"
               loading={loading}
-              dataSource={filtered}
-              pagination={filtered.length > 20 ? { pageSize: 20 } : false}
-              scroll={{ y: "calc(100vh - 420px)" }}
+              dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+              pagination={false}
               tableLayout="fixed"
               onRow={(record) => ({
                 onClick: () => setSelectedId(record.id),
@@ -307,6 +315,20 @@ export default function CustomersPage() {
               ]}
             />
           </div>
+
+          {filtered.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "10px 0",
+                flexShrink: 0,
+                borderTop: `1px solid ${appTokens.borderLight}`,
+              }}
+            >
+              <Pagination size="small" current={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} showSizeChanger={false} />
+            </div>
+          )}
         </div>
 
         <div

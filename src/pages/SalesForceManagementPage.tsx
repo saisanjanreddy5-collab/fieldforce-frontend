@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Input, Progress, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Input, Pagination, Progress, Space, Table, Tag, Typography, message } from "antd";
 import {
   ApartmentOutlined,
   AuditOutlined,
@@ -87,6 +87,8 @@ export default function SalesForceManagementPage() {
   const [editingUser, setEditingUser] = useState<TeamMember | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [peoplePage, setPeoplePage] = useState(1);
+  const PEOPLE_PAGE_SIZE = 20;
   const [testAccessOpen, setTestAccessOpen] = useState(false);
   const [resettingPasswordUser, setResettingPasswordUser] = useState<TeamMember | null>(null);
 
@@ -267,8 +269,8 @@ export default function SalesForceManagementPage() {
   const currentTab = activeTab && visibleTabs.some((t) => t.key === activeTab) ? activeTab : visibleTabs[0]?.key ?? null;
 
   return (
-    <div>
-      <div style={{ marginBottom: 12 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ marginBottom: 12, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div>
             <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -320,11 +322,16 @@ export default function SalesForceManagementPage() {
         )}
       </div>
 
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       {currentTab === "people" && (
-        <>
-          {hasPermission("sales_teams.view") && <SalesTeamsCard onChange={setSalesTeams} />}
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {hasPermission("sales_teams.view") && (
+            <div style={{ flexShrink: 0 }}>
+              <SalesTeamsCard onChange={setSalesTeams} />
+            </div>
+          )}
 
-          <div style={{ margin: "4px 0 16px" }}>
+          <div style={{ margin: "4px 0 12px", flexShrink: 0 }}>
             <StatsRow
               stats={[
                 { label: "People", value: String(users.length), subtitle: "on the sales force" },
@@ -345,11 +352,14 @@ export default function SalesForceManagementPage() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8, alignItems: "center", flexShrink: 0 }}>
             <Input.Search
               placeholder="Search people, designation, territory, employee code"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPeoplePage(1);
+              }}
               style={{ maxWidth: 360 }}
               allowClear
             />
@@ -375,13 +385,14 @@ export default function SalesForceManagementPage() {
             </Space>
           </div>
 
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
           <Table
             className="thin-scroll-table"
             size="small"
             rowKey="id"
             loading={loading}
-            dataSource={filteredUsers}
-            pagination={{ pageSize: 20, hideOnSinglePage: true }}
+            dataSource={filteredUsers.slice((peoplePage - 1) * PEOPLE_PAGE_SIZE, peoplePage * PEOPLE_PAGE_SIZE)}
+            pagination={false}
             onRow={() => ({ className: "table-row-hover" })}
             columns={[
               {
@@ -547,22 +558,40 @@ export default function SalesForceManagementPage() {
               },
             ]}
           />
-        </>
+          </div>
+
+          {filteredUsers.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, flexShrink: 0 }}>
+              <Pagination
+                current={peoplePage}
+                pageSize={PEOPLE_PAGE_SIZE}
+                total={filteredUsers.length}
+                onChange={setPeoplePage}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      {currentTab === "offices" && <OfficesCard zones={zones} onChange={setOffices} />}
-      {currentTab === "permissions" && <PermissionsCard users={users} levels={levels} onLevelsChange={setLevels} />}
-      {currentTab === "orgChart" && <OrgChartCard users={users} levels={levels} />}
-      {currentTab === "levelsAxes" && <LevelsCard onChange={setLevels} />}
-      {currentTab === "rolesAccess" && <RolesAccessCard users={users} levels={levels} onLevelsChange={setLevels} />}
-      {currentTab === "reportingLines" && <ReportingLinesCard users={users} onUsersChange={load} />}
-      {currentTab === "approvalBands" && <ApprovalBandsCard levels={levels} />}
-      {currentTab === "territoryTargets" && (
-        <>
-          <TerritoryTargetsCard users={users} targets={targets} />
-          {hasPermission("incentive_plans.view") && <IncentivePlansCard />}
-        </>
+      {currentTab !== "people" && (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          {currentTab === "offices" && <OfficesCard zones={zones} onChange={setOffices} />}
+          {currentTab === "permissions" && <PermissionsCard users={users} levels={levels} onLevelsChange={setLevels} />}
+          {currentTab === "orgChart" && <OrgChartCard users={users} levels={levels} />}
+          {currentTab === "levelsAxes" && <LevelsCard onChange={setLevels} />}
+          {currentTab === "rolesAccess" && <RolesAccessCard users={users} levels={levels} onLevelsChange={setLevels} />}
+          {currentTab === "reportingLines" && <ReportingLinesCard users={users} onUsersChange={load} />}
+          {currentTab === "approvalBands" && <ApprovalBandsCard levels={levels} />}
+          {currentTab === "territoryTargets" && (
+            <>
+              <TerritoryTargetsCard users={users} targets={targets} />
+              {hasPermission("incentive_plans.view") && <IncentivePlansCard />}
+            </>
+          )}
+        </div>
       )}
+      </div>
 
       <UserFormWizard
         open={drawerOpen}
