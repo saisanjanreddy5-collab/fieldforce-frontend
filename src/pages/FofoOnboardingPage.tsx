@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Avatar, Input, Space, Table, Tag, Typography, message } from "antd";
-import { CheckCircleOutlined, ClockCircleOutlined, HourglassOutlined, ShopOutlined, WalletOutlined } from "@ant-design/icons";
+import { HourglassOutlined } from "@ant-design/icons";
 import * as fofoApi from "../api/fofo-onboarding-api";
 import type { FofoOnboardingListItem } from "../types/fofo-onboarding";
 import { FofoHandoffDetail } from "../components/fofo/FofoHandoffDetail";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { appTokens, avatarGradient } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 
 const { Title, Text } = Typography;
 
@@ -75,51 +76,15 @@ function FofoOnboardingList() {
       </Title>
       <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Franchise store applications walked from applicant to onboarding-app push</Text>
 
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", margin: "18px 0" }}>
-        {[
-          { label: "Handoffs", value: String(items.length), subtitle: "FOFO leads in your scope", icon: <ShopOutlined />, color: appTokens.primary },
-          { label: "Pushed", value: String(pushedCount), subtitle: "reached the onboarding app", icon: <CheckCircleOutlined />, color: appTokens.success },
-          { label: "Not pushed", value: String(notPushedCount), subtitle: "still in the handoff", icon: <ClockCircleOutlined />, color: appTokens.warning },
-          { label: "Expected value", value: formatCompactCurrency(totalExpectedValue || null), subtitle: "across all handoffs", icon: <WalletOutlined />, color: appTokens.purple },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: "1 1 180px",
-              minWidth: 180,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 12,
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: 14,
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: appTokens.radiusSm,
-                background: `${stat.color}17`,
-                color: stat.color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 16,
-                flexShrink: 0,
-              }}
-            >
-              {stat.icon}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
-              <div style={{ fontSize: 21, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3 }}>{stat.value}</div>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
-            </div>
-          </div>
-        ))}
+      <div style={{ margin: "18px 0" }}>
+        <StatsRow
+          stats={[
+            { label: "Handoffs", value: String(items.length), subtitle: "FOFO leads in your scope" },
+            { label: "Pushed", value: String(pushedCount), subtitle: "reached the onboarding app", valueColor: appTokens.success },
+            { label: "Not pushed", value: String(notPushedCount), subtitle: "still in the handoff", valueColor: appTokens.warning },
+            { label: "Expected value", value: formatCompactCurrency(totalExpectedValue || null), subtitle: "across all handoffs" },
+          ]}
+        />
       </div>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>

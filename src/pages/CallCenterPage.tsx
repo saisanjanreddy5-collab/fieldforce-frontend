@@ -15,6 +15,7 @@ import { useLeadCategories } from "../hooks/use-lead-categories";
 import { FLC_STAGE, LEAD_STATUS_COLORS, NEW_STAGE, SLC_STAGE } from "../utils/lead-constants";
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
@@ -148,33 +149,16 @@ export default function CallCenterPage() {
 
   const dashboardPanel = (
     <>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-        {[
-          { label: "Calls today", value: String(stats.callsToday), subtitle: "placed today" },
-          { label: "Connected", value: `${stats.connectedPercent}%`, subtitle: "of all calls" },
-          { label: "Avg handle time", value: stats.avgHandleSeconds !== null ? formatDurationSeconds(stats.avgHandleSeconds) : "—", subtitle: "per connected call" },
-          { label: "In queue", value: String(stats.inQueue), subtitle: stats.overdueInQueue > 0 ? `${stats.overdueInQueue} overdue` : "scheduled" },
-          { label: "Recorded", value: `${stats.recordedPercent}%`, subtitle: "have a saved recording" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: 1,
-              minWidth: 150,
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: "10px 14px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block", whiteSpace: "nowrap" }}>{stat.label}</Text>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3, whiteSpace: "nowrap" }}>{stat.value}</span>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>{stat.subtitle}</Text>
-            </div>
-          </div>
-        ))}
+      <div style={{ marginBottom: 14 }}>
+        <StatsRow
+          stats={[
+            { label: "Calls today", value: String(stats.callsToday), subtitle: "placed today" },
+            { label: "Connected", value: `${stats.connectedPercent}%`, subtitle: "of all calls" },
+            { label: "Avg handle time", value: stats.avgHandleSeconds !== null ? formatDurationSeconds(stats.avgHandleSeconds) : "—", subtitle: "per connected call" },
+            { label: "In queue", value: String(stats.inQueue), subtitle: stats.overdueInQueue > 0 ? `${stats.overdueInQueue} overdue` : "scheduled" },
+            { label: "Recorded", value: `${stats.recordedPercent}%`, subtitle: "have a saved recording" },
+          ]}
+        />
       </div>
 
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>

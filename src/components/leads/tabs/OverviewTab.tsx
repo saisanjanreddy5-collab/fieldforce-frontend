@@ -153,17 +153,24 @@ export function OverviewTab({ lead }: OverviewTabProps) {
   }, [lead, consent, canViewConsent]);
 
   return (
-    <Row gutter={16}>
-      <Col xs={24} md={8}>
-        <div
-          style={{
-            border: `1px solid ${appTokens.border}`,
-            borderRadius: appTokens.radius,
-            padding: 16,
-            background: appTokens.surface,
-            boxShadow: appTokens.shadowXs,
-          }}
-        >
+    <div
+      style={{
+        border: `1px solid ${appTokens.border}`,
+        borderRadius: appTokens.radius,
+        background: appTokens.surface,
+        boxShadow: appTokens.shadowSm,
+        overflow: "hidden",
+      }}
+    >
+    <Row gutter={0}>
+      <Col
+        xs={24}
+        md={8}
+        style={{
+          padding: 16,
+          borderRight: `1px solid ${appTokens.borderLight}`,
+        }}
+      >
           <Text style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: appTokens.textTertiary }}>
             Synopsis
           </Text>
@@ -198,11 +205,10 @@ export function OverviewTab({ lead }: OverviewTabProps) {
             </div>
           ))}
           </div>
-        </div>
       </Col>
-      <Col xs={24} md={16} style={{ marginTop: 16, borderRadius: appTokens.radius, overflow: "hidden", boxShadow: appTokens.shadowXs }}>
+      <Col xs={24} md={16} style={{ padding: 16 }}>
         {activeSection === "customer" && (
-          <Descriptions column={1} size="small" title="Customer" bordered>
+          <Descriptions column={1} size="small" title="Customer">
             <Descriptions.Item label="Full Name">{lead.fullName}</Descriptions.Item>
             <Descriptions.Item label="Contact Name">{lead.contactName ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Profession">{lead.profession ?? "-"}</Descriptions.Item>
@@ -216,7 +222,7 @@ export function OverviewTab({ lead }: OverviewTabProps) {
           </Descriptions>
         )}
         {activeSection === "contact" && (
-          <Descriptions column={1} size="small" title="Contact & address" bordered>
+          <Descriptions column={1} size="small" title="Contact & address">
             <Descriptions.Item label="Phone">{lead.phone ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Alternative Mobile">{lead.altPhone ?? "-"}</Descriptions.Item>
             {/* Deliberately excluded from SECTION_FIELDS/the fill-count above -
@@ -242,7 +248,7 @@ export function OverviewTab({ lead }: OverviewTabProps) {
           </Descriptions>
         )}
         {activeSection === "inquiry" && (
-          <Descriptions column={1} size="small" title="Inquiry" bordered>
+          <Descriptions column={1} size="small" title="Inquiry">
             <Descriptions.Item label="Company">{lead.companyName ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Source">{lead.source ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Inquiry Category">{lead.inquiryCategory ?? "-"}</Descriptions.Item>
@@ -257,7 +263,7 @@ export function OverviewTab({ lead }: OverviewTabProps) {
           </Descriptions>
         )}
         {activeSection === "store" && (
-          <Descriptions column={1} size="small" title="Store information" bordered>
+          <Descriptions column={1} size="small" title="Store information">
             <Descriptions.Item label="Store Location">{yesNo(lead.hasStoreLocation)}</Descriptions.Item>
             <Descriptions.Item label="Store Name">{lead.storeName ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Store Address">{lead.storeAddress ?? "-"}</Descriptions.Item>
@@ -282,5 +288,6 @@ export function OverviewTab({ lead }: OverviewTabProps) {
         {activeSection === "consent" && consentLoaded && <ConsentTab leadId={lead.id} consent={consent} />}
       </Col>
     </Row>
+    </div>
   );
 }

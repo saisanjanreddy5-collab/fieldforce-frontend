@@ -224,7 +224,7 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchi
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "10px 12px",
-                  border: "1px solid #f0f0f0",
+                  border: `1px solid ${appTokens.border}`,
                   borderRadius: 8,
                   flexWrap: "wrap",
                   gap: 8,

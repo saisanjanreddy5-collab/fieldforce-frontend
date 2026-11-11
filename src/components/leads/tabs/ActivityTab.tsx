@@ -6,6 +6,7 @@ import type { Activity, ActivityType } from "../../../types/activity";
 import { formatDateTime } from "../../../utils/lead-format";
 import { TYPE_LABEL, TypeBadge } from "../../../utils/activity-shared";
 import { useHasPermission } from "../../../hooks/use-permission";
+import { appTokens } from "../../../utils/design-system";
 import { errorMessageFrom } from "../../../utils/api-error";
 
 const { Text, Title } = Typography;
@@ -101,7 +102,7 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "10px 12px",
-                  border: isOverdue ? "1px solid #e34948" : "1px solid #f0f0f0",
+                  border: isOverdue ? "1px solid #e34948" : `1px solid ${appTokens.border}`,
                   borderRadius: 8,
                   flexWrap: "wrap",
                   gap: 10,

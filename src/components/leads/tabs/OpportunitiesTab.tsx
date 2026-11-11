@@ -6,6 +6,7 @@ import type { Opportunity } from "../../../types/opportunity";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
 import { useHasPermission } from "../../../hooks/use-permission";
 import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../../utils/lead-constants";
+import { appTokens } from "../../../utils/design-system";
 
 const { Text, Title } = Typography;
 
@@ -125,7 +126,7 @@ export function OpportunitiesTab({ leadId, opportunities, loading, onChanged, le
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: "10px 12px",
-                border: "1px solid #f0f0f0",
+                border: `1px solid ${appTokens.border}`,
                 borderRadius: 8,
                 flexWrap: "wrap",
                 gap: 8,

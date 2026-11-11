@@ -8,6 +8,7 @@ import type { ExpenseClaim, ExpenseClaimStatus, ExpenseType, ExpenseTypeKey } fr
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { appTokens, avatarGradient } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 import { initials, formatCompactCurrency, formatCurrency } from "../utils/lead-format";
 import { formatExpenseDate, limitUnitSuffix } from "../utils/expense-format";
 import { EXPENSE_TYPE_ICON } from "../utils/expense-icons";
@@ -174,50 +175,33 @@ export default function ExpensesPage() {
         </Button>
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16, flexShrink: 0 }}>
-        {[
-          {
-            label: "Claimed this month",
-            value: formatCompactCurrency(stats.claimedThisMonth.amount),
-            subtitle: `${stats.claimedThisMonth.count} claim${stats.claimedThisMonth.count === 1 ? "" : "s"}`,
-            color: appTokens.textPrimary,
-          },
-          {
-            label: "Awaiting approval",
-            value: formatCompactCurrency(stats.awaitingApproval.amount),
-            subtitle: `${stats.awaitingApproval.count} claim${stats.awaitingApproval.count === 1 ? "" : "s"}`,
-            color: stats.awaitingApproval.count > 0 ? appTokens.warning : appTokens.textPrimary,
-          },
-          {
-            label: "Approved, unpaid",
-            value: formatCompactCurrency(stats.approvedUnpaid.amount),
-            subtitle: `payout ${stats.approvedUnpaid.nextPayoutLabel}`,
-            color: appTokens.textPrimary,
-          },
-          {
-            label: "Policy breaches",
-            value: String(stats.breaches),
-            subtitle: "over limit",
-            color: stats.breaches > 0 ? appTokens.danger : appTokens.textPrimary,
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: "1 1 180px",
-              minWidth: 180,
-              border: `1px solid ${appTokens.border}`,
-              borderRadius: appTokens.radius,
-              padding: "14px 16px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowSm,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
-            <div style={{ fontSize: 26, fontWeight: 700, color: stat.color, letterSpacing: -0.4, lineHeight: 1.25 }}>{stat.value}</div>
-            <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
-          </div>
-        ))}
+      <div style={{ marginBottom: 16, flexShrink: 0 }}>
+        <StatsRow
+          stats={[
+            {
+              label: "Claimed this month",
+              value: formatCompactCurrency(stats.claimedThisMonth.amount),
+              subtitle: `${stats.claimedThisMonth.count} claim${stats.claimedThisMonth.count === 1 ? "" : "s"}`,
+            },
+            {
+              label: "Awaiting approval",
+              value: formatCompactCurrency(stats.awaitingApproval.amount),
+              subtitle: `${stats.awaitingApproval.count} claim${stats.awaitingApproval.count === 1 ? "" : "s"}`,
+              valueColor: stats.awaitingApproval.count > 0 ? appTokens.warning : undefined,
+            },
+            {
+              label: "Approved, unpaid",
+              value: formatCompactCurrency(stats.approvedUnpaid.amount),
+              subtitle: `payout ${stats.approvedUnpaid.nextPayoutLabel}`,
+            },
+            {
+              label: "Policy breaches",
+              value: String(stats.breaches),
+              subtitle: "over limit",
+              valueColor: stats.breaches > 0 ? appTokens.danger : undefined,
+            },
+          ]}
+        />
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", flexShrink: 0 }}>

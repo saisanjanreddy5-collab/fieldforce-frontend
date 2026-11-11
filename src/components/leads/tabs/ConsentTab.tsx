@@ -6,6 +6,7 @@ import * as leadDocumentApi from "../../../api/lead-document-api";
 import type { LeadConsent } from "../../../types/lead";
 import type { LeadDocument } from "../../../types/fofo-onboarding";
 import { useHasPermission } from "../../../hooks/use-permission";
+import { appTokens } from "../../../utils/design-system";
 import { formatDateTime } from "../../../utils/lead-format";
 
 const { Text } = Typography;
@@ -78,7 +79,7 @@ function ConsentEvidenceUpload({ leadId }: { leadId: string }) {
         justifyContent: "space-between",
         gap: 10,
         padding: "10px 14px",
-        border: "1px solid #d9d9d9",
+        border: `1px solid ${appTokens.border}`,
         borderRadius: 8,
       }}
     >

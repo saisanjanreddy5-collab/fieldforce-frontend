@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import * as dashboardApi from "../api/dashboard-api";
 import type { OverviewStats, PipelineStageStat } from "../types/dashboard";
 import type { Activity } from "../types/activity";
-import { StatCard } from "../components/StatCard";
+import { StatsRow } from "../components/StatsRow";
 import { PipelineByStageChart } from "../components/PipelineByStageChart";
 import { MyDayList } from "../components/MyDayList";
 import { formatCompactNumber, formatCurrency, formatPercent } from "../utils/format";
@@ -49,20 +49,17 @@ export default function DashboardPage() {
       </Title>
       <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Here's what's happening across your pipeline today</Text>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Open leads" value={overview ? formatCompactNumber(overview.totalLeads) : "-"} loading={loading} />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Pipeline value" value={overview ? formatCurrency(overview.pipelineValue) : "-"} loading={loading} />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Conversion (30d)" value={overview ? formatPercent(overview.conversionRate30d) : "-"} loading={loading} />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <StatCard label="Active team members" value={overview ? formatCompactNumber(overview.activeTeamMembersCount) : "-"} loading={loading} />
-        </Col>
-      </Row>
+      <div style={{ marginTop: 20 }}>
+        <StatsRow
+          loading={loading}
+          stats={[
+            { label: "Open leads", value: overview ? formatCompactNumber(overview.totalLeads) : "-" },
+            { label: "Pipeline value", value: overview ? formatCurrency(overview.pipelineValue) : "-" },
+            { label: "Conversion (30d)", value: overview ? formatPercent(overview.conversionRate30d) : "-" },
+            { label: "Active team members", value: overview ? formatCompactNumber(overview.activeTeamMembersCount) : "-" },
+          ]}
+        />
+      </div>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={16}>
