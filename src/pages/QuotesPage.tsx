@@ -177,7 +177,7 @@ export default function QuotesPage() {
           />
         </div>
 
-        <div style={{ flex: 1, minHeight: 200, overflowY: "auto" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         <Table<QuoteListItem>
           rowKey="id"
           loading={loading}
@@ -227,7 +227,7 @@ export default function QuotesPage() {
         />
         </div>
 
-        {filtered.length > PAGE_SIZE && (
+        {filtered.length > 0 && (
           <div
             style={{
               display: "flex",

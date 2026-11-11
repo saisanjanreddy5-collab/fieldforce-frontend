@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Avatar, Button, Popconfirm, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Pagination, Popconfirm, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as leaveApi from "../api/leave-api";
@@ -27,6 +27,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 type TabKey = "mine" | "team" | "history";
 
+const MINE_PAGE_SIZE = 20;
+
 export default function LeavePage() {
   const { user } = useAuth();
   const hasPermission = useHasPermission();
@@ -34,6 +36,7 @@ export default function LeavePage() {
   const canGrantCompOff = hasPermission("comp_off_credits.grant");
 
   const [activeTab, setActiveTab] = useState<TabKey>("mine");
+  const [minePage, setMinePage] = useState(1);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
@@ -98,8 +101,8 @@ export default function LeavePage() {
   };
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Leave
@@ -121,7 +124,7 @@ export default function LeavePage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexShrink: 0 }}>
         <Button
           size="small"
           shape="round"
@@ -170,7 +173,7 @@ export default function LeavePage() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 12, flexShrink: 0 }}>
         {balances.map((b) => (
             <div
               key={b.key}
@@ -179,7 +182,7 @@ export default function LeavePage() {
                 minWidth: 180,
                 border: `1px solid ${appTokens.border}`,
                 borderRadius: appTokens.radius,
-                padding: "14px 16px",
+                padding: "10px 16px",
                 background: appTokens.surface,
                 boxShadow: appTokens.shadowSm,
               }}
@@ -187,7 +190,7 @@ export default function LeavePage() {
               <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>
                 {b.key === "comp_off" ? "Comp off leave" : b.label}
               </Text>
-              <div style={{ fontSize: 26, fontWeight: 700, color: b.color, letterSpacing: -0.4, lineHeight: 1.25 }}>
+              <div style={{ fontSize: 21, fontWeight: 700, color: b.color, letterSpacing: -0.3, lineHeight: 1.25 }}>
                 {b.available}
                 <Text style={{ fontSize: 13, fontWeight: 500, color: appTokens.textTertiary }}>
                   {" "}
@@ -207,11 +210,13 @@ export default function LeavePage() {
             boxShadow: appTokens.shadowSm,
             padding: 16,
             marginBottom: 16,
+            flexShrink: 0,
           }}
         >
           <Text strong style={{ fontSize: 14, display: "block", marginBottom: 8 }}>
             Waiting on your decision
           </Text>
+          <div style={{ maxHeight: 280, overflowY: "auto" }}>
           <Table<LeaveRequest>
             size="small"
             rowKey="id"
@@ -239,9 +244,11 @@ export default function LeavePage() {
               },
             ]}
           />
+          </div>
         </div>
       )}
 
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       {activeTab === "mine" ? (
         <div
           style={{
@@ -249,10 +256,14 @@ export default function LeavePage() {
             borderRadius: appTokens.radius,
             background: appTokens.surface,
             boxShadow: appTokens.shadowSm,
-            padding: 16,
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           }}
         >
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ padding: "16px 16px 0", flexShrink: 0 }}>
             <Text strong style={{ fontSize: 14 }}>
               My requests
             </Text>
@@ -261,13 +272,14 @@ export default function LeavePage() {
             </div>
           </div>
 
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px 16px" }}>
           <Table<LeaveRequest>
             className="thin-scroll-table"
             size="small"
             rowKey="id"
             loading={loading}
-            dataSource={myRequests}
-            pagination={{ pageSize: 20, hideOnSinglePage: true }}
+            dataSource={myRequests.slice((minePage - 1) * MINE_PAGE_SIZE, minePage * MINE_PAGE_SIZE)}
+            pagination={false}
             locale={{ emptyText: "No leave requests yet" }}
             columns={[
               {
@@ -322,11 +334,28 @@ export default function LeavePage() {
               },
             ]}
           />
+          </div>
+
+          {myRequests.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "12px 0",
+                flexShrink: 0,
+                borderTop: `1px solid ${appTokens.borderLight}`,
+              }}
+            >
+              <Pagination current={minePage} pageSize={MINE_PAGE_SIZE} total={myRequests.length} onChange={setMinePage} showSizeChanger={false} />
+            </div>
+          )}
         </div>
       ) : activeTab === "history" ? (
-        <LeaveHistoryBrowser balances={balances} directReports={context?.directReports ?? []} />
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <LeaveHistoryBrowser balances={balances} directReports={context?.directReports ?? []} />
+        </div>
       ) : (
-        <>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
           {recentlyDecided.length > 0 && (
             <div
               style={{
@@ -371,8 +400,9 @@ export default function LeavePage() {
             </div>
           )}
           <TeamLeaveTimeline requests={teamRequests} />
-        </>
+        </div>
       )}
+      </div>
 
       <ApplyForLeaveModal
         open={applyOpen}

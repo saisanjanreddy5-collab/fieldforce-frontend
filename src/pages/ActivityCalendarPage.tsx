@@ -12,6 +12,7 @@ import { dateKey, relativeSyncLabel, startOfWeekMonday } from "../utils/calendar
 import { DayTimeline } from "../components/calendar/DayTimeline";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
 import { NewActivityModal } from "../components/calendar/NewActivityModal";
+import { StatsRow } from "../components/StatsRow";
 
 const { Title, Text } = Typography;
 
@@ -214,27 +215,15 @@ export default function ActivityCalendarPage() {
         })}
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 18 }}>
-        {statCards.map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: "1 1 180px",
-              minWidth: 180,
-              border: `1px solid ${appTokens.border}`,
-              borderRadius: appTokens.radius,
-              padding: "14px 16px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowSm,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
-            <div style={{ fontSize: 26, fontWeight: 700, color: stat.color ?? appTokens.textPrimary, letterSpacing: -0.4, lineHeight: 1.25 }}>
-              {stat.value}
-            </div>
-            <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
-          </div>
-        ))}
+      <div style={{ marginBottom: 18 }}>
+        <StatsRow
+          stats={statCards.map((stat) => ({
+            label: stat.label,
+            value: String(stat.value),
+            subtitle: stat.subtitle,
+            valueColor: stat.color,
+          }))}
+        />
       </div>
 
       {loading && !view ? (

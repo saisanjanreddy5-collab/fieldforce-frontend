@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Popover, Select, Table, Tabs, Tag, Typography } from "antd";
+import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Popover, Select, Table, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as callCenterApi from "../api/call-center-api";
@@ -55,12 +55,14 @@ const EMPTY_STATS: callCenterApi.CallCenterStats = {
 export default function CallCenterPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
+  const [activeTab, setActiveTab] = useState<"queue" | "dashboard">("queue");
   const [calls, setCalls] = useState<Call[]>([]);
   const [queue, setQueue] = useState<Call[]>([]);
   const [stats, setStats] = useState<callCenterApi.CallCenterStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
+  const [callLogPage, setCallLogPage] = useState(1);
   const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
   // Queue items whose lead has converted to a customer - keyed by
   // customerId, so the "Call" button can offer a per-contact picker
@@ -113,6 +115,12 @@ export default function CallCenterPage() {
         (c.assignedToName ?? "").toLowerCase().includes(q)
     );
   }, [calls, search]);
+
+  const CALL_LOG_PAGE_SIZE = 20;
+  const pagedCalls = useMemo(
+    () => filtered.slice((callLogPage - 1) * CALL_LOG_PAGE_SIZE, callLogPage * CALL_LOG_PAGE_SIZE),
+    [filtered, callLogPage]
+  );
 
   const handleCall = async (leadId: string | null, override?: { phone: string; contactName?: string }) => {
     if (!leadId) return;
@@ -181,7 +189,10 @@ export default function CallCenterPage() {
               placeholder="Search customer, phone, or caller"
               prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCallLogPage(1);
+              }}
               allowClear
               style={{ maxWidth: 320 }}
             />
@@ -218,13 +229,13 @@ export default function CallCenterPage() {
             </div>
           )}
 
+          <div style={{ maxHeight: 520, overflowY: "auto" }}>
           <Table<Call>
             rowKey="id"
             size="small"
             loading={loading}
-            dataSource={filtered}
-            pagination={filtered.length > 20 ? { pageSize: 20 } : false}
-            scroll={{ y: "calc(100vh - 460px)" }}
+            dataSource={pagedCalls}
+            pagination={false}
             tableLayout="fixed"
             className="thin-scroll-table table-row-hover"
             locale={{ emptyText: loading ? " " : "No calls yet - calls placed from a lead's page will show up here" }}
@@ -316,6 +327,19 @@ export default function CallCenterPage() {
               },
             ]}
           />
+          </div>
+          {filtered.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "12px 14px", borderTop: `1px solid ${appTokens.borderLight}` }}>
+              <Pagination
+                size="small"
+                current={callLogPage}
+                pageSize={CALL_LOG_PAGE_SIZE}
+                total={filtered.length}
+                onChange={setCallLogPage}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
         </div>
 
         <div
@@ -433,8 +457,8 @@ export default function CallCenterPage() {
   );
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Call center
@@ -448,15 +472,41 @@ export default function CallCenterPage() {
       </div>
 
       {canWorkQueue ? (
-        <Tabs
-          defaultActiveKey="queue"
-          items={[
-            { key: "queue", label: "My queue", children: <MyQueueTab /> },
-            { key: "dashboard", label: "Dashboard", children: dashboardPanel },
-          ]}
-        />
+        <>
+          <div style={{ display: "flex", gap: 6, marginBottom: 14, flexShrink: 0 }}>
+            {(
+              [
+                { key: "queue", label: "My queue" },
+                { key: "dashboard", label: "Dashboard" },
+              ] as const
+            ).map((tab) => {
+              const active = activeTab === tab.key;
+              return (
+                <Button
+                  key={tab.key}
+                  size="small"
+                  shape="round"
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    background: appTokens.surface,
+                    borderWidth: active ? 1.5 : 1,
+                    borderColor: active ? appTokens.primary : appTokens.border,
+                    color: active ? appTokens.primary : appTokens.textSecondary,
+                    fontWeight: active ? 600 : 500,
+                  }}
+                >
+                  {tab.label}
+                </Button>
+              );
+            })}
+          </div>
+          <div style={{ flex: 1, minHeight: 0, display: activeTab === "queue" ? "flex" : "none", flexDirection: "column" }}>
+            <MyQueueTab />
+          </div>
+          {activeTab === "dashboard" && <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{dashboardPanel}</div>}
+        </>
       ) : (
-        dashboardPanel
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{dashboardPanel}</div>
       )}
     </div>
   );
@@ -693,7 +743,7 @@ function MyQueueTab() {
   // independently since they're logically separate lists. Resets to page 1
   // whenever the visible set changes shape, so narrowing a filter never
   // leaves the view stranded on a now-nonexistent later page.
-  const QUEUE_PAGE_SIZE = 20;
+  const QUEUE_PAGE_SIZE = 10;
   const [qualifiedPage, setQualifiedPage] = useState(1);
   const [callingPage, setCallingPage] = useState(1);
   const [handedOffPage, setHandedOffPage] = useState(1);
@@ -795,8 +845,8 @@ function MyQueueTab() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, height: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Input
             placeholder="Search name, phone, email, or pincode"
@@ -820,6 +870,7 @@ function MyQueueTab() {
         )}
       </div>
 
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
       {loading && leads.length === 0 && <Text type="secondary">Loading your queue...</Text>}
 
       {!loading && leads.length === 0 && (
@@ -849,15 +900,16 @@ function MyQueueTab() {
       )}
 
       {filteredQualified.length > 0 && (
-        <div>
+        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: `1px solid ${appTokens.borderLight}` }}>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
             Qualified - ready for Field Sales ({filteredQualified.length})
           </Text>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>{pagedQualified.map((l) => renderRow(l))}</div>
-          {filteredQualified.length > QUEUE_PAGE_SIZE && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {pagedQualified.map((l) => renderRow(l))}
+          </div>
+          {filteredQualified.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
               <Pagination
-                size="small"
                 current={qualifiedPage}
                 pageSize={QUEUE_PAGE_SIZE}
                 total={filteredQualified.length}
@@ -869,17 +921,16 @@ function MyQueueTab() {
         </div>
       )}
       {filteredCalling.length > 0 && (
-        <div>
+        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: `1px solid ${appTokens.borderLight}` }}>
           <Text strong style={{ fontSize: 12.5, color: appTokens.textTertiary, textTransform: "uppercase", letterSpacing: 0.3 }}>
             Awaiting {myTierLabel} ({filteredCalling.length})
           </Text>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
             {pagedCalling.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
           </div>
-          {filteredCalling.length > QUEUE_PAGE_SIZE && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+          {filteredCalling.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
               <Pagination
-                size="small"
                 current={callingPage}
                 pageSize={QUEUE_PAGE_SIZE}
                 total={filteredCalling.length}
@@ -898,10 +949,9 @@ function MyQueueTab() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
             {pagedHandedOff.map((l) => renderRow(l, { showCallButton: false }))}
           </div>
-          {filteredHandedOff.length > QUEUE_PAGE_SIZE && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+          {filteredHandedOff.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
               <Pagination
-                size="small"
                 current={handedOffPage}
                 pageSize={QUEUE_PAGE_SIZE}
                 total={filteredHandedOff.length}
@@ -912,6 +962,7 @@ function MyQueueTab() {
           )}
         </div>
       )}
+      </div>
 
       <AddLeadModal open={addLeadOpen} onClose={() => setAddLeadOpen(false)} onAdded={() => { setAddLeadOpen(false); load(); }} />
 

@@ -81,7 +81,7 @@ export function LeadQueue({
         <Button icon={<DoubleLeftOutlined />} onClick={onToggleCollapsed} title="Collapse list" />
       </div>
 
-      <div style={{ flex: 1, minHeight: 200, overflowY: "auto", margin: "0 -20px", padding: "0 20px" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", margin: "0 -20px", padding: "0 20px" }}>
         {loading ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <Spin />
