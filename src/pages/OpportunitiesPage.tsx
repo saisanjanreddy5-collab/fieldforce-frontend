@@ -23,6 +23,7 @@ import { CATEGORY_COLORS, STAGE_DEFAULT_PROBABILITY, STAGE_OPTIONS } from "../co
 import { useHasPermission } from "../hooks/use-permission";
 import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 
 const { Text } = Typography;
 
@@ -335,32 +336,15 @@ export default function OpportunitiesPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        {[
-          { label: "Open opportunities", value: String(stats.openCount), subtitle: "in view", color: appTokens.textPrimary },
-          { label: "Pipeline value", value: formatCompactCurrency(stats.pipelineValue), subtitle: "unweighted", color: appTokens.textPrimary },
-          { label: "Weighted forecast", value: formatCompactCurrency(stats.weightedForecast), subtitle: "probability adjusted", color: appTokens.primary },
-          { label: "Avg deal size", value: formatCompactCurrency(stats.avgDealSize), subtitle: "this view", color: appTokens.textPrimary },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: 1,
-              minWidth: 170,
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: "10px 14px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block", whiteSpace: "nowrap" }}>{stat.label}</Text>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 19, fontWeight: 700, color: stat.color, letterSpacing: -0.3, lineHeight: 1.3, whiteSpace: "nowrap" }}>{stat.value}</span>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>{stat.subtitle}</Text>
-            </div>
-          </div>
-        ))}
+      <div style={{ marginBottom: 12 }}>
+        <StatsRow
+          stats={[
+            { label: "Open opportunities", value: String(stats.openCount), subtitle: "in view" },
+            { label: "Pipeline value", value: formatCompactCurrency(stats.pipelineValue), subtitle: "unweighted" },
+            { label: "Weighted forecast", value: formatCompactCurrency(stats.weightedForecast), subtitle: "probability adjusted", valueColor: appTokens.primary },
+            { label: "Avg deal size", value: formatCompactCurrency(stats.avgDealSize), subtitle: "this view" },
+          ]}
+        />
       </div>
 
       {view === "kanban" && (

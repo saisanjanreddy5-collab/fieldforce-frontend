@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Spin, Tag, Tooltip, Typography, message } from "antd";
+import { Button, Input, Spin, Tag, Typography, message } from "antd";
 import { CheckCircleFilled, ClockCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as approvalsInboxApi from "../api/approvals-inbox-api";
@@ -12,6 +12,7 @@ import type { ExpenseClaim } from "../types/expense";
 import type { FofoHandoff } from "../types/fofo-onboarding";
 import { errorMessageFrom } from "../utils/api-error";
 import { appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -21,32 +22,6 @@ const TYPE_FILTERS: { key: ApprovalItemType | "all"; label: string }[] = [
   { key: "leave", label: "Leave" },
   { key: "expense", label: "Expense" },
 ];
-
-function StatCard({ label, value, sub, labelHint }: { label: string; value: string; sub?: string; labelHint?: string }) {
-  return (
-    <div
-      style={{
-        flex: 1,
-        minWidth: 150,
-        border: `1px solid ${appTokens.border}`,
-        borderRadius: appTokens.radius,
-        background: appTokens.surface,
-        boxShadow: appTokens.shadowSm,
-        padding: "14px 16px",
-      }}
-    >
-      {labelHint ? (
-        <Tooltip title={labelHint}>
-          <Text style={{ fontSize: 11.5, color: appTokens.textTertiary, cursor: "help", borderBottom: `1px dashed ${appTokens.textTertiary}` }}>{label}</Text>
-        </Tooltip>
-      ) : (
-        <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{label}</Text>
-      )}
-      <div style={{ fontSize: 22, fontWeight: 700, color: appTokens.textPrimary, lineHeight: 1.3 }}>{value}</div>
-      {sub && <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{sub}</Text>}
-    </div>
-  );
-}
 
 function formatWaiting(hours: number): string {
   if (hours < 1) return "just now";
@@ -132,23 +107,30 @@ export default function ApprovalsPage() {
         </Text>
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-        <StatCard label="Waiting on you" value={inbox ? String(inbox.stats.waitingOnYou) : "—"} sub="requests" />
-        <StatCard
-          label="Breaching SLA"
-          value={inbox ? String(inbox.stats.breachingSla) : "—"}
-          sub="over 48h"
-          labelHint="A fixed 48h threshold, not a configured SLA - FieldForce has no real SLA deadline for these yet."
-        />
-        <StatCard
-          label="Value in queue"
-          value={inbox ? `₹${(inbox.stats.valueInQueue / 100000).toFixed(1)}L` : "—"}
-          sub={inbox ? `${inbox.stats.valueInQueueCount} item${inbox.stats.valueInQueueCount === 1 ? "" : "s"}` : undefined}
-        />
-        <StatCard
-          label="Approved this week"
-          value={inbox ? String(inbox.stats.approvedThisWeek) : "—"}
-          sub={inbox?.stats.avgDecisionHours !== null && inbox?.stats.avgDecisionHours !== undefined ? `avg ${inbox.stats.avgDecisionHours.toFixed(1)}h to decide` : undefined}
+      <div style={{ marginBottom: 16 }}>
+        <StatsRow
+          stats={[
+            { label: "Waiting on you", value: inbox ? String(inbox.stats.waitingOnYou) : "—", subtitle: "requests" },
+            {
+              label: "Breaching SLA",
+              value: inbox ? String(inbox.stats.breachingSla) : "—",
+              subtitle: "over 48h",
+              labelHint: "A fixed 48h threshold, not a configured SLA - FieldForce has no real SLA deadline for these yet.",
+            },
+            {
+              label: "Value in queue",
+              value: inbox ? `₹${(inbox.stats.valueInQueue / 100000).toFixed(1)}L` : "—",
+              subtitle: inbox ? `${inbox.stats.valueInQueueCount} item${inbox.stats.valueInQueueCount === 1 ? "" : "s"}` : undefined,
+            },
+            {
+              label: "Approved this week",
+              value: inbox ? String(inbox.stats.approvedThisWeek) : "—",
+              subtitle:
+                inbox?.stats.avgDecisionHours !== null && inbox?.stats.avgDecisionHours !== undefined
+                  ? `avg ${inbox.stats.avgDecisionHours.toFixed(1)}h to decide`
+                  : undefined,
+            },
+          ]}
         />
       </div>
 

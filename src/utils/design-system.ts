@@ -19,8 +19,16 @@ export const appTokens = {
   // text. Everything reading from this shared token gets fixed at once.
   textSecondary: "#4b5565",
   textTertiary: "#6b7280",
-  border: "#e5e7eb",
-  borderLight: "#eef0f3",
+  // Same category of fix as textSecondary/textTertiary above, just never
+  // caught here before (client-reported - these read as "almost invisible"
+  // in practice). Was #e5e7eb/#eef0f3, which measured ~1.24:1/~1.14:1
+  // contrast against white - nowhere near perceptible, let alone WCAG's 3:1
+  // floor for UI boundaries. Deepened to ~1.52:1/~1.31:1 - clearly visible
+  // at a glance without reading as a heavy, dark rule line. Every table,
+  // card, divider and antd control (colorBorder/colorBorderSecondary below)
+  // reading from these two tokens gets fixed everywhere at once.
+  border: "#cdd2d9",
+  borderLight: "#dde1e6",
   surface: "#ffffff",
   surfaceMuted: "#f8f9fb",
   surfaceSunken: "#f4f5f7",

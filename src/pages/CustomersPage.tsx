@@ -7,6 +7,7 @@ import type { Customer } from "../types/customer";
 import type { State } from "../types/sales-team";
 import { useHasPermission } from "../hooks/use-permission";
 import { avatarGradient, appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { categoryColor, customerRisk } from "../components/customers/customer-constants";
 import { CustomerDetailPanel } from "../components/customers/CustomerDetailPanel";
@@ -170,32 +171,15 @@ export default function CustomersPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-        {[
-          { label: "Total customers", value: String(stats.total), subtitle: "converted from leads" },
-          { label: "Active", value: String(stats.active), subtitle: "in good standing" },
-          { label: "Over credit limit", value: String(stats.overLimit), subtitle: "needs finance review" },
-          { label: "Outstanding balance", value: formatCompactCurrency(stats.totalOutstanding), subtitle: "across all customers" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: 1,
-              minWidth: 170,
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: "10px 14px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block", whiteSpace: "nowrap" }}>{stat.label}</Text>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3, whiteSpace: "nowrap" }}>{stat.value}</span>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>{stat.subtitle}</Text>
-            </div>
-          </div>
-        ))}
+      <div style={{ marginBottom: 14 }}>
+        <StatsRow
+          stats={[
+            { label: "Total customers", value: String(stats.total), subtitle: "converted from leads" },
+            { label: "Active", value: String(stats.active), subtitle: "in good standing" },
+            { label: "Over credit limit", value: String(stats.overLimit), subtitle: "needs finance review" },
+            { label: "Outstanding balance", value: formatCompactCurrency(stats.totalOutstanding), subtitle: "across all customers" },
+          ]}
+        />
       </div>
 
       <div style={{ display: "flex", gap: 14, alignItems: "stretch", flex: 1, minHeight: 0 }}>

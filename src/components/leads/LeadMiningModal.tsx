@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { App, Button, Checkbox, Modal, Select, Tag, Typography } from "antd";
+import { appTokens } from "../../utils/design-system";
 
 const { Text, Title } = Typography;
 
@@ -65,7 +66,7 @@ export function LeadMiningModal({ open, onClose }: LeadMiningModalProps) {
               alignItems: "center",
               gap: 12,
               padding: "10px 12px",
-              border: "1px solid #f0f0f0",
+              border: `1px solid ${appTokens.border}`,
               borderRadius: 8,
             }}
           >

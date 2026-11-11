@@ -47,6 +47,7 @@ import { TestAccessAsModal } from "../components/TestAccessAsModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { STATUS_COLORS, STATUS_OPTIONS, UserFormWizard } from "../components/UserFormWizard";
 import { appTokens, avatarGradient } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 
 const { Title, Text } = Typography;
 
@@ -323,40 +324,25 @@ export default function SalesForceManagementPage() {
         <>
           {hasPermission("sales_teams.view") && <SalesTeamsCard onChange={setSalesTeams} />}
 
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", margin: "4px 0 16px" }}>
-            {[
-              { label: "People", value: String(users.length), subtitle: "on the sales force", color: appTokens.textPrimary },
-              {
-                label: "Below target",
-                value: String(belowTargetUserIds.size),
-                subtitle: `under ${BELOW_TARGET_THRESHOLD}%`,
-                color: belowTargetUserIds.size > 0 ? appTokens.danger : appTokens.textPrimary,
-              },
-              { label: "Incentive pool", value: "-", subtitle: "no payout engine yet", color: appTokens.textPrimary },
-              {
-                label: "Avg attainment",
-                value: avgAttainment === null ? "-" : `${avgAttainment}%`,
-                subtitle: "quota, current period",
-                color: avgAttainment !== null && avgAttainment >= BELOW_TARGET_THRESHOLD ? appTokens.success : appTokens.textPrimary,
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                style={{
-                  flex: "1 1 180px",
-                  minWidth: 180,
-                  border: `1px solid ${appTokens.border}`,
-                  borderRadius: appTokens.radius,
-                  padding: "14px 16px",
-                  background: appTokens.surface,
-                  boxShadow: appTokens.shadowSm,
-                }}
-              >
-                <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>{stat.label}</Text>
-                <div style={{ fontSize: 26, fontWeight: 700, color: stat.color, letterSpacing: -0.4, lineHeight: 1.25 }}>{stat.value}</div>
-                <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{stat.subtitle}</Text>
-              </div>
-            ))}
+          <div style={{ margin: "4px 0 16px" }}>
+            <StatsRow
+              stats={[
+                { label: "People", value: String(users.length), subtitle: "on the sales force" },
+                {
+                  label: "Below target",
+                  value: String(belowTargetUserIds.size),
+                  subtitle: `under ${BELOW_TARGET_THRESHOLD}%`,
+                  valueColor: belowTargetUserIds.size > 0 ? appTokens.danger : undefined,
+                },
+                { label: "Incentive pool", value: "-", subtitle: "no payout engine yet" },
+                {
+                  label: "Avg attainment",
+                  value: avgAttainment === null ? "-" : `${avgAttainment}%`,
+                  subtitle: "quota, current period",
+                  valueColor: avgAttainment !== null && avgAttainment >= BELOW_TARGET_THRESHOLD ? appTokens.success : undefined,
+                },
+              ]}
+            />
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center" }}>

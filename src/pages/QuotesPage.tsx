@@ -6,6 +6,7 @@ import type { QuoteListItem } from "../types/quote";
 import { useHasPermission } from "../hooks/use-permission";
 import { formatDate } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 import { QUOTE_STATUS_COLORS, QUOTE_STATUS_LABELS } from "../components/quotes/quote-constants";
 import { NewQuoteModal } from "../components/quotes/NewQuoteModal";
 import { QuoteDetailDrawer } from "../components/quotes/QuoteDetailDrawer";
@@ -138,32 +139,15 @@ export default function QuotesPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        {[
-          { label: "Total quotes", value: String(stats.total), subtitle: "all time" },
-          { label: "Awaiting response", value: String(stats.sent), subtitle: "sent, not yet answered" },
-          { label: "Accepted value", value: `₹${(stats.acceptedValue / 100000).toFixed(1)}L`, subtitle: "won quotes" },
-          { label: "Total quoted", value: `₹${(stats.totalValue / 100000).toFixed(1)}L`, subtitle: "across every quote" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: 1,
-              minWidth: 170,
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: "10px 14px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block", whiteSpace: "nowrap" }}>{stat.label}</Text>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3, whiteSpace: "nowrap" }}>{stat.value}</span>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>{stat.subtitle}</Text>
-            </div>
-          </div>
-        ))}
+      <div style={{ marginBottom: 12 }}>
+        <StatsRow
+          stats={[
+            { label: "Total quotes", value: String(stats.total), subtitle: "all time" },
+            { label: "Awaiting response", value: String(stats.sent), subtitle: "sent, not yet answered" },
+            { label: "Accepted value", value: `₹${(stats.acceptedValue / 100000).toFixed(1)}L`, subtitle: "won quotes" },
+            { label: "Total quoted", value: `₹${(stats.totalValue / 100000).toFixed(1)}L`, subtitle: "across every quote" },
+          ]}
+        />
       </div>
 
       <div

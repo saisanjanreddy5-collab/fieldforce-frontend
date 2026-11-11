@@ -77,6 +77,9 @@ const AUDIT_ICON: Record<string, React.ReactNode> = {
   internal_notes_updated: <FileTextOutlined />,
   rm_remark_updated: <FileTextOutlined />,
   lg_remark_updated: <FileTextOutlined />,
+  quote_created: <FileTextOutlined />,
+  quote_revised: <FileTextOutlined />,
+  quote_status_changed: <SwapOutlined />,
 };
 // Reads naturally after an actor's name ("Priya escalated this lead") -
 // built from audit_log's own `action` key rather than parsing its `summary`
@@ -351,39 +354,8 @@ function AuditEntry({ event }: { event: AuditEvent }) {
   );
 }
 
-function CurrentNoteCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div
-      style={{
-        flex: "1 1 220px",
-        minWidth: 220,
-        border: `1px solid ${appTokens.borderLight}`,
-        borderRadius: appTokens.radius,
-        padding: "10px 12px",
-        background: appTokens.surface,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-        <Text strong style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: 0.3, color: appTokens.textTertiary }}>
-          {label}
-        </Text>
-      </div>
-      <Text style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{value}</Text>
-    </div>
-  );
-}
-
 interface HistoryTabProps {
   leadId: string;
-  // Current values only (no timestamp/actor of their own, unlike everything
-  // else in History) - shown as a pinned summary up top since they're plain
-  // mutable fields (see LeadFormDrawer's "Visible only to your team"
-  // section), not a dated event. Any edit from here on does get a real,
-  // dated History entry below (see lead-service.ts's updateLead).
-  internalNotes: string | null;
-  rmRemark: string | null;
-  lgRemark: string | null;
   // Opens the same EmailComposeDrawer the lead header's own Outlook icon
   // already uses (LeadDetail.tsx owns its open state) - "Send an email" here
   // is a second entry point to that one real flow, not a separate composer.
@@ -397,13 +369,14 @@ interface HistoryTabProps {
 // drawer, which each told only part of this story on their own. Deliberately
 // has no entry in LeadDetail's TAB_PERMISSION map - every call center/field/
 // admin person who can open this lead at all can see its whole history.
-export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark, onComposeEmail }: HistoryTabProps) {
+//
+// Internal Notes/RM Remark/LG Remark's current values deliberately don't
+// get a pinned summary here any more (client decision - this tab is
+// chronological events, current state belongs elsewhere) - they're still
+// visible on Overview's own Inquiry section, and any edit to them still
+// gets a real, dated entry in the feed below (lead-service.ts's updateLead).
+export function HistoryTab({ leadId, onComposeEmail }: HistoryTabProps) {
   const hasPermission = useHasPermission();
-  const currentNotes = [
-    { key: "internalNotes", label: "Internal Notes", value: internalNotes, color: "#7c3aed" },
-    { key: "rmRemark", label: "RM Remark", value: rmRemark, color: "#2a78d6" },
-    { key: "lgRemark", label: "LG Remark", value: lgRemark, color: "#0f9aa8" },
-  ].filter((n): n is { key: string; label: string; value: string; color: string } => Boolean(n.value?.trim()));
   const [entries, setEntries] = useState<LeadTimelineEntry[] | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<Set<FilterKey>>(new Set());
   const [typeSearch, setTypeSearch] = useState("");
@@ -579,19 +552,6 @@ export function HistoryTab({ leadId, internalNotes, rmRemark, lgRemark, onCompos
           </Badge>
         </Dropdown>
       </div>
-
-      {currentNotes.length > 0 && (
-        <div style={{ margin: "12px 0 16px" }}>
-          <Text type="secondary" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, display: "block", marginBottom: 8 }}>
-            Current notes
-          </Text>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {currentNotes.map((n) => (
-              <CurrentNoteCard key={n.key} label={n.label} value={n.value} color={n.color} />
-            ))}
-          </div>
-        </div>
-      )}
 
       <Text type="secondary" style={{ fontSize: 12, display: "block", margin: "8px 0 16px" }}>
         {filtered.length} of {entries.length} events

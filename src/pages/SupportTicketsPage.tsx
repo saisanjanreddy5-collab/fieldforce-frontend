@@ -7,6 +7,7 @@ import { useHasPermission } from "../hooks/use-permission";
 import { useAuth } from "../context/AuthContext";
 import { formatDate } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 import { PRIORITY_COLORS, STATUS_COLORS, resolutionSlaTag } from "../components/support-tickets/support-ticket-constants";
 import { NewSupportTicketModal } from "../components/support-tickets/NewSupportTicketModal";
 import { SupportTicketDetailDrawer } from "../components/support-tickets/SupportTicketDetailDrawer";
@@ -146,33 +147,16 @@ export default function SupportTicketsPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        {[
-          { label: "Total tickets", value: String(stats.total), subtitle: "all time" },
-          { label: "Open", value: String(stats.open), subtitle: "awaiting resolution" },
-          { label: "Urgent & open", value: String(stats.urgent), subtitle: "needs attention first" },
-          { label: "SLA breached", value: String(stats.overdue), subtitle: "response or resolution overdue" },
-          { label: "Resolved", value: String(stats.resolved), subtitle: "resolved or closed" },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              flex: 1,
-              minWidth: 170,
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: "10px 14px",
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <Text style={{ fontSize: 11.5, fontWeight: 600, color: appTokens.textTertiary, display: "block", whiteSpace: "nowrap" }}>{stat.label}</Text>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 1, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 19, fontWeight: 700, color: appTokens.textPrimary, letterSpacing: -0.3, whiteSpace: "nowrap" }}>{stat.value}</span>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary, whiteSpace: "nowrap" }}>{stat.subtitle}</Text>
-            </div>
-          </div>
-        ))}
+      <div style={{ marginBottom: 12 }}>
+        <StatsRow
+          stats={[
+            { label: "Total tickets", value: String(stats.total), subtitle: "all time" },
+            { label: "Open", value: String(stats.open), subtitle: "awaiting resolution" },
+            { label: "Urgent & open", value: String(stats.urgent), subtitle: "needs attention first" },
+            { label: "SLA breached", value: String(stats.overdue), subtitle: "response or resolution overdue" },
+            { label: "Resolved", value: String(stats.resolved), subtitle: "resolved or closed" },
+          ]}
+        />
       </div>
 
       <div

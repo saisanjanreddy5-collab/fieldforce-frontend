@@ -9,32 +9,9 @@ import { QrCampaignCard } from "./QrCampaignCard";
 import { GenerateQrCampaignModal } from "./GenerateQrCampaignModal";
 import { WebsiteLeadSourceCard } from "./WebsiteLeadSourceCard";
 import { AddWebsiteLeadSourceModal } from "./AddWebsiteLeadSourceModal";
+import { StatsRow } from "../StatsRow";
 
 const { Text } = Typography;
-
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div
-      style={{
-        flex: 1,
-        minWidth: 150,
-        border: `1px solid ${appTokens.border}`,
-        borderRadius: appTokens.radius,
-        background: appTokens.surface,
-        boxShadow: appTokens.shadowSm,
-        padding: "14px 16px",
-      }}
-    >
-      <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{label}</Text>
-      <div style={{ fontSize: 22, fontWeight: 700, color: appTokens.textPrimary, lineHeight: 1.3 }}>{value}</div>
-      {sub && (
-        <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>
-          {sub}
-        </Text>
-      )}
-    </div>
-  );
-}
 
 export function QrLeadCaptureTab() {
   const [campaigns, setCampaigns] = useState<QrCampaign[]>([]);
@@ -73,23 +50,22 @@ export function QrLeadCaptureTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <StatCard
-          label="Active QR codes"
-          value={summary ? `${summary.activeCount} of ${summary.totalCount}` : "—"}
-        />
-        <StatCard label="Total scans" value={summary ? String(summary.totalScans) : "—"} />
-        <StatCard
-          label="Leads captured"
-          value={summary ? String(summary.leadsCount) : "—"}
-          sub={summary?.conversionRate !== null && summary?.conversionRate !== undefined ? `${summary.conversionRate}% of scans` : undefined}
-        />
-        <StatCard
-          label="Consent captured at submission"
-          value={summary?.consentRate !== null && summary?.consentRate !== undefined ? `${summary.consentRate}%` : "—"}
-          sub="DPDP checkbox, real"
-        />
-      </div>
+      <StatsRow
+        stats={[
+          { label: "Active QR codes", value: summary ? `${summary.activeCount} of ${summary.totalCount}` : "—" },
+          { label: "Total scans", value: summary ? String(summary.totalScans) : "—" },
+          {
+            label: "Leads captured",
+            value: summary ? String(summary.leadsCount) : "—",
+            subtitle: summary?.conversionRate !== null && summary?.conversionRate !== undefined ? `${summary.conversionRate}% of scans` : undefined,
+          },
+          {
+            label: "Consent captured at submission",
+            value: summary?.consentRate !== null && summary?.consentRate !== undefined ? `${summary.consentRate}%` : "—",
+            subtitle: "DPDP checkbox, real",
+          },
+        ]}
+      />
 
       <div
         style={{

@@ -303,13 +303,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
             <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} canSend={lead.inOwnerScope} />
           )}
           {activeTabKey === "history" && (
-            <HistoryTab
-              leadId={lead.id}
-              internalNotes={lead.internalNotes}
-              rmRemark={lead.rmRemark}
-              lgRemark={lead.lgRemark}
-              onComposeEmail={() => setEmailOpen(true)}
-            />
+            <HistoryTab leadId={lead.id} onComposeEmail={() => setEmailOpen(true)} />
           )}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
           {activeTabKey === "approvals" && (

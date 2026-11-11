@@ -12,6 +12,7 @@ import type { TeamAvailability, TeamDayTag } from "../types/team-dashboard";
 import type { LeaveBalance, LeaveContextPerson } from "../types/leave";
 import type { ExpenseType } from "../types/expense";
 import { appTokens } from "../utils/design-system";
+import { StatsRow } from "../components/StatsRow";
 
 const { Title, Text } = Typography;
 
@@ -34,26 +35,6 @@ const TAG_COLOR: Record<TeamDayTag, { fg: string; bg: string }> = {
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
-}
-
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div
-      style={{
-        flex: 1,
-        minWidth: 150,
-        border: `1px solid ${appTokens.border}`,
-        borderRadius: appTokens.radius,
-        background: appTokens.surface,
-        boxShadow: appTokens.shadowSm,
-        padding: "14px 16px",
-      }}
-    >
-      <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{label}</Text>
-      <div style={{ fontSize: 22, fontWeight: 700, color: appTokens.textPrimary, lineHeight: 1.3 }}>{value}</div>
-      {sub && <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{sub}</Text>}
-    </div>
-  );
 }
 
 const PAGE_SIZE = 10;
@@ -129,28 +110,30 @@ export default function TeamDashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16, flexShrink: 0 }}>
-        <StatCard label="Available today" value={stats ? `${stats.availableToday} of ${stats.headcount}` : "—"} />
-        <StatCard
-          label="On leave"
-          value={stats ? String(stats.onLeaveToday) : "—"}
-          sub={stats && stats.onLeaveUnapprovedToday > 0 ? `${stats.onLeaveUnapprovedToday} unapproved` : undefined}
-        />
-        <StatCard
-          label="Field visits today"
-          value={stats ? String(stats.fieldVisitsToday) : "—"}
-          sub={stats && stats.fieldVisitsPendingToday > 0 ? `${stats.fieldVisitsPendingToday} pending` : undefined}
-        />
-        <StatCard
-          label="Avg activities / person"
-          value={stats ? String(stats.avgActivitiesPerPerson) : "—"}
-          sub={
-            stats
-              ? `${stats.avgActivitiesPerPerson - stats.avgActivitiesPerPersonLastWeek >= 0 ? "+" : ""}${
-                  Math.round((stats.avgActivitiesPerPerson - stats.avgActivitiesPerPersonLastWeek) * 10) / 10
-                } vs last week`
-              : undefined
-          }
+      <div style={{ marginBottom: 16, flexShrink: 0 }}>
+        <StatsRow
+          stats={[
+            { label: "Available today", value: stats ? `${stats.availableToday} of ${stats.headcount}` : "—" },
+            {
+              label: "On leave",
+              value: stats ? String(stats.onLeaveToday) : "—",
+              subtitle: stats && stats.onLeaveUnapprovedToday > 0 ? `${stats.onLeaveUnapprovedToday} unapproved` : undefined,
+            },
+            {
+              label: "Field visits today",
+              value: stats ? String(stats.fieldVisitsToday) : "—",
+              subtitle: stats && stats.fieldVisitsPendingToday > 0 ? `${stats.fieldVisitsPendingToday} pending` : undefined,
+            },
+            {
+              label: "Avg activities / person",
+              value: stats ? String(stats.avgActivitiesPerPerson) : "—",
+              subtitle: stats
+                ? `${stats.avgActivitiesPerPerson - stats.avgActivitiesPerPersonLastWeek >= 0 ? "+" : ""}${
+                    Math.round((stats.avgActivitiesPerPerson - stats.avgActivitiesPerPersonLastWeek) * 10) / 10
+                  } vs last week`
+                : undefined,
+            },
+          ]}
         />
       </div>
 
