@@ -267,7 +267,7 @@ export default function LeavePage() {
             rowKey="id"
             loading={loading}
             dataSource={myRequests}
-            pagination={false}
+            pagination={{ pageSize: 20, hideOnSinglePage: true }}
             locale={{ emptyText: "No leave requests yet" }}
             columns={[
               {

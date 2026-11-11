@@ -161,8 +161,8 @@ export default function ExpensesPage() {
   ];
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
             Expenses
@@ -174,7 +174,7 @@ export default function ExpensesPage() {
         </Button>
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 16, flexShrink: 0 }}>
         {[
           {
             label: "Claimed this month",
@@ -220,7 +220,7 @@ export default function ExpensesPage() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", flexShrink: 0 }}>
         {STATUS_TABS.map((tab) => {
           const active = statusFilter === tab.key;
           return (
@@ -250,6 +250,7 @@ export default function ExpensesPage() {
         loading={loading}
         dataSource={filteredClaims}
         pagination={{ pageSize: 20, hideOnSinglePage: true }}
+        scroll={{ y: "calc(100vh - 460px)" }}
         onRow={() => ({ className: "table-row-hover" })}
         locale={{ emptyText: "No expense claims yet" }}
         columns={[
