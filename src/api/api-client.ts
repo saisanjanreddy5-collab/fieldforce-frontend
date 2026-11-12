@@ -4,6 +4,10 @@ import type { ApiSuccess } from "../types/api";
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
+  // Needed so the backend's ff_sso_session cookie (set on login, read by
+  // GET /sso/authorize when Frappe Helpdesk redirects here) actually gets
+  // stored - a cross-origin response's Set-Cookie is otherwise dropped.
+  withCredentials: true,
 });
 
 apiClient.interceptors.request.use((config) => {

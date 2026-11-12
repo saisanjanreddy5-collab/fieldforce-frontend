@@ -11,3 +11,13 @@ export async function sendMessage(leadId: string, body: string): Promise<Whatsap
   const response = await apiClient.post<ApiSuccess<WhatsappMessage>>(`/leads/${leadId}/whatsapp-messages`, { body });
   return response.data.data;
 }
+
+export async function sendMedia(leadId: string, file: File, caption?: string): Promise<WhatsappMessage> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (caption) formData.append("caption", caption);
+  const response = await apiClient.post<ApiSuccess<WhatsappMessage>>(`/leads/${leadId}/whatsapp-messages/media`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data.data;
+}
