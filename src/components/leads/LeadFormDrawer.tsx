@@ -24,6 +24,7 @@ import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
 import { errorMessageFrom, fieldErrorsFrom } from "../../utils/api-error";
+import { suggestEmailDomainFix } from "../../utils/email-typo-check";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
 import { ConsentTab } from "./tabs/ConsentTab";
 
@@ -153,6 +154,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("customer");
   const isEdit = lead !== null;
+  const emailValue = Form.useWatch("email", form);
+  const emailSuggestion = emailValue ? suggestEmailDomainFix(emailValue) : null;
+  // Exact email string the user explicitly said to keep despite the typo
+  // nudge below - blocks Save/Save & Next for every OTHER typo'd address,
+  // but never locks someone out of a domain they really did mean.
+  const [confirmedTypoEmail, setConfirmedTypoEmail] = useState<string | null>(null);
 
   // Flat list, not region-filtered - the state itself (not which zone it's
   // in) is what assignment_rules actually matches a new lead's owner
@@ -556,7 +563,40 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     >
                       <Input maxLength={10} />
                     </Form.Item>
-                    <Form.Item name="email" label="Email address" rules={[{ type: "email", message: "Invalid email" }]}>
+                    <Form.Item
+                      name="email"
+                      label="Email address"
+                      rules={[
+                        { type: "email", message: "Invalid email" },
+                        // A likely-typo'd domain (gmail.co, gmial.com, etc.)
+                        // blocks Save/Save & Next, same as any other invalid
+                        // field - unless this exact value is the one the user
+                        // just explicitly said to keep via the link below.
+                        {
+                          validator: (_, value: string | undefined) => {
+                            const suggestion = value ? suggestEmailDomainFix(value) : null;
+                            if (!suggestion || value === confirmedTypoEmail) return Promise.resolve();
+                            return Promise.reject(new Error(`Did you mean ${suggestion}?`));
+                          },
+                        },
+                      ]}
+                      extra={
+                        emailSuggestion && emailValue !== confirmedTypoEmail ? (
+                          <Text type="warning" style={{ fontSize: 12 }}>
+                            Did you mean <a onClick={() => form.setFieldValue("email", emailSuggestion)}>{emailSuggestion}</a>? Or{" "}
+                            <a
+                              onClick={() => {
+                                setConfirmedTypoEmail(emailValue ?? null);
+                                form.validateFields(["email"]);
+                              }}
+                            >
+                              keep {emailValue} as typed
+                            </a>
+                            .
+                          </Text>
+                        ) : undefined
+                      }
+                    >
                       <Input />
                     </Form.Item>
                     <Form.Item name="website" label="Website">

@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Avatar, Button, Input, Tooltip, Typography, message } from "antd";
-import { CheckOutlined, PaperClipOutlined, SendOutlined, WhatsAppOutlined } from "@ant-design/icons";
+import { Avatar, Button, Dropdown, Input, Tooltip, Typography, message } from "antd";
+import type { MenuProps } from "antd";
+import {
+  AudioOutlined,
+  CheckOutlined,
+  FileTextOutlined,
+  FileImageOutlined,
+  PaperClipOutlined,
+  SendOutlined,
+  WhatsAppOutlined,
+} from "@ant-design/icons";
 import { WhatsAppLogo } from "../../icons/BrandIcons";
 import * as whatsappApi from "../../../api/whatsapp-api";
 import type { WhatsappMessage } from "../../../types/whatsapp";
@@ -75,6 +84,47 @@ function StatusTicks({ status }: { status: string }) {
   );
 }
 
+// mediaMimeType alone decides how to render it - no separate "type" column
+// exists or is needed (see model.ts's own comment on why one more column
+// here would just duplicate what the mime type already says).
+function MediaContent({ msg, outbound }: { msg: WhatsappMessage; outbound: boolean }) {
+  if (!msg.mediaUrl) return null;
+  const mime = msg.mediaMimeType ?? "";
+
+  if (mime.startsWith("image/")) {
+    return <img src={msg.mediaUrl} alt={msg.mediaFileName ?? "photo"} style={{ display: "block", maxWidth: 240, maxHeight: 240, borderRadius: 10, objectFit: "cover" }} />;
+  }
+  if (mime.startsWith("video/")) {
+    return <video src={msg.mediaUrl} controls style={{ display: "block", maxWidth: 240, borderRadius: 10 }} />;
+  }
+  if (mime.startsWith("audio/")) {
+    // Covers both a regular audio file and an actual voice note (K3's own
+    // payload only tells the two apart via an inbound-only `voice` flag we
+    // don't carry through to this row - rendered identically either way).
+    return <audio src={msg.mediaUrl} controls style={{ display: "block", maxWidth: 240 }} />;
+  }
+  return (
+    <a
+      href={msg.mediaUrl}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 8,
+        background: outbound ? "rgba(255,255,255,0.14)" : appTokens.surfaceMuted,
+        color: "inherit",
+        textDecoration: "none",
+      }}
+    >
+      <FileTextOutlined style={{ fontSize: 18 }} />
+      <Text style={{ fontSize: 13, color: "inherit", wordBreak: "break-all" }}>{msg.mediaFileName ?? "Document"}</Text>
+    </a>
+  );
+}
+
 function Bubble({ msg }: { msg: WhatsappMessage }) {
   const outbound = msg.direction === "outbound";
   return (
@@ -82,17 +132,23 @@ function Bubble({ msg }: { msg: WhatsappMessage }) {
       <div
         style={{
           maxWidth: "66%",
-          padding: "9px 13px",
+          padding: msg.mediaUrl && !msg.body ? 6 : "9px 13px",
           borderRadius: outbound ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
           background: outbound ? OUTBOUND_GRADIENT : appTokens.surface,
           border: outbound ? "none" : `1px solid ${appTokens.borderLight}`,
           boxShadow: outbound ? OUTBOUND_SHADOW : appTokens.shadowXs,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
         }}
       >
-        <Text style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word", color: outbound ? "#fff" : appTokens.textPrimary, lineHeight: 1.45 }}>
-          {msg.body}
-        </Text>
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 4, gap: 5 }}>
+        <MediaContent msg={msg} outbound={outbound} />
+        {msg.body && (
+          <Text style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word", color: outbound ? "#fff" : appTokens.textPrimary, lineHeight: 1.45, padding: msg.mediaUrl ? "0 6px" : 0 }}>
+            {msg.body}
+          </Text>
+        )}
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5, padding: msg.mediaUrl ? "0 6px 2px" : 0 }}>
           <Text style={{ fontSize: 10.5, color: outbound ? "rgba(255,255,255,0.75)" : appTokens.textTertiary }}>
             {timeLabel(msg.createdAt)}
           </Text>
@@ -136,6 +192,8 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const photoVideoInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     setLoading(true);
@@ -194,6 +252,29 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
       setSending(false);
     }
   };
+
+  // Whatever's already typed in the composer becomes the caption, same as
+  // picking a file mid-message on a real phone keyboard - no separate
+  // preview-and-caption screen exists here (that's a materially bigger UI
+  // than what was asked for), so this is the one simplification worth
+  // being upfront about.
+  const handleSendMedia = async (file: File) => {
+    setSending(true);
+    try {
+      const sent = await whatsappApi.sendMedia(leadId, file, draft.trim() || undefined);
+      setMessages((prev) => [...prev, sent]);
+      setDraft("");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to send attachment"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const attachMenuItems: MenuProps["items"] = [
+    { key: "photo-video", icon: <FileImageOutlined />, label: "Photo or video", onClick: () => photoVideoInputRef.current?.click() },
+    { key: "document", icon: <FileTextOutlined />, label: "Document", onClick: () => documentInputRef.current?.click() },
+  ];
 
   let lastDay: string | null = null;
 
@@ -335,14 +416,36 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
           borderBottomRightRadius: appTokens.radiusLg,
         }}
       >
-        <Tooltip title="Attachments coming soon">
+        <input
+          ref={photoVideoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,video/mp4"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) handleSendMedia(file);
+          }}
+        />
+        <input
+          ref={documentInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) handleSendMedia(file);
+          }}
+        />
+        <Dropdown menu={{ items: attachMenuItems }} trigger={["click"]} disabled={!canSend}>
           <Button
             shape="circle"
             icon={<PaperClipOutlined />}
-            disabled
+            disabled={!canSend}
             style={{ flexShrink: 0, color: appTokens.textTertiary, borderColor: appTokens.borderLight }}
           />
-        </Tooltip>
+        </Dropdown>
         <Input.TextArea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -357,6 +460,20 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
             }
           }}
         />
+        {/* Still genuinely disabled, not just unwired - sending a voice
+            note isn't confirmed as something the WhatsApp provider's API
+            can even do (see whatsapp-service.ts's own comment on this),
+            unlike photo/video/document above which all have a real,
+            documented send path. Receiving one already works; replying
+            with one doesn't yet. */}
+        <Tooltip title="Voice notes - waiting on confirmation from the WhatsApp provider that sending one back is possible">
+          <Button
+            shape="circle"
+            icon={<AudioOutlined />}
+            disabled
+            style={{ flexShrink: 0, color: appTokens.textTertiary, borderColor: appTokens.borderLight }}
+          />
+        </Tooltip>
         <Button
           type="primary"
           shape="circle"

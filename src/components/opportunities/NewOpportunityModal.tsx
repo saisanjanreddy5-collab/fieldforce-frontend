@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { App, Form, Input, InputNumber, Modal, Select } from "antd";
+import { isAxiosError } from "axios";
 import * as leadApi from "../../api/lead-api";
 import * as opportunityApi from "../../api/opportunity-api";
 import type { Lead } from "../../types/lead";
@@ -30,9 +31,15 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
 
   useEffect(() => {
     if (!open) return;
+    // Converting a lead to an opportunity only succeeds once it's reached
+    // Qualified AND been handed to Field Sales (owner's role is "agent") -
+    // see convertLeadToOpportunity's own rejections. Filtering to exactly
+    // that here means every lead in this dropdown is guaranteed to convert;
+    // picking from an unfiltered list (every stage mixed together, sorted by
+    // recency) was why this looked like a random, intermittent failure.
     leadApi
-      .listLeads({ limit: 100 })
-      .then((result) => setLeads(result.leads))
+      .listAllLeadsForStatus({ status: "Qualified" })
+      .then((result) => setLeads(result.filter((l) => l.ownerRole === "agent")))
       .catch(() => message.error("Failed to load leads"));
     form.setFieldsValue({ leadId: defaultLeadId });
   }, [open, defaultLeadId, form, message]);
@@ -49,8 +56,9 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
       message.success("Opportunity created");
       form.resetFields();
       onCreated(opportunity);
-    } catch {
-      message.error("Failed to create opportunity - the lead may already need to be verified/eligible first");
+    } catch (error) {
+      const realMessage = isAxiosError<{ message?: string }>(error) && error.response?.data.message;
+      message.error(realMessage || "Failed to create opportunity - something went wrong, please try again");
     } finally {
       setSubmitting(false);
     }
@@ -72,6 +80,7 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
             showSearch
             placeholder="Search by name, company, or city"
             optionFilterProp="label"
+            notFoundContent="No leads are ready yet - a lead must be Qualified and sent to Field Sales before it can become an opportunity"
             options={leads.map((l) => ({
               value: l.id,
               label: `${l.fullName}${l.companyName ? ` — ${l.companyName}` : ""}${l.storeCity ? ` (${l.storeCity})` : ""}`,

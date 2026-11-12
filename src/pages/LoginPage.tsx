@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from "antd";
 import { LockOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
 import { isAxiosError } from "axios";
@@ -17,16 +17,27 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const from = (location.state as { from?: string } | null)?.from ?? "/";
+  // Set by the backend's GET /sso/authorize when it bounced a not-yet-
+  // logged-in browser here (Frappe Helpdesk's own "Login with..." button) -
+  // once login succeeds we send the browser straight back there with a real
+  // page load, not an SPA navigate, so /sso/authorize runs again and this
+  // time finds the session cookie login() just set.
+  const ssoContinue = searchParams.get("ssoContinue");
 
   const handleFinish = async (values: LoginFormValues): Promise<void> => {
     setSubmitting(true);
     setErrorMessage(null);
     try {
       await login(values.email, values.password);
+      if (ssoContinue) {
+        window.location.href = ssoContinue;
+        return;
+      }
       navigate(from, { replace: true });
     } catch (error) {
       if (isAxiosError<{ message?: string }>(error) && error.response?.data.message) {
