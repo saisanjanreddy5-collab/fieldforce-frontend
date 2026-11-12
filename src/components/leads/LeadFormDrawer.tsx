@@ -20,7 +20,6 @@ import * as userApi from "../../api/user-api";
 import type { CreateLeadPayload, Lead } from "../../types/lead";
 import type { State } from "../../types/sales-team";
 import type { TeamMember } from "../../types/user";
-import { usePipelineStages } from "../../hooks/use-pipeline-stages";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
 import { errorMessageFrom, fieldErrorsFrom } from "../../utils/api-error";
@@ -46,7 +45,6 @@ interface FormValues {
   startDate?: dayjs.Dayjs;
   qualifiedPerson?: string;
   financialStatus?: string;
-  status?: string;
   prospectStatus?: string;
   category?: string;
   leadScore?: number;
@@ -132,7 +130,7 @@ type TabKey = (typeof TAB_KEYS)[number];
 // just that tab's own fields (not the whole form), and so a validation error
 // - whichever tab it's actually on - can be routed back to the right pane.
 const TAB_FIELDS: Record<TabKey, (keyof FormValues)[]> = {
-  customer: ["fullName", "contactName", "profession", "startDate", "qualifiedPerson", "financialStatus", "status", "prospectStatus", "category", "leadScore", "ownerId"],
+  customer: ["fullName", "contactName", "profession", "startDate", "qualifiedPerson", "financialStatus", "prospectStatus", "category", "leadScore", "ownerId"],
   contact: ["phone", "altPhone", "email", "website", "preferredLanguage", "pincode", "stateId", "territory", "addressLine1", "addressLine2"],
   inquiry: ["captureChannel", "companyName", "expectedValue", "inquiryCategory", "inquiryCategoryOther", "inquirySource", "inquirySourceOther", "utmTags", "receivedAt", "internalNotes", "rmRemark", "lgRemark"],
   store: ["hasStoreLocation", "storeName", "storeAddress", "storePincode", "storeCity", "storeState", "carpetArea", "frontage", "ownership", "investmentCapacity", "existingBusiness", "expectedOpening", "gstNumber", "panNumber", "drugLicenceNumber", "fssaiNumber"],
@@ -147,7 +145,6 @@ for (const tab of TAB_KEYS) {
 }
 
 export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerProps) {
-  const { stages } = usePipelineStages();
   const { categories } = useLeadCategories();
   const { categoryOptions, sourceOptions, loading: inquiryOptionsLoading } = useLeadInquiryOptions();
   const [form] = Form.useForm<FormValues>();
@@ -194,7 +191,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         startDate: lead.startDate ? dayjs(lead.startDate) : undefined,
         qualifiedPerson: lead.qualifiedPerson ?? undefined,
         financialStatus: lead.financialStatus ?? undefined,
-        status: lead.status,
         prospectStatus: lead.prospectStatus ?? undefined,
         category: lead.category ?? undefined,
         leadScore: lead.leadScore ?? undefined,
@@ -271,10 +267,13 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       fullName: values.fullName,
       contactName: values.contactName,
       profession: values.profession,
-      startDate: values.startDate?.toISOString(),
+      // Plain date, not toISOString() - converting a date-only picker value
+      // to UTC can shift the calendar day backward in timezones ahead of
+      // UTC (e.g. IST), which would make picking "today" compare as
+      // "yesterday" against the backend's past-date check below.
+      startDate: values.startDate?.format("YYYY-MM-DD"),
       qualifiedPerson: values.qualifiedPerson,
       financialStatus: values.financialStatus,
-      status: values.status,
       prospectStatus: values.prospectStatus,
       category: values.category,
       leadScore: values.leadScore,
@@ -478,7 +477,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                       <Input />
                     </Form.Item>
                     <Form.Item name="startDate" label="Start Date">
-                      <DatePicker style={{ width: "100%" }} />
+                      <DatePicker style={{ width: "100%" }} format="D MMM YYYY" disabledDate={(d) => d.isBefore(dayjs(), "day")} />
                     </Form.Item>
                     <Form.Item name="qualifiedPerson" label="Qualified Person">
                       <Input placeholder="e.g. Yes — B.Pharm" />
@@ -491,15 +490,9 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                   <FormSection
                     icon={<InfoCircleOutlined />}
                     iconColor="#7248b8"
-                    title="Lead status"
-                    description="Where this enquiry currently stands"
+                    title="Lead details"
+                    description="Prospect quality, category, and score"
                   >
-                    <Form.Item name="status" label="Status">
-                      <Select
-                        allowClear
-                        options={stages.filter((s) => s.isActive).map((s) => ({ value: s.key, label: s.label }))}
-                      />
-                    </Form.Item>
                     <Form.Item name="prospectStatus" label="Prospect Status">
                       <Select allowClear options={["Hot", "Warm", "Cold"].map((value) => ({ value, label: value }))} />
                     </Form.Item>
@@ -576,7 +569,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                           validator: (_, value: string | undefined) => {
                             const suggestion = value ? suggestEmailDomainFix(value) : null;
                             if (!suggestion || value === confirmedTypoEmail) return Promise.resolve();
-                            return Promise.reject(new Error(`Did you mean ${suggestion}?`));
+                            return Promise.reject(new Error("Possible email typo - see suggestion below"));
                           },
                         },
                       ]}

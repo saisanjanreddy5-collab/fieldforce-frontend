@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Spin, Tag, Typography, message } from "antd";
-import { CheckCircleFilled, ClockCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { Button, Input, Pagination, Spin, Tag, Typography, message } from "antd";
+import { CheckCircleFilled, ClockCircleOutlined, SearchOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as approvalsInboxApi from "../api/approvals-inbox-api";
 import * as fofoApi from "../api/fofo-onboarding-api";
@@ -31,6 +31,8 @@ function formatWaiting(hours: number): string {
 
 type ViewKey = "pending" | "history";
 
+const PAGE_SIZE = 10;
+
 export default function ApprovalsPage() {
   const [view, setView] = useState<ViewKey>("pending");
   const [inbox, setInbox] = useState<ApprovalInbox | null>(null);
@@ -38,6 +40,8 @@ export default function ApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [filter, setFilter] = useState<ApprovalItemType | "all">("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = (keepSelection = false) => {
@@ -71,6 +75,8 @@ export default function ApprovalsPage() {
   const switchView = (next: ViewKey) => {
     setView(next);
     setFilter("all");
+    setSearch("");
+    setPage(1);
     if (next === "history" && history === null) {
       loadHistory();
     } else {
@@ -78,13 +84,37 @@ export default function ApprovalsPage() {
     }
   };
 
+  const setFilterAndResetPage = (key: ApprovalItemType | "all") => {
+    setFilter(key);
+    setPage(1);
+  };
+
+  const setSearchAndResetPage = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   // Explicitly typed as the union, not left to inference - ApprovalHistoryItem
   // is structurally assignable to ApprovalQueueItem (it only adds fields), so
   // the ternary below would otherwise widen to the narrower base type and the
   // "decidedAt"/"decision" narrowing further down would stop working.
   const items: ApprovalItem[] = view === "pending" ? inbox?.items ?? [] : history ?? [];
-  const filteredItems = useMemo(() => (filter === "all" ? items : items.filter((i) => i.type === filter)), [items, filter]);
-  const selected = items.find((i) => i.id === selectedId) ?? filteredItems[0] ?? null;
+  const typeFilteredItems = useMemo(() => (filter === "all" ? items : items.filter((i) => i.type === filter)), [items, filter]);
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return typeFilteredItems;
+    return typeFilteredItems.filter((i) => `${i.title} ${i.subtitle} ${i.raisedByName ?? ""}`.toLowerCase().includes(q));
+  }, [typeFilteredItems, search]);
+  const pagedItems = useMemo(() => filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filteredItems, page]);
+  const selected = items.find((i) => i.id === selectedId) ?? pagedItems[0] ?? null;
+
+  // Guards against a stale page number left over from a decision/reload that
+  // shrank the list out from under it - e.g. being on page 3 when the item
+  // just decided was the only one left on that page.
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+    if (page > maxPage) setPage(maxPage);
+  }, [filteredItems.length, page]);
 
   const countFor = (key: ApprovalItemType | "all") => (key === "all" ? items.length : items.filter((i) => i.type === key).length);
 
@@ -92,6 +122,7 @@ export default function ApprovalsPage() {
     message.success("Decision recorded");
     load(false);
     setHistory(null);
+    setPage(1);
   };
 
   return (
@@ -164,7 +195,7 @@ export default function ApprovalsPage() {
             <button
               key={f.key}
               type="button"
-              onClick={() => setFilter(f.key)}
+              onClick={() => setFilterAndResetPage(f.key)}
               style={{
                 padding: "5px 12px",
                 fontSize: 12.5,
@@ -206,14 +237,28 @@ export default function ApprovalsPage() {
               </Text>
               <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{view === "pending" ? "Oldest first" : "Newest first"}</Text>
             </div>
+            <div style={{ padding: "10px 16px", borderBottom: `1px solid ${appTokens.borderLight}` }}>
+              <Input
+                allowClear
+                size="small"
+                prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
+                placeholder="Search by name..."
+                value={search}
+                onChange={(e) => setSearchAndResetPage(e.target.value)}
+              />
+            </div>
             {filteredItems.length === 0 && (
               <div style={{ padding: "32px 16px", textAlign: "center" }}>
                 <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>
-                  {view === "pending" ? "Nothing waiting on you here." : "No decisions recorded yet."}
+                  {search.trim()
+                    ? "No matches for this search."
+                    : view === "pending"
+                      ? "Nothing waiting on you here."
+                      : "No decisions recorded yet."}
                 </Text>
               </div>
             )}
-            {filteredItems.map((item) => {
+            {pagedItems.map((item) => {
               const active = selected?.id === item.id;
               return (
                 <div
@@ -268,6 +313,18 @@ export default function ApprovalsPage() {
                 </div>
               );
             })}
+            {filteredItems.length > PAGE_SIZE && (
+              <div style={{ padding: "12px 16px", borderTop: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "center" }}>
+                <Pagination
+                  simple
+                  size="small"
+                  current={page}
+                  pageSize={PAGE_SIZE}
+                  total={filteredItems.length}
+                  onChange={setPage}
+                />
+              </div>
+            )}
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>

@@ -148,7 +148,6 @@ export interface CreateLeadPayload {
   startDate?: string;
   qualifiedPerson?: string;
   financialStatus?: string;
-  status?: string;
   prospectStatus?: string;
   category?: string;
   ownerId?: string;
