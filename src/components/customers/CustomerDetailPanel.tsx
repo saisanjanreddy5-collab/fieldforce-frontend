@@ -144,14 +144,13 @@ function OverviewTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <SectionLabel description="Live totals computed from this customer's real orders, invoices and tickets">
+        <SectionLabel description="Live totals computed from this customer's real orders and invoices">
           Account summary
         </SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <MetricBox label="Lifetime value" value={formatCompactCurrency(customer.lifetimeValue ?? 0)} />
           <MetricBox label="Open orders" value={customer.openOrdersCount ?? 0} />
           <MetricBox label="Overdue invoices" value={customer.overdueInvoicesCount ?? 0} danger={(customer.overdueInvoicesCount ?? 0) > 0} />
-          <MetricBox label="Open tickets" value={customer.openTicketCount ?? 0} danger={(customer.openTicketCount ?? 0) > 0} />
         </div>
       </div>
 
@@ -1118,9 +1117,6 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
             }}
           >
             New order
-          </Button>
-          <Button size="small" icon={<TagsOutlined />} onClick={() => navigate("/support-tickets")}>
-            Tickets{customer.openTicketCount !== undefined ? ` (${customer.openTicketCount})` : ""}
           </Button>
           <Button size="small" onClick={() => navigate(`/leads?leadId=${customer.leadId}`)}>
             View lead

@@ -25,7 +25,6 @@ export interface Customer {
   outstandingBalance: number;
   creditCategory: "A" | "B" | "C" | "D" | null;
   status: "active" | "inactive" | "on_hold";
-  openTicketCount?: number;
   lifetimeValue?: number;
   openOrdersCount?: number;
   overdueInvoicesCount?: number;
