@@ -229,15 +229,23 @@ export default function ApprovalsPage() {
               background: appTokens.surface,
               boxShadow: appTokens.shadowSm,
               overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              // Caps the whole panel to what's left of the viewport below
+              // everything already on the page above it (title, stats row,
+              // Pending/History tabs, filter chips) - without this, the
+              // pager at the bottom only became reachable by scrolling past
+              // every item in the list first.
+              maxHeight: "calc(100vh - 360px)",
             }}
           >
-            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between", flexShrink: 0 }}>
               <Text strong style={{ fontSize: 13 }}>
                 {view === "pending" ? "Queue" : "Decided"}
               </Text>
               <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{view === "pending" ? "Oldest first" : "Newest first"}</Text>
             </div>
-            <div style={{ padding: "10px 16px", borderBottom: `1px solid ${appTokens.borderLight}` }}>
+            <div style={{ padding: "10px 16px", borderBottom: `1px solid ${appTokens.borderLight}`, flexShrink: 0 }}>
               <Input
                 allowClear
                 size="small"
@@ -247,6 +255,7 @@ export default function ApprovalsPage() {
                 onChange={(e) => setSearchAndResetPage(e.target.value)}
               />
             </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {filteredItems.length === 0 && (
               <div style={{ padding: "32px 16px", textAlign: "center" }}>
                 <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>
@@ -313,8 +322,9 @@ export default function ApprovalsPage() {
                 </div>
               );
             })}
+            </div>
             {filteredItems.length > PAGE_SIZE && (
-              <div style={{ padding: "12px 16px", borderTop: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "center" }}>
+              <div style={{ padding: "12px 16px", borderTop: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "center", flexShrink: 0 }}>
                 <Pagination
                   simple
                   size="small"
