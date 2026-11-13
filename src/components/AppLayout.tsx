@@ -128,7 +128,12 @@ export function AppLayout() {
       selectedKeys={[location.pathname]}
       items={menuItems}
       onClick={({ key }) => {
-        navigate(key);
+        const externalUrl = ALL_NAV_LEAVES.find((item) => item.path === key)?.externalUrl;
+        if (externalUrl) {
+          window.open(externalUrl, "_blank", "noopener,noreferrer");
+        } else {
+          navigate(key);
+        }
         setMobileNavOpen(false);
       }}
     />
