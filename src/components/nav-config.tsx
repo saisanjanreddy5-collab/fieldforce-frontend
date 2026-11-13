@@ -32,6 +32,13 @@ export interface NavLeaf {
    * visible as long as at least one tab would render something).
    */
   permissions?: string[];
+  /**
+   * When set, clicking this item opens this URL in a new tab instead of
+   * navigating to `path` inside the app. Used for Support tickets, which
+   * now hands off to Frappe Helpdesk's own real agent UI via SSO rather
+   * than rendering the old custom-built page in this app.
+   */
+  externalUrl?: string;
 }
 
 export interface NavGroup {
@@ -58,7 +65,14 @@ export const NAV_GROUPS: NavGroup[] = [
       // already correct for whoever ends up building the page next.
       { path: "/customers", label: "Customers", icon: <GlobalOutlined />, built: true, permissions: ["customers.view"] },
       { path: "/call-center", label: "Call center", icon: <PhoneOutlined />, built: true, permissions: ["call_center.view"] },
-      { path: "/support-tickets", label: "Support tickets", icon: <TagsOutlined />, built: true, permissions: ["support_tickets.view"] },
+      {
+        path: "/support-tickets",
+        label: "Support tickets",
+        icon: <TagsOutlined />,
+        built: true,
+        permissions: ["support_tickets.view"],
+        externalUrl: "https://zotanextech-helpdesk.frappe.cloud/login",
+      },
     ],
   },
   {

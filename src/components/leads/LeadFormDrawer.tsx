@@ -153,10 +153,6 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   const isEdit = lead !== null;
   const emailValue = Form.useWatch("email", form);
   const emailSuggestion = emailValue ? suggestEmailDomainFix(emailValue) : null;
-  // Exact email string the user explicitly said to keep despite the typo
-  // nudge below - blocks Save/Save & Next for every OTHER typo'd address,
-  // but never locks someone out of a domain they really did mean.
-  const [confirmedTypoEmail, setConfirmedTypoEmail] = useState<string | null>(null);
 
   // Flat list, not region-filtered - the state itself (not which zone it's
   // in) is what assignment_rules actually matches a new lead's owner
@@ -561,31 +557,25 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                       label="Email address"
                       rules={[
                         { type: "email", message: "Invalid email" },
-                        // A likely-typo'd domain (gmail.co, gmial.com, etc.)
-                        // blocks Save/Save & Next, same as any other invalid
-                        // field - unless this exact value is the one the user
-                        // just explicitly said to keep via the link below.
+                        // A known-provider typo (gmail.co, gmial.com, etc.) -
+                        // hard-blocks Save/Save & Next, same as any other
+                        // invalid field, with no override - this is a
+                        // deliberately narrow, curated list of genuine typos
+                        // (see email-typo-check.ts), not a fuzzy guess, so
+                        // there's no legitimate "I really meant this" case to
+                        // preserve an escape hatch for.
                         {
                           validator: (_, value: string | undefined) => {
                             const suggestion = value ? suggestEmailDomainFix(value) : null;
-                            if (!suggestion || value === confirmedTypoEmail) return Promise.resolve();
+                            if (!suggestion) return Promise.resolve();
                             return Promise.reject(new Error("Possible email typo - see suggestion below"));
                           },
                         },
                       ]}
                       extra={
-                        emailSuggestion && emailValue !== confirmedTypoEmail ? (
-                          <Text type="warning" style={{ fontSize: 12 }}>
-                            Did you mean <a onClick={() => form.setFieldValue("email", emailSuggestion)}>{emailSuggestion}</a>? Or{" "}
-                            <a
-                              onClick={() => {
-                                setConfirmedTypoEmail(emailValue ?? null);
-                                form.validateFields(["email"]);
-                              }}
-                            >
-                              keep {emailValue} as typed
-                            </a>
-                            .
+                        emailSuggestion ? (
+                          <Text type="danger" style={{ fontSize: 12 }}>
+                            Did you mean <a onClick={() => form.setFieldValue("email", emailSuggestion)}>{emailSuggestion}</a>?
                           </Text>
                         ) : undefined
                       }
