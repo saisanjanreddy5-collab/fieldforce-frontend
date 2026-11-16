@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Input, Pagination, Progress, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Input, Pagination, Popconfirm, Progress, Space, Table, Tag, Typography, message } from "antd";
 import {
   ApartmentOutlined,
   AuditOutlined,
@@ -29,6 +29,7 @@ import type { Target } from "../types/target";
 import type { IncentivePlan } from "../types/incentive-plan";
 import type { UserIncentivePlan } from "../types/user-incentive-plan";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
+import { roleLabel } from "../utils/format";
 import { resolveCurrentTarget } from "../utils/target-format";
 import { errorMessageFrom } from "../utils/api-error";
 import dayjs from "dayjs";
@@ -269,7 +270,7 @@ export default function SalesForceManagementPage() {
   const currentTab = activeTab && visibleTabs.some((t) => t.key === activeTab) ? activeTab : visibleTabs[0]?.key ?? null;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ marginBottom: 12, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div>
@@ -341,7 +342,7 @@ export default function SalesForceManagementPage() {
                   subtitle: `under ${BELOW_TARGET_THRESHOLD}%`,
                   valueColor: belowTargetUserIds.size > 0 ? appTokens.danger : undefined,
                 },
-                { label: "Incentive pool", value: "-", subtitle: "no payout engine yet" },
+                { label: "Incentive pool", value: "-", subtitle: "not calculated" },
                 {
                   label: "Avg attainment",
                   value: avgAttainment === null ? "-" : `${avgAttainment}%`,
@@ -393,16 +394,21 @@ export default function SalesForceManagementPage() {
             loading={loading}
             dataSource={filteredUsers.slice((peoplePage - 1) * PEOPLE_PAGE_SIZE, peoplePage * PEOPLE_PAGE_SIZE)}
             pagination={false}
+            // Column widths below add up to ~1085px - fits a 1366px laptop
+            // as-is, and scrolls sideways on anything narrower instead of
+            // squeezing the action links until the last one is cut off.
+            scroll={{ x: 1085 }}
             onRow={() => ({ className: "table-row-hover" })}
             columns={[
               {
                 title: "Employee",
                 key: "employee",
-                width: 190,
+                width: 210,
+                // (210 + 110 + 125 + 155 + 90 + 100 + 295 = the 1085 above)
                 render: (_, user) => {
                   const level = levels.find((l) => l.id === user.levelId);
                   const office = offices.find((o) => o.id === user.officeId);
-                  const subtitle = [user.designation ?? level?.name ?? user.role, office?.name, user.employeeCode].filter(Boolean).join(" - ");
+                  const subtitle = [user.designation ?? level?.name ?? roleLabel(user.role), office?.name, user.employeeCode].filter(Boolean).join(" - ");
                   return (
                     <div style={{ display: "flex", gap: 8, alignItems: "center", overflow: "hidden" }}>
                       <Avatar size={28} style={{ background: avatarGradient(user.name), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
@@ -412,7 +418,7 @@ export default function SalesForceManagementPage() {
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <Text
                             strong
-                            style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 85 }}
+                            style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}
                             title={user.name}
                           >
                             {user.name}
@@ -443,7 +449,7 @@ export default function SalesForceManagementPage() {
                         </div>
                         <Text
                           type="secondary"
-                          style={{ fontSize: 11, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}
+                          style={{ fontSize: 11, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                           title={subtitle || undefined}
                         >
                           {subtitle || "-"}
@@ -456,14 +462,14 @@ export default function SalesForceManagementPage() {
               {
                 title: "Reports to",
                 dataIndex: "managerId",
-                width: 100,
+                width: 110,
                 ellipsis: true,
                 render: (managerId: string | null) => users.find((u) => u.id === managerId)?.name ?? "-",
               },
               {
                 title: "Region / territory",
                 key: "regionTerritory",
-                width: 100,
+                width: 125,
                 render: (_, user) => (
                   <div style={{ overflow: "hidden" }}>
                     <div style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -482,7 +488,7 @@ export default function SalesForceManagementPage() {
               {
                 title: "Target vs achieved",
                 key: "targetVsAchieved",
-                width: 150,
+                width: 155,
                 render: (_, user) => {
                   const current = resolveCurrentTarget(user.id, targets);
                   if (!current) return "-";
@@ -512,7 +518,7 @@ export default function SalesForceManagementPage() {
               {
                 title: "Incentive",
                 key: "incentivePlan",
-                width: 95,
+                width: 90,
                 ellipsis: true,
                 render: (_, user) => {
                   const assignment = resolveCurrentIncentivePlan(user.id, userIncentivePlans);
@@ -523,7 +529,7 @@ export default function SalesForceManagementPage() {
               {
                 title: "Commission",
                 key: "commissionRules",
-                width: 95,
+                width: 100,
                 ellipsis: true,
                 render: (_, user) => {
                   const assignment = resolveCurrentIncentivePlan(user.id, userIncentivePlans);
@@ -535,17 +541,34 @@ export default function SalesForceManagementPage() {
               {
                 title: "",
                 key: "action",
-                width: 150,
+                // Wide enough for all three links on one line ("Edit",
+                // "Disable login", "Reset password") - 150px clipped the last
+                // one to "Re…". wrap is the fallback if a label gets longer.
+                width: 295,
                 render: (_, user) => (
-                  <Space size={4}>
+                  <Space size={4} wrap>
                     {hasPermission("users.update") && (
                       <>
                         <Button type="link" size="small" onClick={() => openEditDrawer(user)}>
                           Edit
                         </Button>
-                        <Button type="link" size="small" onClick={() => toggleAccess(user)}>
-                          {user.isActive ? "Disable login" : "Enable login"}
-                        </Button>
+                        {user.isActive ? (
+                          <Popconfirm
+                            title={`Disable login for ${user.name}?`}
+                            description="They won't be able to log in until access is enabled again (an open session ends within 15 minutes)."
+                            okText="Disable login"
+                            okButtonProps={{ danger: true }}
+                            onConfirm={() => toggleAccess(user)}
+                          >
+                            <Button type="link" size="small">
+                              Disable login
+                            </Button>
+                          </Popconfirm>
+                        ) : (
+                          <Button type="link" size="small" onClick={() => toggleAccess(user)}>
+                            Enable login
+                          </Button>
+                        )}
                       </>
                     )}
                     {hasPermission("users.reset_password") && (

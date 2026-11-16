@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Avatar, DatePicker, Select, Table, Tag, Typography, message } from "antd";
+import { Avatar, DatePicker, Empty, Select, Table, Tag, Typography, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import * as leaveApi from "../../api/leave-api";
 import type { LeaveBalance, LeaveContextPerson, LeaveRequest } from "../../types/leave";
@@ -67,7 +67,7 @@ export function LeaveHistoryBrowser({ balances, directReports }: LeaveHistoryBro
             <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Any month, any status - not just the next 30 days</Text>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Select
             allowClear
             placeholder="Everyone"
@@ -87,7 +87,8 @@ export function LeaveHistoryBrowser({ balances, directReports }: LeaveHistoryBro
         loading={loading}
         dataSource={requests}
         pagination={false}
-        locale={{ emptyText: "No leave requests in this month" }}
+        scroll={{ x: 680 }}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No leave requests in this month" /> }}
         columns={[
           {
             title: "Person",

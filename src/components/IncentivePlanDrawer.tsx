@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button, Checkbox, Drawer, Form, Input, Space, Typography, message } from "antd";
 import { isAxiosError } from "axios";
 import * as incentivePlanApi from "../api/incentive-plan-api";
@@ -42,7 +42,11 @@ export function IncentivePlanDrawer({ open, plan, onClose, onSaved }: IncentiveP
     }
   }, [open, plan, form]);
 
+  const [saving, setSaving] = useState(false);
+
   const handleSubmit = async (values: FormValues) => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (plan) {
         await incentivePlanApi.updateIncentivePlan(plan.id, values);
@@ -58,6 +62,8 @@ export function IncentivePlanDrawer({ open, plan, onClose, onSaved }: IncentiveP
           ? err.response.data.message
           : "Failed to save incentive plan";
       message.error(description);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -70,7 +76,7 @@ export function IncentivePlanDrawer({ open, plan, onClose, onSaved }: IncentiveP
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" onClick={() => form.submit()}>
+          <Button type="primary" loading={saving} onClick={() => form.submit()}>
             {plan ? "Save changes" : "Create plan"}
           </Button>
         </Space>

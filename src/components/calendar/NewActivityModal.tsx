@@ -217,10 +217,10 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
           }}
         >
           {!msStatus?.connected
-            ? "Connect your Microsoft 365 account (Settings) to create a real Teams meeting."
+            ? "Connect your Microsoft 365 account (Settings) to create a Teams meeting."
             : selectedLead && !selectedLead.email
               ? "This lead has no email on file - Teams meetings need one to send the invite."
-              : `Creates a real Microsoft Teams meeting and calendar invite under your own Microsoft 365 account${
+              : `Creates a Microsoft Teams meeting and calendar invite under your own Microsoft 365 account${
                   assignedToId !== user?.id ? " - not the calendar you're viewing" : ""
                 }.`}
         </div>

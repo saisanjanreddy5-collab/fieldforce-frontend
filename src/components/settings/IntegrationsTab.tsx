@@ -74,12 +74,17 @@ export function IntegrationsTab() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
+            flexWrap: "wrap",
+            gap: "8px 18px",
             padding: "14px 28px 14px 18px",
             borderBottom: `1px solid ${appTokens.borderLight}`,
           }}
         >
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* A real flex-basis (not 0) is what lets the right-hand group
+              wrap onto its own line on a narrow screen - with basis 0 the
+              description column just kept shrinking instead, down to one
+              letter per line. */}
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
             <Text strong style={{ fontSize: 13.5 }}>
               {row.name}
             </Text>
@@ -87,22 +92,35 @@ export function IntegrationsTab() {
               <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{row.description}</Text>
             </div>
           </div>
-          <Text style={{ fontSize: 12, color: appTokens.textTertiary, flexShrink: 0 }}>{row.scope}</Text>
-          <Tag
+          <div
             style={{
-              margin: 0,
-              width: 96,
-              textAlign: "center",
-              fontWeight: 600,
-              border: "none",
-              color: row.status === "not_connected" ? appTokens.textTertiary : appTokens.successStrong,
-              background: row.status === "not_connected" ? appTokens.surfaceMuted : `${appTokens.success}17`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              flexWrap: "wrap",
+              gap: "6px 18px",
               flexShrink: 0,
+              maxWidth: "100%",
+              marginLeft: "auto",
             }}
           >
-            {STATUS_LABEL[row.status]}
-          </Tag>
-          <div style={{ width: 72, textAlign: "right", flexShrink: 0 }}>{rowAction(row)}</div>
+            <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{row.scope}</Text>
+            <Tag
+              style={{
+                margin: 0,
+                width: 96,
+                textAlign: "center",
+                fontWeight: 600,
+                border: "none",
+                color: row.status === "not_connected" ? appTokens.textTertiary : appTokens.successStrong,
+                background: row.status === "not_connected" ? appTokens.surfaceMuted : `${appTokens.success}17`,
+                flexShrink: 0,
+              }}
+            >
+              {STATUS_LABEL[row.status]}
+            </Tag>
+            <div style={{ width: 72, textAlign: "right", flexShrink: 0 }}>{rowAction(row)}</div>
+          </div>
         </div>
       ))}
 

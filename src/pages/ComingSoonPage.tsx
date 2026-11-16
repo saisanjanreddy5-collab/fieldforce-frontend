@@ -29,7 +29,7 @@ export default function ComingSoonPage({ title }: ComingSoonPageProps) {
         <Title level={4} style={{ marginTop: 0, color: appTokens.textPrimary }}>
           {title}
         </Title>
-        <Text style={{ color: appTokens.textSecondary }}>This module isn't built yet — coming in a future update.</Text>
+        <Text style={{ color: appTokens.textSecondary }}>This module is coming in a future update.</Text>
       </div>
     </Card>
   );

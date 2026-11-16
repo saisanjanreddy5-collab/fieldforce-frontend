@@ -54,7 +54,7 @@ export function LeadMiningModal({ open, onClose }: LeadMiningModalProps) {
       </div>
 
       <Text type="secondary" style={{ fontSize: 12 }}>
-        Sample results shown below - search isn't wired up to a real data provider yet.
+        Sample results shown below - live search isn't available yet.
       </Text>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
@@ -90,7 +90,7 @@ export function LeadMiningModal({ open, onClose }: LeadMiningModalProps) {
           type="primary"
           disabled={selected.length === 0}
           onClick={() => {
-            message.info("Lead generation isn't wired up yet");
+            message.info("Lead generation isn't available yet");
             onClose();
           }}
         >

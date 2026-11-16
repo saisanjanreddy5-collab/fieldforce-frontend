@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { App, Button, Input, Modal, Select, Space, Typography } from "antd";
 import * as leadApi from "../../api/lead-api";
 import * as opportunityApi from "../../api/opportunity-api";
@@ -31,18 +31,43 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
   const [lineItems, setLineItems] = useState<QuoteLineItemInput[]>([emptyLineItem()]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [searchingLeads, setSearchingLeads] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchToken = useRef(0);
+
+  // Searches the server as you type (not just a fixed first page), so any
+  // lead you can see is findable however many leads exist. The selected
+  // lead is always kept in the options so the field never goes blank.
+  const loadLeads = (search?: string) => {
+    const token = ++searchToken.current;
+    setSearchingLeads(true);
+    leadApi
+      .listLeads({ limit: 50, ...(search ? { search } : {}) })
+      .then((result) => {
+        if (token !== searchToken.current) return;
+        setLeads((prev) => {
+          const selected = prev.find((l) => l.id === leadId);
+          return selected && !result.leads.some((l) => l.id === selected.id) ? [selected, ...result.leads] : result.leads;
+        });
+      })
+      .catch(() => message.error("Failed to load leads"))
+      .finally(() => {
+        if (token === searchToken.current) setSearchingLeads(false);
+      });
+  };
+
+  const handleLeadSearch = (value: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => loadLeads(value.trim() || undefined), 300);
+  };
 
   useEffect(() => {
     if (!open) return;
-    leadApi
-      .listLeads({ limit: 100 })
-      .then((result) => setLeads(result.leads))
-      .catch(() => message.error("Failed to load leads"));
-    // The generic 100-lead list above has no guarantee of including the
-    // specific lead this modal was launched from (e.g. opened from an
-    // opportunity whose lead isn't among the 100 most relevant leads) - the
-    // Select would then hold defaultLeadId with no matching option and
-    // silently render blank. Fetch that one lead directly and merge it in.
+    loadLeads();
+    // The first page above has no guarantee of including the specific lead
+    // this modal was launched from - the Select would then hold
+    // defaultLeadId with no matching option and silently render blank.
+    // Fetch that one lead directly and merge it in.
     if (defaultLeadId) {
       leadApi
         .getLead(defaultLeadId)
@@ -125,8 +150,11 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
             </Text>
             <Select
               showSearch
-              placeholder="Search by name, company, or city"
-              optionFilterProp="label"
+              placeholder="Search by name, company, or phone"
+              filterOption={false}
+              onSearch={handleLeadSearch}
+              loading={searchingLeads}
+              notFoundContent={searchingLeads ? "Searching..." : "No matching leads"}
               disabled={Boolean(defaultLeadId)}
               value={leadId}
               onChange={setLeadId}

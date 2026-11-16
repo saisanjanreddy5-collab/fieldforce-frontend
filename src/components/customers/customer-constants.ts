@@ -44,10 +44,12 @@ export interface CustomerRisk {
 // An honest, deterministic read of real fields (status + credit vs
 // balance) - not a scoring model, never fabricated. Mirrors the reference
 // mockup's "Risk" column, but every value here is arithmetic on data the
-// backend actually has.
-export function customerRisk(c: Pick<Customer, "status" | "creditLimit" | "outstandingBalance">): CustomerRisk {
+// backend actually has. Null when there's no credit limit to measure
+// against - callers render nothing then, instead of an empty "—" pill that
+// reads as a broken badge.
+export function customerRisk(c: Pick<Customer, "status" | "creditLimit" | "outstandingBalance">): CustomerRisk | null {
   if (c.status === "on_hold") return { label: "On hold", color: appTokens.warning };
-  if (c.creditLimit <= 0) return { label: "—", color: appTokens.textTertiary };
+  if (c.creditLimit <= 0) return null;
   if (c.outstandingBalance > c.creditLimit) return { label: "Over limit", color: appTokens.danger };
   const ratio = c.outstandingBalance / c.creditLimit;
   if (ratio >= 0.8) return { label: "Watch", color: appTokens.warning };

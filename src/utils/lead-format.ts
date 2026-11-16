@@ -40,6 +40,19 @@ export function formatCompactCurrency(value: number | null): string {
 // (₹4.3K) - used for a single row's exact amount, where compact notation
 // reads as imprecise. Compact stays for aggregates (stat cards, totals)
 // where the precise figure would be too long to scan at a glance.
+// Exact money (paise kept) - for a single claim/invoice/payment amount
+// someone is approving or reconciling, where rounding ₹149.50 to ₹150
+// would misstate it. formatCurrency below stays whole-rupee for summaries.
+export function formatExactCurrency(value: number | null): string {
+  if (value === null) return "-";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function formatCurrency(value: number | null): string {
   if (value === null) return "-";
   return new Intl.NumberFormat("en-IN", {

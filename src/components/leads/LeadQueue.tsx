@@ -23,6 +23,11 @@ interface LeadQueueProps {
   onToggleCollapsed: () => void;
   advancedFilters: AdvancedFilters;
   onAdvancedFiltersChange: (value: AdvancedFilters) => void;
+  /** Phone-width single-column list: tighter padding, rows run edge to edge
+   * of the card (the 20px gutter on both card and rows indented every row
+   * ~40px from the screen edge), and no collapse button - there's no
+   * side-by-side detail pane to collapse the list in favour of. */
+  compact?: boolean;
 }
 
 // The narrow list rail: search + Filters + collapse control, the row list
@@ -54,7 +59,9 @@ export function LeadQueue({
   onToggleCollapsed,
   advancedFilters,
   onAdvancedFiltersChange,
+  compact = false,
 }: LeadQueueProps) {
+  const padding = compact ? 12 : 20;
   if (collapsed) {
     return (
       <div style={{ width: 44, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 12 }}>
@@ -67,7 +74,7 @@ export function LeadQueue({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", padding }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
         <Input
           placeholder="Search name, company, phone"
@@ -78,10 +85,10 @@ export function LeadQueue({
           style={{ flex: 1, minWidth: 0 }}
         />
         <LeadFilters value={advancedFilters} onChange={onAdvancedFiltersChange} />
-        <Button icon={<DoubleLeftOutlined />} onClick={onToggleCollapsed} title="Collapse list" />
+        {!compact && <Button icon={<DoubleLeftOutlined />} onClick={onToggleCollapsed} title="Collapse list" />}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", margin: "0 -20px", padding: "0 20px" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", margin: `0 -${padding}px`, padding: compact ? 0 : `0 ${padding}px` }}>
         {loading ? (
           <div style={{ padding: 24, textAlign: "center" }}>
             <Spin />

@@ -48,11 +48,22 @@ export function DocumentsTab({ lead, canView, loading, handoff, onChanged }: Doc
   if (!canView) {
     return <Empty description="You don't have permission to view this lead's documents" style={{ padding: 40 }} />;
   }
-  if (loading || !handoff) {
+  if (loading) {
     return (
       <div style={{ textAlign: "center", padding: 40 }}>
         <Spin />
       </div>
+    );
+  }
+  if (!handoff) {
+    // Finished loading with nothing to show = the request failed; a spinner
+    // here would spin forever.
+    return (
+      <Empty description="Couldn't load this lead's documents" style={{ padding: 40 }}>
+        <Button size="small" onClick={onChanged}>
+          Retry
+        </Button>
+      </Empty>
     );
   }
 

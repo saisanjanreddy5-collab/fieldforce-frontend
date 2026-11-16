@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState } from "react";
-import { Card, Input, Modal, Popconfirm, Segmented, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
+import { Card, Input, Modal, Popconfirm, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
 import { CheckOutlined, CloseOutlined, MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import * as rolePermissionApi from "../api/role-permission-api";
 import * as overrideApi from "../api/user-permission-override-api";
@@ -14,31 +14,6 @@ import { RECORD_SCOPE_OPTIONS, ladderIndex, seesLabel } from "../utils/level-for
 import { appTokens } from "../utils/design-system";
 
 const { Text } = Typography;
-
-// Exactly which individual permissions requirePermission actually consults
-// today - leads/opportunities/activities from Phase 3C, plus role_permissions
-// .view, user_permission_overrides.view, manager_change_log.view,
-// territory_transfers.*, delegations.* and every approval_bands verb from
-// the post-Phase-3 retrofit (role_permissions.update and
-// user_permission_overrides.create/.delete deliberately stay on
-// requireRole(ADMIN_ONLY) - see role-permission-routes.ts - so they're left
-// out here on purpose). Everything else still checks requireRole directly,
-// so toggling those here only changes what this screen displays, not what
-// the backend enforces.
-const ENFORCED_PERMISSIONS = new Set([
-  "users.reset_password",
-  "leads.view", "leads.create", "leads.update", "leads.delete", "leads.share",
-  "leads.queue_view", "leads.queue_create", "leads.call_log", "leads.qualify", "leads.send_to_field", "leads.reassign",
-  "whatsapp.view", "whatsapp.send",
-  "opportunities.view", "opportunities.create", "opportunities.update", "opportunities.delete",
-  "activities.view", "activities.create", "activities.update", "activities.delete",
-  "role_permissions.view",
-  "user_permission_overrides.view",
-  "manager_change_log.view",
-  "approval_bands.view", "approval_bands.create", "approval_bands.update", "approval_bands.delete",
-  "territory_transfers.view", "territory_transfers.create",
-  "delegations.view", "delegations.create", "delegations.delete",
-]);
 
 // queue_view/call_log/qualify/send_to_field/reassign are leads-only, same as
 // share - the Call Center workflow's own verbs, deliberately kept separate
@@ -264,7 +239,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
   const canManageRoles = hasPermission("role_permissions.update");
   const canManageOverrides = hasPermission("user_permission_overrides.create");
 
-  const [mode, setMode] = useState<"role" | "employee">("role");
+  const [mode] = useState<"role" | "employee">("role");
   const [matrix, setMatrix] = useState<RolePermissionMatrix | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
@@ -479,13 +454,9 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
             return <Cell state={state} tooltip={mixedTooltip(state, perms, perms.filter((p) => grantsForSelectedTier.includes(p)).length)} />;
           }
           const shouldGrant = !(state === "granted" || state === "extra-grant");
-          const enforcedCount = perms.filter((p) => ENFORCED_PERMISSIONS.has(p)).length;
-          const description =
-            enforcedCount === perms.length
-              ? "This takes effect immediately."
-              : enforcedCount === 0
-                ? "These modules still check a fixed role, not this table - this only changes what this screen displays."
-                : `${enforcedCount} of ${perms.length} take effect immediately - the rest still check a fixed role, not this table.`;
+          // Every route checks this table directly now, so every change here
+          // is real and live for everyone on this tier.
+          const description = "This takes effect immediately for everyone on this tier.";
           return (
             <Popconfirm
               title={`${shouldGrant ? "Grant" : "Revoke"} ${perms.length} permission${perms.length === 1 ? "" : "s"} under ${group.label} - ${VERB_LABELS[verb] ?? verb} ${shouldGrant ? "to" : "from"} the ${selectedLevel?.securityTier} tier?`}
@@ -524,15 +495,9 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Segmented
-            size="small"
-            value={mode}
-            onChange={(v) => setMode(v as "role" | "employee")}
-            options={[
-              { value: "role", label: "By role" },
-              { value: "employee", label: "By employee" },
-            ]}
-          />
+          {/* "By employee" (per-person overrides) is hidden: the backend
+              doesn't enforce those overrides yet, so showing it would tell
+              an Admin access was revoked when it wasn't. */}
           {mode === "role" && selectedLevel?.securityTier !== "admin" && (
             <Tag
               color="gold"
@@ -547,7 +512,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                   title: `Give the ${tier} tier full Administrator access?`,
                   width: 480,
                   content:
-                    "A temporary, reversible elevation - every real permission Admin currently has, copied onto this whole tier. Use “Reset role to default” right after to put it back once your review is done.",
+                    "A temporary, reversible elevation - every permission Admin currently has, copied onto this whole tier. Use “Reset role to default” right after to put it back once your review is done.",
                   okText: "Grant access",
                   cancelText: "Cancel",
                   onOk: async () => {
@@ -732,8 +697,8 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                       Record scope
                     </Text>
                     <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-                      Which rows they reach, before column rules apply - configuration only for now, the real
-                      leads/opportunities/activities visibility still uses the manager-subtree rule underneath
+                      Which rows they reach, before column rules apply - configuration only for now; lead, opportunity and
+                      activity visibility still follows the reporting tree
                     </Text>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {RECORD_SCOPE_OPTIONS.map((opt) => (
@@ -810,9 +775,8 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                       ))}
                     </div>
                     <Text type="secondary" style={{ fontSize: 11, display: "block", marginTop: 8 }}>
-                      Configuration only - none of these 5 fields/actions exist anywhere in FieldForce yet, so nothing
-                      reads these toggles to actually gate anything. "Bulk re-assign records" is the one real exception -
-                      it's the same leads.update permission shown in the table above.
+                      Configuration only - these toggles don't restrict anything yet. The exception is "Bulk re-assign
+                      records", which is the same leads.update permission shown in the table above.
                     </Text>
                   </Card>
                 </div>

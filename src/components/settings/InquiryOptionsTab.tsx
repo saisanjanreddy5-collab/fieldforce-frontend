@@ -119,7 +119,7 @@ export function InquiryOptionsTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
         These back the Lead form's Inquiry Category/Source dropdowns for manually-entered leads. QR and Website leads fill these in
-        automatically from the real campaign/form name and are not affected by this list.
+        automatically from the campaign/form name and are not affected by this list.
       </Text>
       <OptionListCard
         fieldType="category"

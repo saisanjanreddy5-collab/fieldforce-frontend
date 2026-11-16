@@ -46,6 +46,15 @@ export interface NavGroup {
   items: NavLeaf[];
 }
 
+// Who may open Settings at all - shared by the nav item below and
+// SettingsPage itself, so typing /settings directly can never reach a page
+// the menu deliberately hides (see the comment on the Settings entry).
+export const SETTINGS_PERMISSIONS = [
+  "assignment_rules.view", "approval_bands.view",
+  "app_settings.view", "qr_campaigns.view",
+  "users.view",
+];
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     groupLabel: "Sell",
@@ -78,7 +87,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     groupLabel: "Team",
     items: [
-      { path: "/team/dashboard", label: "Dashboard", icon: <AppstoreOutlined />, built: true, permissions: ["team_dashboard.view"] },
+      { path: "/team/dashboard", label: "Team availability", icon: <AppstoreOutlined />, built: true, permissions: ["team_dashboard.view"] },
       { path: "/activity-calendar", label: "Activity calendar", icon: <CalendarOutlined />, built: true, permissions: ["activities.view"] },
       { path: "/expenses", label: "Expenses", icon: <WalletOutlined />, built: true, permissions: ["expense_claims.view"] },
       { path: "/leave", label: "Leave", icon: <ClockCircleOutlined />, built: true, permissions: ["leave_requests.view"] },
@@ -135,11 +144,7 @@ export const NAV_GROUPS: NavGroup[] = [
         // permission needed for normal app usage - only the remaining
         // permissions below are safe because nothing outside Settings
         // itself ever needs them.
-        permissions: [
-          "assignment_rules.view", "approval_bands.view",
-          "app_settings.view", "qr_campaigns.view",
-          "users.view",
-        ],
+        permissions: SETTINGS_PERMISSIONS,
       },
     ],
   },

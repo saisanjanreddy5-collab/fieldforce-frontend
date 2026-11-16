@@ -122,7 +122,7 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
           <Button size="small" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Show active" : "Show archived"}
           </Button>
-          <Tag color="gold">Configuration only - not yet wired to a live approval flow</Tag>
+          <Tag color="gold">Configuration only - not enforced yet</Tag>
         </div>
       </div>
 

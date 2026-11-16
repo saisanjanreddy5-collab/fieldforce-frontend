@@ -13,6 +13,22 @@ interface LoginFormValues {
   password: string;
 }
 
+// ?ssoContinue= comes from the URL, so anyone can craft a login link with
+// any value in it. Only ever follow it back to our own backend's
+// /sso/authorize step - anything else (another site, a javascript: URL) is
+// ignored and the user just lands in the app as a normal login.
+function safeSsoContinue(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const target = new URL(raw);
+    const expected = new URL(`${import.meta.env.VITE_API_BASE_URL}/sso/authorize`, window.location.origin);
+    const sameEndpoint = target.origin === expected.origin && target.pathname === expected.pathname;
+    return (target.protocol === "https:" || target.protocol === "http:") && sameEndpoint ? target.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +43,7 @@ export default function LoginPage() {
   // once login succeeds we send the browser straight back there with a real
   // page load, not an SPA navigate, so /sso/authorize runs again and this
   // time finds the session cookie login() just set.
-  const ssoContinue = searchParams.get("ssoContinue");
+  const ssoContinue = safeSsoContinue(searchParams.get("ssoContinue"));
 
   const handleFinish = async (values: LoginFormValues): Promise<void> => {
     setSubmitting(true);

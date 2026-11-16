@@ -202,10 +202,12 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       loadActivities();
       Modal.success({
         title: "Teams meeting created",
-        content: (
+        content: joinUrl ? (
           <a href={joinUrl} target="_blank" rel="noreferrer">
             {joinUrl}
           </a>
+        ) : (
+          "The calendar invite was sent, but Microsoft did not return a Teams join link for this account - check that Teams is enabled for your Microsoft 365 user."
         ),
       });
     } catch (err) {

@@ -53,9 +53,18 @@ apiClient.interceptors.response.use(
         const newAccessToken = await refreshPromise;
         originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
         return apiClient(originalRequest);
-      } catch {
-        clearTokens();
-        window.dispatchEvent(new Event("auth:logout"));
+      } catch (refreshError) {
+        // Only a genuinely dead session (no refresh token, or the server
+        // rejecting it as invalid/expired) ends the login. A network blip,
+        // a backend restart mid-deploy, or a rate-limit response is
+        // temporary - logging everyone out for those would be far worse
+        // than letting this one request fail.
+        const refreshStatus = axios.isAxiosError(refreshError) ? refreshError.response?.status : undefined;
+        const sessionIsDead = !getRefreshToken() || refreshStatus === 401 || refreshStatus === 422;
+        if (sessionIsDead) {
+          clearTokens();
+          window.dispatchEvent(new Event("auth:logout"));
+        }
       }
     }
 

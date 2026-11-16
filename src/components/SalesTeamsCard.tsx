@@ -90,15 +90,18 @@ export function SalesTeamsCard({ refreshKey, onChange }: SalesTeamsCardProps) {
         ))}
       </div>
       {hasPermission("sales_teams.create") && (
-        <Space.Compact size="small" style={{ width: 340, flexShrink: 0 }}>
+        // maxWidth keeps the fixed 340px add-row (and its "+ Add" button)
+        // inside the card on a phone, where the card itself is narrower.
+        <Space.Compact size="small" style={{ width: 340, maxWidth: "100%", flexShrink: 0 }}>
           <Input
             size="small"
             placeholder="e.g. West · Franchise"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onPressEnter={handleCreate}
+            style={{ flex: 1, minWidth: 0 }}
           />
-          <Select size="small" placeholder="Region" style={{ width: 100 }} options={REGION_OPTIONS} value={region} onChange={setRegion} allowClear />
+          <Select size="small" placeholder="Region" style={{ width: 100, flexShrink: 0 }} options={REGION_OPTIONS} value={region} onChange={setRegion} allowClear />
           <Button size="small" type="primary" icon={<PlusOutlined />} loading={creating} onClick={handleCreate}>
             Add
           </Button>

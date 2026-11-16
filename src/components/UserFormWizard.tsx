@@ -6,7 +6,7 @@ import * as userApi from "../api/user-api";
 import type { CreateUserPayload, TeamMember, UserStatus } from "../types/user";
 import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
-import { ladderIndex, SPAN_WARNING_THRESHOLD } from "../utils/level-format";
+import { ladderIndex, reportingSubtreeIds, SPAN_WARNING_THRESHOLD } from "../utils/level-format";
 import { initials } from "../utils/lead-format";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { TargetsSection } from "./TargetsSection";
@@ -251,14 +251,17 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
   // already assigned as a manager before being disabled - that's read from
   // `users` directly (the collapsed summary above), not from this filtered
   // candidate list.
+  // Editing an existing person: nobody already in their own reporting
+  // team (or themselves) can become their manager - that would be a loop.
+  const ownTeam = user ? reportingSubtreeIds(users, user.id) : new Set<string>();
   const managerCandidates = selectedLevel
     ? users.filter((u) => {
-        if (user && u.id === user.id) return false;
+        if (ownTeam.has(u.id)) return false;
         if (!u.isActive) return false;
         const uLevel = levels.find((l) => l.id === u.levelId);
         return uLevel ? uLevel.sortOrder < selectedLevel.sortOrder : false;
       })
-    : users.filter((u) => u.isActive && (!user || u.id !== user.id));
+    : users.filter((u) => u.isActive && !ownTeam.has(u.id));
   const directReportCounts = new Map<string, number>();
   for (const u of users) {
     if (!u.managerId) continue;
@@ -574,7 +577,7 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                     <Form.Item
                       name="levelId"
                       label="Level"
-                      tooltip="Ladder position (or Admin/Finance) - also determines their real backend access tier"
+                      tooltip="Ladder position (or Admin/Finance) - also determines their access tier"
                       // Only required when creating - the backend itself requires a Level
                       // (or a role) on every new account, with no frontend role picker as a
                       // fallback, so skipping this here would let a brand-new user submit

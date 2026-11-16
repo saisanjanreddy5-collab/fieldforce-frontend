@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Input, Pagination, Table, Tag, Typography } from "antd";
+import { App, Button, Empty, Input, Pagination, Table, Tag, Typography } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import * as quoteApi from "../api/quote-api";
 import type { QuoteListItem } from "../types/quote";
@@ -78,7 +78,7 @@ export default function QuotesPage() {
   }, [quotes]);
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -183,15 +183,20 @@ export default function QuotesPage() {
           loading={loading}
           dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
           pagination={false}
+          // Scrolls sideways on a narrow screen instead of squeezing every
+          // column until quote numbers break mid-code and Total is clipped.
+          scroll={{ x: 760 }}
           onRow={(record) => ({ onClick: () => setOpenQuoteId(record.id), style: { cursor: "pointer" } })}
           className="thin-scroll-table table-row-hover"
-          locale={{ emptyText: loading ? " " : "No quotes yet - create one from a lead's opportunity" }}
+          locale={{
+            emptyText: loading ? " " : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No quotes yet - create one from a lead's opportunity" />,
+          }}
           columns={[
             {
               title: "Quote",
               key: "quote",
               render: (_, q) => (
-                <Text strong style={{ color: appTokens.textPrimary }}>
+                <Text strong style={{ color: appTokens.textPrimary, whiteSpace: "nowrap" }}>
                   {q.quoteLabel}
                 </Text>
               ),
@@ -216,12 +221,12 @@ export default function QuotesPage() {
               key: "total",
               align: "right" as const,
               render: (_, q) => (
-                <Text strong style={{ color: appTokens.textPrimary }}>
+                <Text strong style={{ color: appTokens.textPrimary, whiteSpace: "nowrap" }}>
                   {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(q.grandTotal)}
                 </Text>
               ),
             },
-            { title: "Date", key: "date", render: (_, q) => formatDate(q.createdAt) },
+            { title: "Date", key: "date", render: (_, q) => <span style={{ whiteSpace: "nowrap" }}>{formatDate(q.createdAt)}</span> },
             { title: "By", key: "createdBy", render: (_, q) => q.createdByName ?? "—" },
           ]}
         />

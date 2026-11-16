@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Avatar, Input, Pagination, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Empty, Input, Pagination, Space, Table, Tag, Typography, message } from "antd";
 import { HourglassOutlined } from "@ant-design/icons";
 import * as fofoApi from "../api/fofo-onboarding-api";
 import type { FofoOnboardingListItem } from "../types/fofo-onboarding";
@@ -80,7 +80,7 @@ function FofoOnboardingList() {
   }, [items, search, statusFilter]);
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
         FOFO onboarding
       </Title>
@@ -178,12 +178,19 @@ function FofoOnboardingList() {
         loading={loading}
         dataSource={filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
         pagination={false}
+        // Columns add up to 810px - scroll sideways (with a visible
+        // scrollbar) on a narrow screen instead of silently clipping them.
+        scroll={{ x: 810 }}
         onRow={(record) => ({
           onClick: () => navigate(`/fofo-onboarding/${record.id}`),
           className: "table-row-hover",
           style: { cursor: "pointer" },
         })}
-        locale={{ emptyText: "No FOFO leads yet - onboarding starts from a FOFO-category lead's Onboard button" }}
+        locale={{
+          emptyText: (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No FOFO leads yet - onboarding starts from a FOFO-category lead's Onboard button" />
+          ),
+        }}
         columns={[
           {
             title: "Store / applicant",
@@ -217,7 +224,12 @@ function FofoOnboardingList() {
             render: (_, r) => [r.storeCity, r.storeState].filter(Boolean).join(", ") || "-",
           },
           { title: "Owner", dataIndex: "ownerName", width: 140, ellipsis: true, render: (v: string | null) => v ?? "-" },
-          { title: "Expected value", dataIndex: "expectedValue", width: 130, render: (v: number | null) => formatCompactCurrency(v) },
+          {
+            title: "Expected value",
+            dataIndex: "expectedValue",
+            width: 130,
+            render: (v: number | null) => <span style={{ whiteSpace: "nowrap" }}>{formatCompactCurrency(v)}</span>,
+          },
           {
             title: "Push status",
             key: "pushStatus",

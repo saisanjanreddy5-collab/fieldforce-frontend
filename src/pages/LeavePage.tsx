@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Avatar, Button, Pagination, Popconfirm, Table, Tag, Typography, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Avatar, Button, Empty, Pagination, Popconfirm, Table, Tag, Typography, message } from "antd";
+import { InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as leaveApi from "../api/leave-api";
 import type { LeaveBalance, LeaveContext, LeaveRequest } from "../types/leave";
@@ -101,7 +101,7 @@ export default function LeavePage() {
   };
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -109,13 +109,11 @@ export default function LeavePage() {
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Balances, requests and approval by the reporting manager</Text>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {canGrantCompOff && (
-            <Button size="small" onClick={() => setGrantCompOffOpen(true)}>
-              Grant comp-off
-            </Button>
-          )}
-          <Button size="small" onClick={() => setTypesDrawerOpen(true)}>
+        {/* Same full-size buttons as Expenses' header, not size="small" -
+            mixed sizes in one row read as misaligned. */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {canGrantCompOff && <Button onClick={() => setGrantCompOffOpen(true)}>Grant comp-off</Button>}
+          <Button icon={<InfoCircleOutlined />} onClick={() => setTypesDrawerOpen(true)}>
             Leave types &amp; policy
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplyOpen(true)}>
@@ -124,7 +122,7 @@ export default function LeavePage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexShrink: 0, flexWrap: "wrap" }}>
         <Button
           size="small"
           shape="round"
@@ -222,6 +220,7 @@ export default function LeavePage() {
             rowKey="id"
             dataSource={pendingApprovals}
             pagination={false}
+            scroll={{ x: 640 }}
             columns={[
               { title: "Person", key: "person", render: (_, r) => r.userName },
               { title: "Type", key: "type", render: (_, r) => kindLabel(r.kind, balances) },
@@ -256,7 +255,9 @@ export default function LeavePage() {
             borderRadius: appTokens.radius,
             background: appTokens.surface,
             boxShadow: appTokens.shadowSm,
-            flex: 1,
+            // Doesn't stretch to fill the page while there's nothing to list -
+            // an empty state followed by a tall blank card read as broken.
+            flex: !loading && myRequests.length === 0 ? "0 0 auto" : 1,
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
@@ -280,7 +281,8 @@ export default function LeavePage() {
             loading={loading}
             dataSource={myRequests.slice((minePage - 1) * MINE_PAGE_SIZE, minePage * MINE_PAGE_SIZE)}
             pagination={false}
-            locale={{ emptyText: "No leave requests yet" }}
+            scroll={{ x: 720 }}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No leave requests yet" /> }}
             columns={[
               {
                 title: "Person",
@@ -380,6 +382,7 @@ export default function LeavePage() {
                 rowKey="id"
                 dataSource={recentlyDecided}
                 pagination={false}
+                scroll={{ x: 640 }}
                 columns={[
                   { title: "Person", key: "person", render: (_, r) => r.userName },
                   { title: "Type", key: "type", render: (_, r) => kindLabel(r.kind, balances) },

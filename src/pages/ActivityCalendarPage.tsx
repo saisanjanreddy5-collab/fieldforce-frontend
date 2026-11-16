@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Spin, Typography, message } from "antd";
+import { Avatar, Button, Grid, Select, Spin, Tooltip, Typography, message } from "antd";
 import { LeftOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as calendarApi from "../api/calendar-api";
@@ -15,11 +15,21 @@ import { NewActivityModal } from "../components/calendar/NewActivityModal";
 import { StatsRow } from "../components/StatsRow";
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 type ViewMode = "day" | "week" | "month";
 
+// How many "Calendar of" person chips show before the rest fold behind a
+// "Show all" toggle - a manager can have 40+ people, and every one of them
+// as a chip pushed the calendar itself several rows down the page.
+const COLLAPSED_CHIP_COUNT = 12;
+const SELF_OPTION = "__self__";
+
 export default function ActivityCalendarPage() {
   const { user } = useAuth();
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+  const [showAllPeople, setShowAllPeople] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [viewingUserId, setViewingUserId] = useState<string | undefined>(undefined);
   const [anchorDate, setAnchorDate] = useState<Dayjs>(dayjs());
@@ -111,10 +121,22 @@ export default function ActivityCalendarPage() {
     { label: "Field days", value: stats?.fieldDaysThisWeek ?? 0, subtitle: "this week" },
   ];
 
+  // Full names, not just the first word - first names alone left rows of
+  // identical "CC"/"Field"/"Admin" chips nobody could tell apart. Long names
+  // ellipsize, with the full name in a tooltip.
   const teamChips: (CalendarTeamMember & { isSelf: boolean })[] = [
     { id: user?.id ?? "self", name: "Me", isSelf: true },
-    ...team.map((m) => ({ ...m, name: m.name.split(" ")[0], isSelf: false })),
+    ...team.map((m) => ({ ...m, isSelf: false })),
   ];
+  const isChipActive = (chip: { id: string; isSelf: boolean }) => (chip.isSelf ? viewingUserId === undefined : viewingUserId === chip.id);
+  const visibleChips = showAllPeople
+    ? teamChips
+    : [
+        ...teamChips.slice(0, COLLAPSED_CHIP_COUNT),
+        // Keeps whoever is currently selected visible even when folded away.
+        ...teamChips.slice(COLLAPSED_CHIP_COUNT).filter(isChipActive),
+      ];
+  const hiddenChipCount = teamChips.length - COLLAPSED_CHIP_COUNT;
 
   const headerSubtitleParts = view ? [view.user.name, view.user.zoneName, view.user.officeName].filter(Boolean) : [];
   if (view?.msSyncedAt) headerSubtitleParts.push("synced with Microsoft 365");
@@ -183,37 +205,70 @@ export default function ActivityCalendarPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <Text style={{ fontSize: 12, fontWeight: 600, color: appTokens.textTertiary }}>Calendar of</Text>
-        {teamChips.map((chip) => {
-          const active = chip.isSelf ? viewingUserId === undefined : viewingUserId === chip.id;
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => setViewingUserId(chip.isSelf ? undefined : chip.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "4px 10px 4px 4px",
-                borderRadius: 999,
-                border: `1.5px solid ${active ? appTokens.primary : appTokens.border}`,
-                background: active ? appTokens.primarySoft : appTokens.surface,
-                cursor: "pointer",
-                fontFamily: appTokens.font,
-              }}
-            >
-              <Avatar size={22} style={{ background: avatarGradient(chip.id), fontSize: 10, fontWeight: 600 }}>
-                {chip.isSelf ? "Me" : initials(chip.name)}
-              </Avatar>
-              <Text style={{ fontSize: 12.5, fontWeight: active ? 600 : 500, color: active ? appTokens.primary : appTokens.textPrimary }}>
-                {chip.name}
-              </Text>
-            </button>
-          );
-        })}
-      </div>
+      {isMobile ? (
+        // A phone gets one searchable picker instead of a wall of chips -
+        // dozens of them filled the entire first screen before the calendar.
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <Text style={{ fontSize: 12, fontWeight: 600, color: appTokens.textTertiary, flexShrink: 0 }}>Calendar of</Text>
+          <Select
+            showSearch
+            optionFilterProp="label"
+            style={{ flex: 1, minWidth: 0 }}
+            value={viewingUserId ?? SELF_OPTION}
+            onChange={(v: string) => setViewingUserId(v === SELF_OPTION ? undefined : v)}
+            options={[{ value: SELF_OPTION, label: "Me" }, ...team.map((m) => ({ value: m.id, label: m.name }))]}
+          />
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          <Text style={{ fontSize: 12, fontWeight: 600, color: appTokens.textTertiary }}>Calendar of</Text>
+          {visibleChips.map((chip) => {
+            const active = isChipActive(chip);
+            return (
+              <Tooltip key={chip.id} title={chip.isSelf ? undefined : chip.name} mouseEnterDelay={0.4}>
+                <button
+                  type="button"
+                  onClick={() => setViewingUserId(chip.isSelf ? undefined : chip.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    maxWidth: 180,
+                    padding: "4px 10px 4px 4px",
+                    borderRadius: 999,
+                    border: `1.5px solid ${active ? appTokens.primary : appTokens.border}`,
+                    background: active ? appTokens.primarySoft : appTokens.surface,
+                    cursor: "pointer",
+                    fontFamily: appTokens.font,
+                  }}
+                >
+                  <Avatar size={22} style={{ background: avatarGradient(chip.id), fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
+                    {chip.isSelf ? "Me" : initials(chip.name)}
+                  </Avatar>
+                  <Text
+                    style={{
+                      fontSize: 12.5,
+                      fontWeight: active ? 600 : 500,
+                      color: active ? appTokens.primary : appTokens.textPrimary,
+                      minWidth: 0,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {chip.name}
+                  </Text>
+                </button>
+              </Tooltip>
+            );
+          })}
+          {hiddenChipCount > 0 && (
+            <Button type="link" size="small" onClick={() => setShowAllPeople((v) => !v)} style={{ paddingInline: 4 }}>
+              {showAllPeople ? "Show fewer" : `Show all ${teamChips.length - 1} people`}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div style={{ marginBottom: 18 }}>
         <StatsRow
@@ -230,7 +285,7 @@ export default function ActivityCalendarPage() {
         <Spin />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px 12px" }}>
             <Text strong style={{ fontSize: 13.5 }}>
               {rangeLabel}
             </Text>
