@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Drawer, Pagination, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Drawer, Empty, Pagination, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -9,7 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
-import { initials, formatCompactCurrency, formatCurrency } from "../utils/lead-format";
+import { initials, formatCompactCurrency, formatExactCurrency } from "../utils/lead-format";
 import { formatExpenseDate, limitUnitSuffix } from "../utils/expense-format";
 import { EXPENSE_TYPE_ICON } from "../utils/expense-icons";
 import { errorMessageFrom } from "../utils/api-error";
@@ -169,7 +169,7 @@ export default function ExpensesPage() {
   ];
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -177,7 +177,7 @@ export default function ExpensesPage() {
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>Field claims, policy limits and approval by the reporting manager</Text>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button icon={<InfoCircleOutlined />} onClick={() => setPolicyDrawerOpen(true)}>
             Expense types &amp; policy
           </Button>
@@ -249,8 +249,10 @@ export default function ExpensesPage() {
           background: appTokens.surface,
           boxShadow: appTokens.shadowXs,
           overflow: "hidden",
-          flex: 1,
-          minHeight: 260,
+          // Doesn't stretch to fill the page while there's nothing to list -
+          // an empty state followed by a tall blank card read as broken.
+          flex: !loading && filteredClaims.length === 0 ? "0 0 auto" : 1,
+          minHeight: !loading && filteredClaims.length === 0 ? undefined : 260,
           display: "flex",
           flexDirection: "column",
         }}
@@ -263,8 +265,10 @@ export default function ExpensesPage() {
         loading={loading}
         dataSource={filteredClaims.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
         pagination={false}
+        // Scrolls sideways on a narrow screen instead of overflowing the card.
+        scroll={{ x: 860 }}
         onRow={() => ({ className: "table-row-hover" })}
-        locale={{ emptyText: "No expense claims yet" }}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No expense claims yet" /> }}
         columns={[
           {
             title: "Claim",
@@ -320,11 +324,11 @@ export default function ExpensesPage() {
             key: "amount",
             render: (_, c) => (
               <Text strong style={{ color: c.isPolicyBreach ? appTokens.danger : appTokens.textPrimary }}>
-                {formatCurrency(c.amount)}
+                {formatExactCurrency(c.amount)}
               </Text>
             ),
           },
-          { title: "Approver", key: "approver", render: (_, c) => c.approverName ?? "-" },
+          { title: "Approver", key: "approver", render: (_, c) => c.approverName ?? (c.status === "pending" ? "Any Admin" : "-") },
           {
             title: "Status",
             key: "status",
@@ -342,6 +346,8 @@ export default function ExpensesPage() {
                 canApprove &&
                 c.status === "pending" &&
                 ((c.approverId === user?.id && c.approverDecision === null) ||
+                  // No reporting manager - any Admin (other than the claimant) can decide it.
+                  (c.approverId === null && user?.role === "admin" && c.userId !== user?.id && c.approverDecision === null) ||
                   (c.secondApproverId === user?.id && c.approverDecision === "approved" && c.secondApproverDecision === null));
               return (
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

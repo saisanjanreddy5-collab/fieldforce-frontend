@@ -173,7 +173,7 @@ export function GenerateQrCampaignModal({ open, onClose, onSaved, campaign }: Ge
           <div>
             <Text style={{ fontSize: 13, fontWeight: 500 }}>Require DPDP consent to submit</Text>
             <div>
-              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>Consent is stored with the lead, real timestamp and purpose</Text>
+              <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>Consent is stored with the lead, with its timestamp and purpose</Text>
             </div>
           </div>
           <Switch checked={requireConsent} onChange={setRequireConsent} />

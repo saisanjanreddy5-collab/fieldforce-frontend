@@ -62,8 +62,8 @@ export async function createTeamsMeeting(
   subject: string,
   startTime: string,
   endTime: string
-): Promise<{ joinUrl: string }> {
-  const response = await apiClient.post<ApiSuccess<{ joinUrl: string }>>(`/leads/${leadId}/microsoft/teams-meeting`, {
+): Promise<{ joinUrl: string | null }> {
+  const response = await apiClient.post<ApiSuccess<{ joinUrl: string | null }>>(`/leads/${leadId}/microsoft/teams-meeting`, {
     subject,
     startTime,
     endTime,

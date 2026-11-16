@@ -60,7 +60,7 @@ export function ApprovalsTab() {
     {
       key: "deal_value",
       name: "Deal value approval",
-      description: `Real and enforced - regional head sign-off required above ₹${threshold !== null ? (threshold / 100000).toFixed(0) : "…"}L, before a lead can be pushed to FOFO onboarding.`,
+      description: `Regional head sign-off required above ₹${threshold !== null ? (threshold / 100000).toFixed(0) : "…"}L, before a lead can be pushed to FOFO onboarding.`,
       status: "enforced",
       action: "edit_threshold",
     },
@@ -91,7 +91,7 @@ export function ApprovalsTab() {
     {
       key: "category_change",
       name: "Category change",
-      description: "Doesn't exist yet - changing a lead's category has no approval gate today.",
+      description: "Changing a lead's category doesn't require approval.",
       status: "not_built",
       action: null,
     },
@@ -100,7 +100,7 @@ export function ApprovalsTab() {
   const STATUS_LABEL: Record<Row["status"], string> = {
     enforced: "Enforced",
     configured_only: "Not enforced",
-    not_built: "Not built",
+    not_built: "Not available",
   };
   const STATUS_COLOR: Record<Row["status"], string> = {
     enforced: appTokens.success,
@@ -123,8 +123,8 @@ export function ApprovalsTab() {
         </Text>
         <div>
           <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
-            Who signs off on what. "Enforced" actually blocks something today; "Not enforced" is configured but nothing
-            checks it yet.
+            Who signs off on what. "Enforced" rules hold the action until it's approved; "Not enforced" rules are configured but
+            not applied yet.
           </Text>
         </div>
       </div>

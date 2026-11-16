@@ -465,7 +465,7 @@ export default function CallCenterPage() {
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
             {canWorkQueue
-              ? "Your assigned leads awaiting qualification, plus every call made through Smartflo."
+              ? "Leads awaiting qualification, plus every call made through Smartflo."
               : "Every click-to-call made through Smartflo, written back to the lead automatically."}
           </Text>
         </div>

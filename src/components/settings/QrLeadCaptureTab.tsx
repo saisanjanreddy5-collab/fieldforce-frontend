@@ -62,7 +62,7 @@ export function QrLeadCaptureTab() {
           {
             label: "Consent captured at submission",
             value: summary?.consentRate !== null && summary?.consentRate !== undefined ? `${summary.consentRate}%` : "—",
-            subtitle: "DPDP checkbox, real",
+            subtitle: "DPDP checkbox",
           },
         ]}
       />
@@ -82,7 +82,7 @@ export function QrLeadCaptureTab() {
             </Text>
             <div>
               <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
-                Each code is a real, scannable link to a public capture form. Submissions create a real lead, run assignment rules and record consent.
+                Each code is a scannable link to a public capture form. Submissions create a lead, run assignment rules and record consent.
               </Text>
             </div>
           </div>
@@ -122,7 +122,7 @@ export function QrLeadCaptureTab() {
             <div>
               <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
                 For a client's own website - when their ad-campaign landing page or contact form is submitted, it calls the endpoint
-                below directly and a real lead is created here automatically. No Meta/social API involved; their developer just needs
+                below directly and a lead is created here automatically. No Meta/social API involved; their developer just needs
                 to add the call to their form.
               </Text>
             </div>

@@ -66,3 +66,22 @@ export function ladderIndex(level: Level, levels: Level[]): number {
   const position = ladder.findIndex((l) => l.id === level.id);
   return position === -1 ? 0 : position + 1;
 }
+
+// Everyone who reports up to `rootId`, directly or indirectly, plus rootId
+// itself - none of them can be picked as rootId's manager without turning
+// the reporting tree into a loop (the backend rejects that too; this just
+// keeps those people out of the picker so it never gets that far).
+export function reportingSubtreeIds(users: { id: string; managerId: string | null }[], rootId: string): Set<string> {
+  const subtree = new Set<string>([rootId]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const u of users) {
+      if (u.managerId && subtree.has(u.managerId) && !subtree.has(u.id)) {
+        subtree.add(u.id);
+        grew = true;
+      }
+    }
+  }
+  return subtree;
+}

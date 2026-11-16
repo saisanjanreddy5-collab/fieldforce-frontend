@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { isAxiosError } from "axios";
 import type { AuthUser } from "../types/auth";
 import * as authApi from "../api/auth-api";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../api/token-storage";
@@ -45,7 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authApi
       .fetchMe()
       .then(setUser)
-      .catch(() => clearTokens())
+      // Only forget the saved login when the server actually rejected it -
+      // the api-client interceptor already tried a refresh, so a 401 here
+      // means the session is really gone. Any other failure (backend
+      // briefly down during a deploy, network blip) keeps the tokens, so a
+      // simple page reload recovers instead of forcing a fresh login.
+      .catch((err) => {
+        if (isAxiosError(err) && err.response?.status === 401) clearTokens();
+      })
       .finally(() => setLoading(false));
   }, []);
 

@@ -11,6 +11,8 @@ import type { Delegation } from "../types/delegation";
 import type { TeamMember } from "../types/user";
 import { useHasPermission } from "../hooks/use-permission";
 import { appTokens } from "../utils/design-system";
+import { reportingSubtreeIds } from "../utils/level-format";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -92,12 +94,17 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
       await userApi.updateUser(userId, { managerId: managerId ?? "" });
       message.success("Reporting line updated");
       onUsersChange?.();
-    } catch {
-      message.error("Failed to update reporting line");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to update reporting line"));
     }
   };
 
+  const [savingTransfer, setSavingTransfer] = useState(false);
+  const [savingDelegation, setSavingDelegation] = useState(false);
+
   const submitTransfer = async (values: TransferFormValues) => {
+    if (savingTransfer) return;
+    setSavingTransfer(true);
     try {
       const effectiveDate = values.effectiveDate.format("YYYY-MM-DD");
       if (values.transferType === "territory") {
@@ -127,10 +134,14 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
           ? err.response.data.message
           : "Failed to schedule transfer";
       message.error(description);
+    } finally {
+      setSavingTransfer(false);
     }
   };
 
   const submitDelegation = async (values: DelegationFormValues) => {
+    if (savingDelegation) return;
+    setSavingDelegation(true);
     try {
       await delegationApi.createDelegation({
         userId: values.userId,
@@ -148,6 +159,8 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
           ? err.response.data.message
           : "Failed to add delegation";
       message.error(description);
+    } finally {
+      setSavingDelegation(false);
     }
   };
 
@@ -223,7 +236,10 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
                       placeholder="Top of org"
                       value={u.managerId ?? undefined}
                       onChange={(v) => handleManagerChange(u.id, v)}
-                      options={activeUsers.filter((cand) => cand.id !== u.id).map((cand) => ({ value: cand.id, label: cand.name }))}
+                      options={(() => {
+                        const ownTeam = reportingSubtreeIds(users, u.id);
+                        return activeUsers.filter((cand) => !ownTeam.has(cand.id)).map((cand) => ({ value: cand.id, label: cand.name }));
+                      })()}
                     />
                   ) : (
                     nameOf(u.managerId) ?? <Text type="secondary">Top of org</Text>
@@ -326,7 +342,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
             </div>
           </div>
           <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-            Configuration only - FieldForce has no live approval flow for a delegate to receive yet
+            Configuration only - delegates don't receive approvals yet
           </Text>
           {loadingDelegations ? null : delegations.length === 0 ? (
             <Empty description={showArchivedDelegations ? "No archived delegations" : "No delegations set"} image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -376,6 +392,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
         open={transferModalOpen}
         onCancel={() => setTransferModalOpen(false)}
         onOk={() => transferForm.submit()}
+        confirmLoading={savingTransfer}
         okText="Schedule"
       >
         <Form<TransferFormValues> form={transferForm} layout="vertical" onFinish={submitTransfer} initialValues={{ transferType: "territory" }}>
@@ -411,6 +428,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
         open={delegationModalOpen}
         onCancel={() => setDelegationModalOpen(false)}
         onOk={() => delegationForm.submit()}
+        confirmLoading={savingDelegation}
         okText="Add"
       >
         <Form<DelegationFormValues> form={delegationForm} layout="vertical" onFinish={submitDelegation}>

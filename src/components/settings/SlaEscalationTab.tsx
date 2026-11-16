@@ -33,36 +33,36 @@ export function SlaEscalationTab() {
     {
       key: "overdue_lead",
       name: "Overdue lead follow-up",
-      description: `Real, live count - ${loading ? "…" : (counts?.overdue ?? 0)} lead${counts?.overdue === 1 ? "" : "s"} right now with a pending activity past its due date. No notification fires yet - there's no email/push system anywhere in FieldForce to send one through.`,
+      description: `Live count - ${loading ? "…" : (counts?.overdue ?? 0)} lead${counts?.overdue === 1 ? "" : "s"} right now with a pending activity past its due date. No alert is sent.`,
       status: "live",
     },
     {
       key: "unassigned_lead",
       name: "Unassigned lead",
-      description: `Real, live count - ${loading ? "…" : (counts?.unassigned ?? 0)} lead${counts?.unassigned === 1 ? "" : "s"} with no owner. Previously invisible to everyone by design; admin can now see and assign these (see the Leads quick filters).`,
+      description: `Live count - ${loading ? "…" : (counts?.unassigned ?? 0)} lead${counts?.unassigned === 1 ? "" : "s"} with no owner. Assign them from the Leads "Unassigned" quick filter.`,
       status: "live",
     },
     {
       key: "high_priority_ticket",
       name: "High priority ticket",
-      description: "Doesn't exist - no support-ticket system anywhere in FieldForce yet.",
+      description: "Not available for support tickets yet.",
       status: "not_built",
     },
     {
       key: "medium_priority_ticket",
       name: "Medium priority ticket",
-      description: "Doesn't exist - no support-ticket system anywhere in FieldForce yet.",
+      description: "Not available for support tickets yet.",
       status: "not_built",
     },
     {
       key: "low_priority_ticket",
       name: "Low priority ticket",
-      description: "Doesn't exist - no support-ticket system anywhere in FieldForce yet.",
+      description: "Not available for support tickets yet.",
       status: "not_built",
     },
   ];
 
-  const STATUS_LABEL: Record<Row["status"], string> = { live: "Live", not_built: "Not built" };
+  const STATUS_LABEL: Record<Row["status"], string> = { live: "Live", not_built: "Not available" };
   const STATUS_COLOR: Record<Row["status"], string> = { live: appTokens.success, not_built: appTokens.textTertiary };
 
   return (
@@ -80,8 +80,8 @@ export function SlaEscalationTab() {
         </Text>
         <div>
           <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
-            Applies to support tickets and overdue follow-ups. "Live" means a real number computed right now, not a
-            firing alert - FieldForce has no notification system yet to actually send one.
+            Applies to support tickets and overdue follow-ups. "Live" rows show a count computed from current data; no
+            alerts are sent.
           </Text>
         </div>
       </div>

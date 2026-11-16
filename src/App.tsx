@@ -52,6 +52,28 @@ function DashboardRoute() {
   );
 }
 
+// Extra permissions that also open a page beyond what its sidebar entry
+// lists - Call Center has no "Leads" item, but reaches a lead's full detail
+// at /leads?leadId=... from global search and the activity calendar.
+const EXTRA_ROUTE_PERMISSIONS: Record<string, string[]> = {
+  "/leads": ["leads.queue_view"],
+};
+
+// Opening a page by URL follows the same rule as the sidebar: if the menu
+// would hide it from you, you get a clear "no access" screen instead of a
+// half-loaded page firing requests that the server refuses (each one
+// popping a red "Failed to load..." toast). The backend still enforces
+// every request on its own - this is about not showing a broken page.
+function Gate({ path, children }: { path: string; children: React.ReactElement }) {
+  const hasPermission = useHasPermission();
+  const leaf = ALL_NAV_LEAVES.find((item) => item.path === path);
+  const allowed = [...(leaf?.permissions ?? []), ...(EXTRA_ROUTE_PERMISSIONS[path] ?? [])];
+  if (allowed.length > 0 && !allowed.some((p) => hasPermission(p))) {
+    return <Result status="403" title="No access" subTitle="You don't have access to this page. Contact your administrator if you need it." />;
+  }
+  return children;
+}
+
 function App() {
   return (
     <ConfigProvider theme={appTheme} getPopupContainer={() => document.body}>
@@ -62,22 +84,22 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/" element={<DashboardRoute />} />
-              <Route path="/leads" element={<LeadsPage />} />
-              <Route path="/opportunities" element={<OpportunitiesPage />} />
-              <Route path="/quotes" element={<QuotesPage />} />
-              <Route path="/sales-force-management" element={<SalesForceManagementPage />} />
-              <Route path="/fofo-onboarding" element={<FofoOnboardingPage />} />
-              <Route path="/fofo-onboarding/:leadId" element={<FofoOnboardingPage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/leave" element={<LeavePage />} />
-              <Route path="/expenses" element={<ExpensesPage />} />
-              <Route path="/activity-calendar" element={<ActivityCalendarPage />} />
-              <Route path="/approvals" element={<ApprovalsPage />} />
-              <Route path="/audit-consent" element={<AuditConsentPage />} />
-              <Route path="/team/dashboard" element={<TeamDashboardPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/customers" element={<CustomersPage />} />
-              <Route path="/call-center" element={<CallCenterPage />} />
+              <Route path="/leads" element={<Gate path="/leads"><LeadsPage /></Gate>} />
+              <Route path="/opportunities" element={<Gate path="/opportunities"><OpportunitiesPage /></Gate>} />
+              <Route path="/quotes" element={<Gate path="/quotes"><QuotesPage /></Gate>} />
+              <Route path="/sales-force-management" element={<Gate path="/sales-force-management"><SalesForceManagementPage /></Gate>} />
+              <Route path="/fofo-onboarding" element={<Gate path="/fofo-onboarding"><FofoOnboardingPage /></Gate>} />
+              <Route path="/fofo-onboarding/:leadId" element={<Gate path="/fofo-onboarding"><FofoOnboardingPage /></Gate>} />
+              <Route path="/reports" element={<Gate path="/reports"><ReportsPage /></Gate>} />
+              <Route path="/leave" element={<Gate path="/leave"><LeavePage /></Gate>} />
+              <Route path="/expenses" element={<Gate path="/expenses"><ExpensesPage /></Gate>} />
+              <Route path="/activity-calendar" element={<Gate path="/activity-calendar"><ActivityCalendarPage /></Gate>} />
+              <Route path="/approvals" element={<Gate path="/approvals"><ApprovalsPage /></Gate>} />
+              <Route path="/audit-consent" element={<Gate path="/audit-consent"><AuditConsentPage /></Gate>} />
+              <Route path="/team/dashboard" element={<Gate path="/team/dashboard"><TeamDashboardPage /></Gate>} />
+              <Route path="/settings" element={<Gate path="/settings"><SettingsPage /></Gate>} />
+              <Route path="/customers" element={<Gate path="/customers"><CustomersPage /></Gate>} />
+              <Route path="/call-center" element={<Gate path="/call-center"><CallCenterPage /></Gate>} />
               {ALL_NAV_LEAVES.filter((item) => !item.built).map((item) => (
                 <Route key={item.path} path={item.path} element={<ComingSoonPage title={item.label} />} />
               ))}

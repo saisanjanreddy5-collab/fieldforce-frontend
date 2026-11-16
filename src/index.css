@@ -111,6 +111,47 @@ body {
 .thin-scroll-table .ant-table-tbody > tr > td {
   padding: 6px 10px !important;
 }
+/* ...except antd's own invisible column-measuring row (rendered whenever a
+   table has scroll.x) - the padding above would otherwise turn that 0px row
+   into a blank ~12px strip under the header. */
+.thin-scroll-table .ant-table-tbody > tr.ant-table-measure-row > td {
+  padding: 0 !important;
+}
+/* antd sizes a scroll.x table's empty-state box to the table's width and
+   pulls it out over the cell padding with a negative margin that matches
+   its OWN default padding - re-matched to the 6px/10px above, or the empty
+   state ends up a few px wider than the table and shows a stray scroll
+   shadow/scrollbar on an empty table. */
+.thin-scroll-table .ant-table-expanded-row-fixed {
+  margin: -6px -10px !important;
+}
+
+/* List pages that size themselves to the viewport (title + stats + a table
+   that takes whatever height is left, scrolling internally) - on a phone the
+   title and stacked stat cards alone use up most of the screen, leaving the
+   table a sliver ~40px tall. Below antd's "md" breakpoint (the same one
+   AppLayout uses for its mobile layout) these pages drop the fixed height
+   and grow to their natural height instead, so the page itself scrolls and
+   every row is reachable. Shared here rather than per page since every
+   page using the pattern hits the same problem the same way. */
+@media (max-width: 767.98px) {
+  .page-fill-height {
+    height: auto !important;
+  }
+}
+
+/* Edge shadows on a sideways-scrolling box, so columns cut off at the edge
+   read as "swipe for more" rather than clipped content - pure CSS (the
+   white covers scroll with the content, the shadows stay put), same cue
+   antd's own Table shows when it scrolls horizontally. Used by the custom
+   (non-antd) report tables. */
+.scroll-hint-x {
+  background:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) left center / 32px 100% no-repeat local,
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)) right center / 32px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(16, 24, 40, 0.14), rgba(16, 24, 40, 0)) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(16, 24, 40, 0.14), rgba(16, 24, 40, 0)) right center / 12px 100% no-repeat scroll;
+}
 
 /* Leads workspace: dense list row hover state. */
 .lead-row:hover {

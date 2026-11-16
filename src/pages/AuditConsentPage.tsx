@@ -95,16 +95,18 @@ export default function AuditConsentPage() {
           Audit trail &amp; consent register
         </Title>
         <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
-          Real changes to a lead's category, owner or stage, approval decisions and assignment rule edits - each with the actor, timestamp
-          and IP address.
+          Changes to a lead's category, owner or stage, approval decisions and assignment rule edits - each with the actor, timestamp and
+          IP address.
         </Text>
       </div>
 
+      {/* min(Npx, 100%) - a plain 380px/320px floor was wider than a phone
+          screen, pushing each card's right border off-screen. */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div
           style={{
             flex: 2,
-            minWidth: 380,
+            minWidth: "min(380px, 100%)",
             border: `1px solid ${appTokens.border}`,
             borderRadius: appTokens.radius,
             background: appTokens.surface,
@@ -112,7 +114,7 @@ export default function AuditConsentPage() {
             overflow: "hidden",
           }}
         >
-          <div style={{ padding: "14px 18px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between" }}>
+          <div style={{ padding: "14px 18px", borderBottom: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "space-between", gap: 8 }}>
             <Text strong style={{ fontSize: 14 }}>
               Change log
             </Text>
@@ -122,7 +124,7 @@ export default function AuditConsentPage() {
           {!loading && events.length === 0 && (
             <div style={{ padding: "40px 18px", textAlign: "center" }}>
               <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>
-                No changes recorded yet - this fills in as leads, approvals and assignment rules are actually edited.
+                No changes recorded yet - this fills in as leads, approvals and assignment rules are edited.
               </Text>
             </div>
           )}
@@ -156,7 +158,7 @@ export default function AuditConsentPage() {
                 >
                   {tag.label}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
                   <Text strong style={{ fontSize: 13.5 }}>
                     {e.summary}
                   </Text>
@@ -179,7 +181,7 @@ export default function AuditConsentPage() {
           })}
         </div>
 
-        <div style={{ flex: 1, minWidth: 320, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ flex: 1, minWidth: "min(320px, 100%)", display: "flex", flexDirection: "column", gap: 16 }}>
           <div
             style={{
               border: `1px solid ${appTokens.border}`,
@@ -194,10 +196,7 @@ export default function AuditConsentPage() {
                 DPDP consent register
               </Text>
               <div>
-                <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>
-                  Grouped from real consent records by purpose. "Granted"/"Pending" reflect the only two states FieldForce actually
-                  records today.
-                </Text>
+                <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>Consent records grouped by purpose, with how many are granted or pending.</Text>
               </div>
             </div>
 
@@ -246,25 +245,6 @@ export default function AuditConsentPage() {
                 </Button>
               </div>
             )}
-          </div>
-
-          <div
-            style={{
-              border: `1px solid ${appTokens.border}`,
-              borderRadius: appTokens.radius,
-              background: appTokens.surfaceMuted,
-              padding: 16,
-            }}
-          >
-            <Text strong style={{ fontSize: 13 }}>
-              Data subject requests
-            </Text>
-            <div>
-              <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>
-                Not built yet - tracking DPDP access, erasure and consent-withdrawal requests needs its own table and workflow, separate
-                from this change log.
-              </Text>
-            </div>
           </div>
         </div>
       </div>

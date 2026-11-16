@@ -58,12 +58,18 @@ export function QrCampaignCard({ campaign, onEdit, onChanged }: QrCampaignCardPr
     if (!dataUrl || !url) return;
     const win = window.open("", "_blank");
     if (!win) return;
+    // Campaign name/URL are typed by users - escaped so they're always shown
+    // as text, never run as HTML/script in this same-origin print window.
+    const escapeHtml = (value: string) =>
+      value.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch] as string);
+    const safeName = escapeHtml(campaign.name);
+    const safeUrl = escapeHtml(url);
     win.document.write(`
-      <html><head><title>${campaign.name}</title></head>
+      <html><head><title>${safeName}</title></head>
       <body style="font-family:sans-serif;text-align:center;padding:48px;">
-        <img src="${dataUrl}" style="width:280px;height:280px;" />
-        <h2 style="margin:16px 0 4px;">${campaign.name}</h2>
-        <p style="color:#666;">${url}</p>
+        <img src="${escapeHtml(dataUrl)}" style="width:280px;height:280px;" />
+        <h2 style="margin:16px 0 4px;">${safeName}</h2>
+        <p style="color:#666;">${safeUrl}</p>
         <script>window.onload = () => window.print();</script>
       </body></html>
     `);

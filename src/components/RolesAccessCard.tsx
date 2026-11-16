@@ -112,8 +112,8 @@ export function RolesAccessCard({ users, levels, onLevelsChange }: RolesAccessCa
         Record visibility matrix
       </Text>
       <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
-        What each role can reach, derived from the real permission catalog - levels sharing a security tier share the
-        same real access, even where their Sees/Peers labels above differ
+        What each role can reach, derived from the permission catalog - levels sharing a security tier share the
+        same access, even where their Sees/Peers labels above differ
       </Text>
       <Table
         size="small"

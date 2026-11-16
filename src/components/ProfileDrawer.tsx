@@ -7,21 +7,13 @@ import * as userApi from "../api/user-api";
 import * as authApi from "../api/auth-api";
 import { errorMessageFrom } from "../utils/api-error";
 import { appTokens, avatarGradient } from "../utils/design-system";
+import { roleLabel } from "../utils/format";
 
 const { Text, Title } = Typography;
 
 interface ProfileDrawerProps {
   open: boolean;
   onClose: () => void;
-}
-
-function capitalize(value: string): string {
-  // "call_center" -> "Call Center", not "Call_center" - the only role with
-  // an underscore in it today, but this reads fine for any future one too.
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 // The real delegated scopes this app's Azure AD registration actually
@@ -123,7 +115,7 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
               {user.name}
             </Title>
             <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
-              {[user.designation ?? capitalize(user.role), user.territory].filter(Boolean).join(" · ")}
+              {[user.designation ?? roleLabel(user.role), user.territory].filter(Boolean).join(" · ")}
             </Text>
           </div>
           <Button type="text" onClick={onClose} style={{ marginLeft: "auto" }}>
@@ -186,7 +178,7 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
 
         <Text style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: appTokens.textTertiary }}>PROFILE</Text>
         <div style={{ marginTop: 8, marginBottom: 20 }}>
-          <ProfileField label="Role" value={user.designation ?? capitalize(user.role)} />
+          <ProfileField label="Role" value={user.designation ?? roleLabel(user.role)} />
           {user.salesTeamNames.length > 0 && <ProfileField label="Sales team" value={user.salesTeamNames.join(" / ")} />}
           {user.managerName && <ProfileField label="Reports to" value={user.managerName} />}
           {user.territory && <ProfileField label="Territory" value={user.territory} />}

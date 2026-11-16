@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Segmented, Select, Typography } from "antd";
+import { App, Button, Grid, Segmented, Select, Typography } from "antd";
 import { AppstoreOutlined, BarChartOutlined, PlusOutlined, TableOutlined, TeamOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import * as opportunityApi from "../api/opportunity-api";
@@ -26,6 +26,7 @@ import { appTokens } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS).map((c) => ({ value: c, label: c }));
 
@@ -36,6 +37,8 @@ type View = "kanban" | "list" | "team-rollup" | "forecast";
 export default function OpportunitiesPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [users, setUsers] = useState<TeamMember[]>([]);
@@ -130,8 +133,12 @@ export default function OpportunitiesPage() {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+  // The people list only feeds the Manager/Salesperson filters below, which
+  // are only shown to someone who can see other users at all - a Field
+  // Sales Executive only ever sees their own opportunities anyway.
+  const canFilterByPerson = hasPermission("users.view");
   useEffect(() => {
-    userApi.listUsers().then(setUsers).catch(() => undefined);
+    if (canFilterByPerson) userApi.listUsers().then(setUsers).catch(() => undefined);
     salesTeamApi.listZones().then(setZones).catch(() => undefined);
     leadApi.listTerritories().then(setTerritories).catch(() => undefined);
   }, []);
@@ -209,20 +216,28 @@ export default function OpportunitiesPage() {
     <div>
       {/* No page title/caption here - the current module name now shows
           once, in the top app header, instead of twice. */}
+      {/* maxWidth/minWidth 0 on the inner row - without them a child wider
+          than the screen (the 4-way view switcher on a phone) made this row
+          overflow, and with justify-content:flex-end that overflow went off
+          the LEFT edge, clipping Export/Kanban/New opportunity. */}
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: isMobile ? 8 : 12, flexWrap: "wrap", alignItems: "center", minWidth: 0, maxWidth: "100%" }}>
           {hasPermission("opportunities.export") && <Button onClick={handleExportOpportunities}>Export</Button>}
           {hasPermission("opportunities.delete") && <Button onClick={() => setArchivedOpen(true)}>Archived</Button>}
-          <Segmented
-            value={view}
-            onChange={(v) => setView(v as View)}
-            options={[
-              { label: "Kanban", value: "kanban", icon: <AppstoreOutlined /> },
-              { label: "List", value: "list", icon: <TableOutlined /> },
-              { label: "Team rollup", value: "team-rollup", icon: <TeamOutlined /> },
-              { label: "Forecast", value: "forecast", icon: <BarChartOutlined /> },
-            ]}
-          />
+          <div className="scrollbar-hidden" style={{ maxWidth: "100%", overflowX: "auto" }}>
+            <Segmented
+              value={view}
+              onChange={(v) => setView(v as View)}
+              // Icons dropped on a phone - the four labels alone fit a 390px
+              // screen, with icons they didn't.
+              options={[
+                { label: "Kanban", value: "kanban", icon: isMobile ? undefined : <AppstoreOutlined /> },
+                { label: "List", value: "list", icon: isMobile ? undefined : <TableOutlined /> },
+                { label: "Team rollup", value: "team-rollup", icon: isMobile ? undefined : <TeamOutlined /> },
+                { label: "Forecast", value: "forecast", icon: isMobile ? undefined : <BarChartOutlined /> },
+              ]}
+            />
+          </div>
           {hasPermission("opportunities.create") && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { setNewModalStage(undefined); setNewModalOpen(true); }}>
               New opportunity
@@ -300,6 +315,7 @@ export default function OpportunitiesPage() {
             onChange={(v) => setTerritoryFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All territories" }, ...territories.map((t) => ({ value: t, label: t }))]}
           />
+          {canFilterByPerson && (
           <Select
             prefix={FILTER_DOT}
             style={{ minWidth: 125, flexShrink: 0 }}
@@ -307,6 +323,8 @@ export default function OpportunitiesPage() {
             onChange={(v) => setManagerFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All managers" }, ...managerOptions.map((u) => ({ value: u.id, label: u.name }))]}
           />
+          )}
+          {canFilterByPerson && (
           <Select
             prefix={FILTER_DOT}
             style={{ minWidth: 140, flexShrink: 0 }}
@@ -314,6 +332,7 @@ export default function OpportunitiesPage() {
             onChange={(v) => setOwnerFilter(v === "all" ? undefined : v)}
             options={[{ value: "all", label: "All salespersons" }, ...users.map((u) => ({ value: u.id, label: u.name }))]}
           />
+          )}
           <Select
             prefix={FILTER_DOT}
             style={{ minWidth: 120, flexShrink: 0 }}

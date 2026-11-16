@@ -60,7 +60,7 @@ import { WhatsAppTab } from "../leads/tabs/WhatsAppTab";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { avatarGradient, appTokens } from "../../utils/design-system";
-import { formatCompactCurrency, formatCurrency, formatDate, formatDateTime, initials } from "../../utils/lead-format";
+import { formatCompactCurrency, formatCurrency, formatDate, formatDateTime, formatExactCurrency, initials } from "../../utils/lead-format";
 import { CREDIT_CATEGORY_COLORS, CUSTOMER_STATUSES, CUSTOMER_STATUS_LABELS, categoryColor, customerRisk } from "./customer-constants";
 
 const { Text, Title } = Typography;
@@ -124,6 +124,7 @@ const CREDIT_CATEGORIES = ["A", "B", "C", "D"] as const;
 function OverviewTab({
   customer,
   canUpdate,
+  canEditCredit,
   users,
   stateName,
   saving,
@@ -131,6 +132,7 @@ function OverviewTab({
 }: {
   customer: Customer;
   canUpdate: boolean;
+  canEditCredit: boolean;
   users: TeamMember[];
   stateName?: string;
   saving: boolean;
@@ -144,7 +146,7 @@ function OverviewTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <SectionLabel description="Live totals computed from this customer's real orders and invoices">
+        <SectionLabel description="Live totals from this customer's orders and invoices">
           Account summary
         </SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -185,7 +187,7 @@ function OverviewTab({
                   const next = Number(e.target.value.replace(/[^\d.]/g, "")) || 0;
                   if (next !== customer.creditLimit) onUpdate({ creditLimit: next });
                 }}
-                disabled={saving}
+                disabled={saving || !canEditCredit}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -202,7 +204,7 @@ function OverviewTab({
                   const next = Number(e.target.value.replace(/[^\d.]/g, "")) || 0;
                   if (next !== customer.outstandingBalance) onUpdate({ outstandingBalance: next });
                 }}
-                disabled={saving}
+                disabled={saving || !canEditCredit}
               />
             </div>
             <div style={{ width: 90 }}>
@@ -220,6 +222,11 @@ function OverviewTab({
               />
             </div>
           </div>
+        )}
+        {canUpdate && !canEditCredit && (
+          <Text style={{ fontSize: 11.5, color: appTokens.textTertiary, display: "block", marginTop: 6 }}>
+            Credit limit and outstanding balance can only be changed by an Admin.
+          </Text>
         )}
       </div>
 
@@ -805,7 +812,7 @@ function TransactionsTab({ customerId, canUpdate, onDataChanged }: { customerId:
                   {item.status.replace("_", " ")}
                 </Tag>
                 <Text strong style={{ fontSize: 13, minWidth: 80, textAlign: "right" }}>
-                  {formatCurrency(item.amount)}
+                  {formatExactCurrency(item.amount)}
                 </Text>
               </div>
             </div>
@@ -1000,10 +1007,12 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
       setMeetingOpen(false);
       Modal.success({
         title: "Teams meeting created",
-        content: (
+        content: joinUrl ? (
           <a href={joinUrl} target="_blank" rel="noreferrer">
             {joinUrl}
           </a>
+        ) : (
+          "The calendar invite was sent, but Microsoft did not return a Teams join link for this account - check that Teams is enabled for your Microsoft 365 user."
         ),
       });
     } catch (err) {
@@ -1035,7 +1044,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   return (
     <div>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${appTokens.borderLight}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 12, minWidth: 0 }}>
             <Avatar size={40} style={{ background: avatarGradient(customer.fullName), fontWeight: 600, flexShrink: 0 }}>
               {initials(customer.fullName)}
@@ -1061,9 +1070,11 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
                 {customer.category}
               </Tag>
             )}
-            <Tag color={risk.color} style={{ margin: 0 }}>
-              {risk.label}
-            </Tag>
+            {risk && (
+              <Tag color={risk.color} style={{ margin: 0 }}>
+                {risk.label}
+              </Tag>
+            )}
           </div>
         </div>
 
@@ -1140,7 +1151,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
         />
         <div style={{ paddingTop: 4, paddingBottom: 20 }}>
           {tab === "overview" && (
-            <OverviewTab customer={customer} canUpdate={canUpdate} users={users} stateName={stateName} saving={saving} onUpdate={applyUpdate} />
+            <OverviewTab customer={customer} canUpdate={canUpdate} canEditCredit={user?.role === "admin"} users={users} stateName={stateName} saving={saving} onUpdate={applyUpdate} />
           )}
           {tab === "contacts" && (
             <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={() => setTab("whatsapp")} />

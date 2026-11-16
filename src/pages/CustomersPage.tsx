@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Avatar, Button, Input, Pagination, Table, Tag, Typography } from "antd";
+import { App, Avatar, Button, Grid, Input, Pagination, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as customerApi from "../api/customer-api";
 import * as salesTeamApi from "../api/sales-team-api";
@@ -13,10 +13,16 @@ import { categoryColor, customerRisk } from "../components/customers/customer-co
 import { CustomerDetailPanel } from "../components/customers/CustomerDetailPanel";
 
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function CustomersPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
+  // Same "md" cut-off AppLayout uses - below it there's no room for the
+  // list and detail side by side, so they stack (list first, detail below).
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+  const detailRef = useRef<HTMLDivElement>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +124,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -188,7 +194,7 @@ export default function CustomersPage() {
         />
       </div>
 
-      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 14, alignItems: "stretch", flex: 1, minHeight: 0 }}>
         <div
           style={{
             flex: "1 1 50%",
@@ -224,8 +230,16 @@ export default function CustomersPage() {
               dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
               pagination={false}
               tableLayout="fixed"
+              // A phone-width list can't fit five fixed-percentage columns -
+              // scroll sideways instead of crushing every one of them.
+              scroll={isMobile ? { x: 560 } : undefined}
               onRow={(record) => ({
-                onClick: () => setSelectedId(record.id),
+                onClick: () => {
+                  setSelectedId(record.id);
+                  // Stacked layout: the detail sits below the whole list, so
+                  // bring it into view or the tap looks like it did nothing.
+                  if (isMobile) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                },
                 style: { cursor: "pointer", background: record.id === selectedId ? appTokens.primarySoft : undefined },
               })}
               className="thin-scroll-table table-row-hover"
@@ -305,11 +319,11 @@ export default function CustomersPage() {
                   width: "14%",
                   render: (_, c) => {
                     const risk = customerRisk(c);
-                    return (
+                    return risk ? (
                       <Tag color={risk.color} style={{ margin: 0, fontSize: 11 }}>
                         {risk.label}
                       </Tag>
-                    );
+                    ) : null;
                   },
                 },
               ]}
@@ -332,14 +346,16 @@ export default function CustomersPage() {
         </div>
 
         <div
+          ref={detailRef}
           style={{
             flex: "1 1 50%",
-            minWidth: 320,
+            minWidth: isMobile ? 0 : 320,
+            scrollMarginTop: 8,
             border: `1px solid ${appTokens.border}`,
             borderRadius: appTokens.radius,
             background: appTokens.surface,
             boxShadow: appTokens.shadowXs,
-            overflow: "hidden",
+            overflowY: "auto",
           }}
         >
           <CustomerDetailPanel customerId={selectedId} onChanged={load} />

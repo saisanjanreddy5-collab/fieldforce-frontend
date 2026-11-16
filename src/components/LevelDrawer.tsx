@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button, Drawer, Form, Input, InputNumber, Select, Space, Switch, message } from "antd";
 import { isAxiosError } from "axios";
 import * as levelApi from "../api/level-api";
@@ -58,7 +58,11 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
     }
   }, [open, level, form]);
 
+  const [saving, setSaving] = useState(false);
+
   const handleSubmit = async (values: FormValues) => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (level) {
         await levelApi.updateLevel(level.id, {
@@ -97,6 +101,8 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
           ? err.response.data.message
           : "Failed to save level - the name may already be taken";
       message.error(description);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -109,7 +115,7 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" onClick={() => form.submit()}>
+          <Button type="primary" loading={saving} onClick={() => form.submit()}>
             {level ? "Save changes" : "Add level"}
           </Button>
         </Space>
@@ -125,7 +131,7 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
         <Form.Item
           name="securityTier"
           label="Security tier"
-          tooltip="What this level's people can actually do in the backend - the real access control, not just a label"
+          tooltip="What people at this level can actually do - this controls their access, not just a label"
           rules={[{ required: true }]}
         >
           <Select options={SECURITY_TIER_OPTIONS} />
@@ -141,7 +147,7 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
         <Form.Item
           name="recordScope"
           label="Record scope"
-          tooltip="Configuration only for now - the real leads/opportunities/activities visibility still uses the manager-subtree rule underneath, this just controls what the Roles & access screen displays"
+          tooltip="Configuration only for now - lead, opportunity and activity visibility still follows the reporting tree; this only changes what the Roles & access screen displays"
           rules={[{ required: true }]}
         >
           <Select options={RECORD_SCOPE_OPTIONS} />
@@ -152,7 +158,7 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
         <Form.Item
           name="seesLabelOverride"
           label={'"Sees" label override'}
-          tooltip="Leave blank to derive this from Record scope automatically - only set this for a role whose real visibility doesn't reduce to one of the 5 scope options, e.g. Finance's cross-cutting credit & billing view"
+          tooltip="Leave blank to derive this from Record scope automatically - only set this for a role whose visibility doesn't fit one of the 5 scope options, e.g. Finance's cross-cutting credit & billing view"
         >
           <Input placeholder="Leave blank unless this role is a genuine exception" />
         </Form.Item>

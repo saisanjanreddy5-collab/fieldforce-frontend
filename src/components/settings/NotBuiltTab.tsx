@@ -47,7 +47,7 @@ export function NotBuiltTab({ title, reason }: NotBuiltTabProps) {
         <ToolOutlined />
       </div>
       <Title level={5} style={{ margin: 0 }}>
-        {title} isn't built yet
+        {title} is coming soon
       </Title>
       <Text style={{ fontSize: 13, color: appTokens.textSecondary, display: "block", marginTop: 6, maxWidth: 480, marginInline: "auto" }}>
         {reason}

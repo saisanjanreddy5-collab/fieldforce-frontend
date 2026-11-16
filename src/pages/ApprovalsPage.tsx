@@ -146,7 +146,7 @@ export default function ApprovalsPage() {
               label: "Breaching SLA",
               value: inbox ? String(inbox.stats.breachingSla) : "—",
               subtitle: "over 48h",
-              labelHint: "A fixed 48h threshold, not a configured SLA - FieldForce has no real SLA deadline for these yet.",
+              labelHint: "Requests that have been waiting on a decision for more than 48 hours.",
             },
             {
               label: "Value in queue",
@@ -219,10 +219,13 @@ export default function ApprovalsPage() {
           <Spin />
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        // Wraps so a phone stacks the queue above the detail instead of
+        // forcing a fixed 380px queue + detail side by side off the screen.
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div
             style={{
               width: 380,
+              maxWidth: "100%",
               flexShrink: 0,
               border: `1px solid ${appTokens.border}`,
               borderRadius: appTokens.radius,
@@ -337,7 +340,7 @@ export default function ApprovalsPage() {
             )}
           </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: "1 1 320px", minWidth: 0 }}>
             {selected ? (
               <ApprovalDetail key={selected.id} item={selected} onDecided={view === "pending" ? handleDecided : undefined} />
             ) : (
@@ -424,7 +427,7 @@ function DecisionPanel({
         </Button>
       </div>
       <Text style={{ fontSize: 11, color: appTokens.textTertiary, display: "block", marginTop: 8 }}>
-        Decision and timestamp are written to the real record - this actually approves or rejects it.
+        Approving or rejecting here takes effect immediately, and the decision is recorded with its timestamp.
       </Text>
     </div>
   );

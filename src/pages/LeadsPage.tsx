@@ -332,8 +332,10 @@ export default function LeadsPage() {
           a full row higher instead of waiting for this to clear first. */}
       {isMobile && !showDetailOnMobile && (
         <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+          {/* No vertical divider between these two groups - on a phone they
+              always wrap onto separate lines, which left the divider
+              stranded on a line of its own. */}
           <LeadFilterBar value={quickFilter} onChange={setQuickFilter} counts={counts} />
-          <div style={{ width: 1, height: 22, background: appTokens.border, flexShrink: 0 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {hasPermission("leads.export") && (
               <Button style={{ paddingInline: 10 }} loading={exporting} onClick={handleExportLeads}>
@@ -397,6 +399,7 @@ export default function LeadsPage() {
                 onToggleCollapsed={() => undefined}
                 advancedFilters={advancedFilters}
                 onAdvancedFiltersChange={setAdvancedFilters}
+                compact
               />
             </div>
           )}

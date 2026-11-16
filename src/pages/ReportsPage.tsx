@@ -79,8 +79,16 @@ function ReportTable<T>({
   emptyText: string;
   loading: boolean;
 }) {
+  // A floor width for the columns (header, rows and total all share it) - on
+  // a phone the flex columns otherwise squeezed to a few px each with values
+  // clipped and no hint there was more. The wrapper below scrolls sideways
+  // instead. The loading/empty states sit outside it so their text always
+  // spans just the visible width rather than being centered off-screen.
+  const minWidth = columns.length * 110;
   return (
     <div style={{ border: `1px solid ${appTokens.border}`, borderRadius: appTokens.radius, overflow: "hidden" }}>
+      <div className="scrollbar-thin scroll-hint-x" style={{ overflowX: "auto" }}>
+      <div style={{ minWidth }}>
       <div style={{ display: "flex", gap: 16, padding: "10px 18px", background: appTokens.surfaceMuted, borderBottom: `1px solid ${appTokens.borderLight}` }}>
         {columns.map((c) => (
           <div
@@ -100,18 +108,7 @@ function ReportTable<T>({
         ))}
       </div>
 
-      {loading ? (
-        <div style={{ padding: 40, textAlign: "center" }}>
-          <Spin />
-        </div>
-      ) : rows.length === 0 ? (
-        <div style={{ padding: "40px 18px", textAlign: "center" }}>
-          <BarChartOutlined style={{ fontSize: 22, color: appTokens.textTertiary }} />
-          <div style={{ marginTop: 8 }}>
-            <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>{emptyText}</Text>
-          </div>
-        </div>
-      ) : (
+      {!loading &&
         rows.map((row, idx) => (
           <div
             key={rowKey(row)}
@@ -129,10 +126,9 @@ function ReportTable<T>({
               </div>
             ))}
           </div>
-        ))
-      )}
+        ))}
 
-      {totalRow && rows.length > 0 && (
+      {!loading && totalRow && rows.length > 0 && (
         <div style={{ display: "flex", gap: 16, padding: "13px 18px", background: appTokens.surfaceMuted, borderTop: `1.5px solid ${appTokens.border}` }}>
           {columns.map((c, i) => (
             <div key={c.key} style={{ flex: c.flex ?? 1, textAlign: c.align ?? "left", fontSize: 13.5, fontWeight: 700, color: appTokens.textPrimary }}>
@@ -141,6 +137,21 @@ function ReportTable<T>({
           ))}
         </div>
       )}
+      </div>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <Spin />
+        </div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: "40px 18px", textAlign: "center" }}>
+          <BarChartOutlined style={{ fontSize: 22, color: appTokens.textTertiary }} />
+          <div style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>{emptyText}</Text>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -504,7 +515,7 @@ export default function ReportsPage() {
           title="Performance by salesperson"
           sub={caption}
           right={
-            <Space>
+            <Space wrap>
               <DatePicker picker="month" placeholder="All time" value={month} onChange={setMonth} allowClear />
               <Select
                 placeholder="All regions"
@@ -551,7 +562,7 @@ export default function ReportsPage() {
       )}
 
       {tab === "state_wise" && (
-        <ReportCard title="State-wise leads and customers" sub={'"Open tickets" is shown as "-" - FieldForce has no support-ticket system yet.'}>
+        <ReportCard title="State-wise leads and customers" sub={'Leads, customers and live FOFO stores per state. Open tickets are not tracked and show as "-".'}>
           <ReportTable<StateWiseRow>
             loading={loading}
             rows={stateWise}
@@ -571,7 +582,7 @@ export default function ReportsPage() {
       {tab === "b2b_group" && (
         <ReportCard
           title="B2B group performance"
-          sub='Non-FOFO channel mix, current data. "Avg order" and "Overdue" are shown as "-" - no orders/billing system exists yet.'
+          sub='Non-FOFO channel mix, current data. Avg order and Overdue are not tracked and show as "-".'
         >
           <ReportTable<B2BGroupRow>
             loading={loading}
@@ -592,7 +603,7 @@ export default function ReportsPage() {
       {tab === "lead_source_roi" && (
         <ReportCard
           title="Lead source ROI"
-          sub='Grouped by the inquiry source salespeople actually record. "Cost" and "CPQL" are shown as "-" - no marketing spend is tracked yet.'
+          sub='Grouped by the inquiry source recorded on each lead. Marketing spend is not tracked, so Cost and CPQL show as "-".'
         >
           <ReportTable<LeadSourceRoiRow>
             loading={loading}
@@ -613,7 +624,7 @@ export default function ReportsPage() {
       {tab === "fofo_cohort_retention" && (
         <ReportCard
           title="FOFO cohort retention"
-          sub={`Cohort and store count are real (grouped by when each store actually went live). M+3/M+6/M+12 are shown as "-" - FieldForce has no recurring-order tracking, so ongoing retention can't be measured yet.`}
+          sub={`Stores grouped by the month they went live. Repeat orders are not tracked, so M+3/M+6/M+12 retention shows as "-".`}
         >
           <ReportTable<FofoCohortRow>
             loading={loading}
@@ -634,7 +645,7 @@ export default function ReportsPage() {
       {tab === "call_center_performance" && (
         <ReportCard
           title="Call Center performance"
-          sub="Calls and dispositions from the activity log, escalation/qualification counts from each lead's real stage history - grouped per person for the date range and people selected."
+          sub="Calls and dispositions from the activity log, escalation/qualification counts from each lead's stage history - grouped per person for the date range and people selected."
           right={
             <Space wrap>
               <RangePicker value={dateRange} onChange={(v) => setDateRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} allowClear />
@@ -683,7 +694,7 @@ export default function ReportsPage() {
       {tab === "field_sales_performance" && (
         <ReportCard
           title="Field Sales performance"
-          sub="Leads received/converted are grouped by the lead's own creation date, same convention as Salesperson performance - not the exact date it reached this field rep. Site visits use the real activity timestamp."
+          sub="Leads received/converted are grouped by the lead's own creation date, same convention as Salesperson performance - not the exact date it reached this field rep. Site visits use each visit's own activity date."
           right={
             <Space wrap>
               <RangePicker value={dateRange} onChange={(v) => setDateRange(v && v[0] && v[1] ? [v[0], v[1]] : null)} allowClear />

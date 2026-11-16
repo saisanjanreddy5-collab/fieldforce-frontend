@@ -13,6 +13,8 @@ import { IntegrationsTab } from "../components/settings/IntegrationsTab";
 import { UsersAccessTab } from "../components/settings/UsersAccessTab";
 import { QrLeadCaptureTab } from "../components/settings/QrLeadCaptureTab";
 import { NotBuiltTab } from "../components/settings/NotBuiltTab";
+import { SETTINGS_PERMISSIONS } from "../components/nav-config";
+import { useHasPermission } from "../hooks/use-permission";
 
 const { Title, Text } = Typography;
 
@@ -51,6 +53,7 @@ const TAB_ROWS: { key: TabKey; label: string }[][] = [
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<TabKey>("integrations");
+  const hasPermission = useHasPermission();
 
   const pill = (key: TabKey, label: string) => {
     const active = tab === key;
@@ -76,6 +79,17 @@ export default function SettingsPage() {
       </button>
     );
   };
+
+  if (!SETTINGS_PERMISSIONS.some((p) => hasPermission(p))) {
+    return (
+      <div>
+        <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
+          Settings
+        </Title>
+        <Text type="secondary">You do not have permission to change settings.</Text>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -111,7 +125,7 @@ export default function SettingsPage() {
         {tab === "whatsapp_api" && (
           <NotBuiltTab
             title="WhatsApp API"
-            reason="Connection status is already real (see the Integrations tab). The business-account details and message-template approval table need K3's template/business-profile endpoints, which are still returning 401 and unresolved - can't show real data here until that's fixed on their end."
+            reason="Connection status is shown on the Integrations tab. Business-account details and message-template approvals will appear here once the WhatsApp provider makes them available."
           />
         )}
       </div>

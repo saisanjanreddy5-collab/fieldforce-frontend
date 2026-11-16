@@ -72,7 +72,7 @@ export default function TeamDashboardPage() {
   if (!hasPermission("team_dashboard.view")) {
     return (
       <div>
-        <Title level={3}>Dashboard</Title>
+        <Title level={3}>Team availability</Title>
         <Text type="secondary">You do not have permission to view the team dashboard.</Text>
       </div>
     );
@@ -86,7 +86,7 @@ export default function TeamDashboardPage() {
   const pagedTeam = team.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -102,7 +102,7 @@ export default function TeamDashboardPage() {
             their own - Admin having no manager just means their own request
             auto-approves (the same backend behavior any manager-less account
             already gets), not that they're barred from filing one. */}
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button onClick={() => setLeaveOpen(true)}>Apply for leave</Button>
           <Button type="primary" onClick={() => setExpenseOpen(true)}>
             + New expense claim
@@ -157,8 +157,7 @@ export default function TeamDashboardPage() {
             </Text>
             <div>
               <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>
-                Field/Office are real, from logged activities. Leave is real, from approved requests. Weekly off follows the same
-                Sat/Sun convention the Leave module already uses.
+                Field and Office come from logged activities, Leave from approved requests. Saturday and Sunday are weekly offs.
               </Text>
             </div>
           </div>
@@ -174,8 +173,24 @@ export default function TeamDashboardPage() {
           </div>
         </div>
 
-        <div style={{ overflowX: "auto", flexShrink: 0 }}>
-          <div style={{ display: "flex", padding: "10px 18px", background: appTokens.surfaceMuted, borderBottom: `1px solid ${appTokens.borderLight}`, minWidth: 720 }}>
+        {/* Header and rows share ONE scroll box, so a sideways swipe on a
+            phone moves the day columns and their headings together (two
+            separate boxes scrolled independently and drifted out of line).
+            The header stays pinned with position:sticky while the rows
+            scroll vertically underneath it. */}
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <div
+            style={{
+              display: "flex",
+              padding: "10px 18px",
+              background: appTokens.surfaceMuted,
+              borderBottom: `1px solid ${appTokens.borderLight}`,
+              minWidth: 720,
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+            }}
+          >
             <div style={{ width: 190, flexShrink: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: appTokens.textTertiary, textTransform: "uppercase" }}>
               Salesperson
             </div>
@@ -189,13 +204,7 @@ export default function TeamDashboardPage() {
               Load
             </div>
           </div>
-        </div>
 
-        {/* Only this row area scrolls (vertically for more rows than fit, and
-            horizontally in sync with its own content) - the column header
-            above and the pager below (see the end of this card) both stay
-            fixed in view, same reasoning/pattern as LeadQueue.tsx's list. */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
           {!loading && team.length === 0 && (
             <div style={{ padding: "40px 18px", textAlign: "center" }}>
               <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>No direct reports yet.</Text>

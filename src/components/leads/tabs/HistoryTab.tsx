@@ -240,9 +240,9 @@ function ActivityEntry({ activity }: { activity: Activity }) {
               </Button>
             </Popover>
           ) : (
-            <Tooltip title="Recording will appear here once the telephony integration is connected">
+            <Tooltip title="Smartflo did not send a recording for this call (e.g. it was not answered)">
               <Text type="secondary" style={{ fontSize: 12 }}>
-                <PlayCircleOutlined /> Recording (not connected yet)
+                <PlayCircleOutlined /> No recording
               </Text>
             </Tooltip>
           )}
@@ -268,11 +268,9 @@ function ActivityEntry({ activity }: { activity: Activity }) {
                 Transcript — Teams Maestro AI
               </a>
             ) : (
-              <Tooltip title="Transcript will appear here once Microsoft 365 is connected">
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Transcript (not connected yet)
-                </Text>
-              </Tooltip>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                No transcript available
+              </Text>
             ))}
         </div>
       )}

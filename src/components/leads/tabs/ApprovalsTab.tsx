@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, Button, Empty, Space, Spin, Tag, Typography, message } from "antd";
 import { ArrowRightOutlined } from "@ant-design/icons";
@@ -50,6 +51,7 @@ export function ApprovalsTab({ lead, canView, loading, handoff, onChanged }: App
   const { user } = useAuth();
   const hasPermission = useHasPermission();
   const navigate = useNavigate();
+  const [decidingStepId, setDecidingStepId] = useState<string | null>(null);
 
   if (lead.category !== "FOFO") {
     return <Empty description="Approvals apply to FOFO franchise leads only" style={{ padding: 40 }} />;
@@ -57,17 +59,30 @@ export function ApprovalsTab({ lead, canView, loading, handoff, onChanged }: App
   if (!canView) {
     return <Empty description="You don't have permission to view this lead's approval chain" style={{ padding: 40 }} />;
   }
-  if (loading || !handoff) {
+  if (loading) {
     return (
       <div style={{ textAlign: "center", padding: 40 }}>
         <Spin />
       </div>
     );
   }
+  if (!handoff) {
+    // Finished loading with nothing to show = the request failed; a spinner
+    // here would spin forever.
+    return (
+      <Empty description="Couldn't load this lead's approval chain" style={{ padding: 40 }}>
+        <Button size="small" onClick={onChanged}>
+          Retry
+        </Button>
+      </Empty>
+    );
+  }
 
   const { approvalSteps } = handoff;
 
   const handleDecide = async (stepId: string, decision: "approved" | "rejected") => {
+    if (decidingStepId) return;
+    setDecidingStepId(stepId);
     try {
       await fofoOnboardingApi.decideStep(stepId, decision);
       message.success(decision === "approved" ? "Step approved" : "Step rejected");
@@ -75,6 +90,8 @@ export function ApprovalsTab({ lead, canView, loading, handoff, onChanged }: App
     } catch (err) {
       const description = isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : "Failed to decide step";
       message.error(description);
+    } finally {
+      setDecidingStepId(null);
     }
   };
 
@@ -130,10 +147,10 @@ export function ApprovalsTab({ lead, canView, loading, handoff, onChanged }: App
               </div>
               {step.isCurrentTurn && user?.id === step.approverUserId && hasPermission("fofo_onboarding.manage") && (
                 <Space size={6} style={{ marginTop: 8, marginLeft: 36 }}>
-                  <Button size="small" type="primary" onClick={() => handleDecide(step.id, "approved")}>
+                  <Button size="small" type="primary" loading={decidingStepId === step.id} disabled={decidingStepId !== null} onClick={() => handleDecide(step.id, "approved")}>
                     Approve
                   </Button>
-                  <Button size="small" danger onClick={() => handleDecide(step.id, "rejected")}>
+                  <Button size="small" danger disabled={decidingStepId !== null} onClick={() => handleDecide(step.id, "rejected")}>
                     Reject
                   </Button>
                 </Space>

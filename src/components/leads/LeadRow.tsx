@@ -76,9 +76,13 @@ export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
             {lead.fullName}
           </Text>
           <div style={{ flexShrink: 0, textAlign: "right" }}>
-            <Text strong style={{ display: "block", fontSize: 13, whiteSpace: "nowrap", color: appTokens.textPrimary, lineHeight: 1.3 }}>
-              {formatCompactCurrency(lead.expectedValue)}
-            </Text>
+            {/* Nothing at all when there's no value yet - a bare "-" at the
+                end of every such row read as a stray glyph. */}
+            {lead.expectedValue !== null && (
+              <Text strong style={{ display: "block", fontSize: 13, whiteSpace: "nowrap", color: appTokens.textPrimary, lineHeight: 1.3 }}>
+                {formatCompactCurrency(lead.expectedValue)}
+              </Text>
+            )}
             {lead.leadScore !== null && (
               <Text strong style={{ display: "block", fontSize: 11, whiteSpace: "nowrap", color: scoreColor(lead.leadScore), lineHeight: 1.3 }}>
                 {lead.leadScore}%
@@ -131,7 +135,7 @@ export function LeadRow({ lead, selected, showOwner, onClick }: LeadRowProps) {
               color: appTokens.textTertiary,
             }}
           >
-            {[lead.companyName, location].filter(Boolean).join(" · ") || "-"}
+            {[lead.companyName, location].filter(Boolean).join(" · ")}
           </Text>
           {showOwner && (
             <Text

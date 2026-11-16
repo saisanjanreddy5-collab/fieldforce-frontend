@@ -6,10 +6,10 @@ import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { ALL_NAV_LEAVES, NAV_GROUPS } from "./nav-config";
-import { SoftphoneWidget } from "./SoftphoneWidget";
 import { GlobalSearch } from "./GlobalSearch";
 import { ProfileDrawer } from "./ProfileDrawer";
 import { appTokens, avatarGradient } from "../utils/design-system";
+import { roleLabel } from "../utils/format";
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -49,15 +49,6 @@ function Logo({ collapsed }: { collapsed: boolean }) {
       {!collapsed && <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.2 }}>FieldForce</span>}
     </div>
   );
-}
-
-function capitalize(value: string): string {
-  // "call_center" -> "Call Center", not "Call_center" - the only role with
-  // an underscore in it today, but this reads fine for any future one too.
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 export function AppLayout() {
@@ -224,7 +215,6 @@ export function AppLayout() {
           {!isMobile && <GlobalSearch />}
 
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-            {!isMobile && <SoftphoneWidget />}
             <div
               onClick={() => setProfileOpen(true)}
               style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }}
@@ -240,7 +230,7 @@ export function AppLayout() {
                 <div style={{ lineHeight: 1.3, textAlign: "left" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: appTokens.textPrimary }}>{user?.name}</div>
                   <div style={{ fontSize: 11, color: appTokens.textTertiary }}>
-                    {user?.designation ?? (user ? capitalize(user.role) : "")}
+                    {user?.designation ?? (user ? roleLabel(user.role) : "")}
                   </div>
                 </div>
               )}

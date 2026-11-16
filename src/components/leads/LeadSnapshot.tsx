@@ -216,7 +216,7 @@ export function LeadSnapshot({
                 </div>
               )}
             </div>
-            <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>{contactLine || "-"}</Text>
+            {contactLine && <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>{contactLine}</Text>}
           </div>
         </div>
 
@@ -243,9 +243,12 @@ export function LeadSnapshot({
             {lead.status}
           </Tag>
           {nextStepAction}
-          <Text strong style={{ fontSize: 16, color: appTokens.textPrimary }}>
-            {formatCompactCurrency(lead.expectedValue)}
-          </Text>
+          {/* Omitted (not a bare "-") when there's no expected value yet. */}
+          {lead.expectedValue !== null && (
+            <Text strong style={{ fontSize: 16, color: appTokens.textPrimary }}>
+              {formatCompactCurrency(lead.expectedValue)}
+            </Text>
+          )}
           {showOwner && (
             <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>Owner: {lead.ownerName ?? "Unassigned"}</Text>
           )}
