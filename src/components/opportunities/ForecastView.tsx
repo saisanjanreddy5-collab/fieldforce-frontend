@@ -52,7 +52,8 @@ function weightedValue(o: Opportunity): number {
 export function ForecastView({ opportunities }: ForecastViewProps) {
   const open = opportunities.filter((o) => o.stage !== "won" && o.stage !== "lost");
 
-  const byStage = STAGES.filter((s) => s.key !== "lost").map((stage) => {
+  // Open pipeline only - won/lost are outcomes, shown separately below.
+  const byStage = STAGES.filter((s) => s.key !== "won" && s.key !== "lost").map((stage) => {
     const items = open.filter((o) => o.stage === stage.key);
     const weighted = items.reduce((sum, o) => sum + weightedValue(o), 0);
     const avgProbability =
@@ -64,9 +65,26 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
 
   const maxWeighted = Math.max(1, ...byStage.map((s) => s.weighted));
 
-  const commit = open
-    .filter((o) => o.stage === "agreement" || o.stage === "won")
-    .reduce((sum, o) => sum + (o.value ?? 0), 0);
+  // Closed outcomes: how many deals were won vs lost, their value, and each
+  // one's share of all closed deals (win rate / loss rate).
+  const won = opportunities.filter((o) => o.stage === "won");
+  const lost = opportunities.filter((o) => o.stage === "lost");
+  const closedCount = won.length + lost.length;
+  const closed = [
+    { ...STAGES.find((s) => s.key === "won")!, items: won },
+    { ...STAGES.find((s) => s.key === "lost")!, items: lost },
+  ].map((stage) => ({
+    ...stage,
+    count: stage.items.length,
+    total: stage.items.reduce((sum, o) => sum + (o.value ?? 0), 0),
+    share: closedCount > 0 ? Math.round((stage.items.length / closedCount) * 100) : 0,
+  }));
+
+  // "Agreement stage and above": open deals at Agreement plus deals already
+  // won (won deals aren't "open", so they were silently left out before).
+  const commit =
+    open.filter((o) => o.stage === "agreement").reduce((sum, o) => sum + (o.value ?? 0), 0) +
+    won.reduce((sum, o) => sum + (o.value ?? 0), 0);
   const bestCase = open.reduce((sum, o) => sum + (o.value ?? 0), 0);
 
   // Group by expected close month - opportunities with no close date are excluded.
@@ -95,6 +113,23 @@ export function ForecastView({ opportunities }: ForecastViewProps) {
                 <Text strong style={{ color: appTokens.textPrimary }}>{formatCompactCurrency(stage.weighted)}</Text>
               </div>
               <Progress percent={(stage.weighted / maxWeighted) * 100} showInfo={false} size="small" strokeColor={stage.color} />
+            </div>
+          ))}
+          <div style={{ borderTop: `1px solid ${appTokens.borderLight}`, paddingTop: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3, color: appTokens.textTertiary }}>
+              Closed{closedCount > 0 ? ` · ${closedCount} deals` : ""}
+            </Text>
+          </div>
+          {closed.map((stage) => (
+            <div key={stage.key}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+                <Text style={{ color: appTokens.textPrimary }}>{stage.label}</Text>
+                <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>
+                  {stage.count} {stage.count === 1 ? "deal" : "deals"} · {stage.share}% of closed
+                </Text>
+                <Text strong style={{ color: stage.key === "won" ? appTokens.success : appTokens.danger }}>{formatCompactCurrency(stage.total)}</Text>
+              </div>
+              <Progress percent={stage.share} showInfo={false} size="small" strokeColor={stage.color} />
             </div>
           ))}
         </div>

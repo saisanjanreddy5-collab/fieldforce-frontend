@@ -7,6 +7,7 @@ import type { BulkImportResult } from "../../api/lead-api";
 import { parseImportFile, type ParsedImportFile } from "../../utils/parse-import-file";
 import { IMPORT_MAPPABLE_FIELDS, resolveInitialMapping, saveMapping, type ColumnMapping } from "../../utils/lead-import-mapping";
 import { exportToXlsx } from "../../utils/export-xlsx";
+import { errorMessageFrom } from "../../utils/api-error";
 
 const { Text, Link } = Typography;
 const { Dragger } = Upload;
@@ -93,9 +94,22 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
       const rows = buildRows();
       const importResult = await leadApi.bulkImportLeads(rows);
       setResult(importResult);
+      // Always say plainly what happened - the detailed per-row summary
+      // stays on screen below.
+      const notImported = importResult.skipped.length + importResult.errors.length;
+      const plural = (n: number) => (n === 1 ? "" : "s");
+      if (importResult.created > 0) {
+        message.success(`${importResult.created} lead${plural(importResult.created)} imported successfully`);
+      }
+      if (notImported > 0) {
+        message.warning(`${notImported} row${plural(notImported)} not imported - see the details below`);
+      }
+      if (importResult.created === 0 && notImported === 0) {
+        message.info("Nothing to import - the file had no rows with data");
+      }
       if (importResult.created > 0) onImported();
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "Import failed");
+      message.error(errorMessageFrom(err, "Import failed - please try again"));
     } finally {
       setImporting(false);
     }

@@ -33,3 +33,32 @@ export function suggestEmailDomainFix(email: string): string | null {
 
   return `${email.slice(0, at + 1)}${fixedDomain}`;
 }
+
+// One rule set for every lead/customer email field in the app, so they can
+// never drift apart again:
+//  - normalizeEmail: trimmed and lowercased as the user types. Email
+//    addresses are case-insensitive in practice ("Name@Gmail.COM" reaches the
+//    same inbox as "name@gmail.com"), so - like Zoho/Salesforce/HubSpot - we
+//    normalise instead of rejecting, and what's on screen is exactly what's
+//    saved.
+//  - EMAIL_FORMAT: a real "name@domain.tld" shape. ANY real domain/TLD is
+//    allowed (.com, .in, .org, .co.in, ...) - plenty of genuine Indian
+//    business addresses aren't .com.
+//  - the known-typo check above (gmial.com, gmail.co, ...) still blocks the
+//    common provider typos.
+export const EMAIL_FORMAT = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/;
+
+export function normalizeEmail(value: string | undefined): string | undefined {
+  return typeof value === "string" ? value.trim().toLowerCase() : value;
+}
+
+export const emailRules = [
+  { pattern: EMAIL_FORMAT, message: "Enter a valid email address, e.g. name@company.com" },
+  {
+    validator: (_: unknown, value: string | undefined) => {
+      const suggestion = value ? suggestEmailDomainFix(value) : null;
+      if (!suggestion) return Promise.resolve();
+      return Promise.reject(new Error("Possible email typo - see suggestion below"));
+    },
+  },
+];

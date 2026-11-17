@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { emailRules, normalizeEmail } from "../../utils/email-typo-check";
 import { useNavigate } from "react-router-dom";
 import {
   App,
@@ -343,7 +344,7 @@ function ContactFormModal({
         <Form.Item name="phone" label="Phone">
           <Input placeholder="+91 ..." />
         </Form.Item>
-        <Form.Item name="email" label="Email">
+        <Form.Item name="email" label="Email" normalize={normalizeEmail} rules={emailRules}>
           <Input placeholder="optional" />
         </Form.Item>
         <Form.Item name="isPrimary" valuePropName="checked" initialValue={false}>
