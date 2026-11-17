@@ -20,10 +20,13 @@ export function QuoteVersionView({ version }: { version: QuoteVersion }) {
           background: appTokens.surface,
         }}
       >
+        {/* Scrolls sideways on narrow phones instead of clipping Line total off the edge. */}
+        <div style={{ overflowX: "auto" }}>
+        <div style={{ minWidth: 480 }}>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 70px 110px 70px 110px",
+            gridTemplateColumns: "minmax(120px, 1fr) 50px 100px 56px 110px",
             gap: 8,
             padding: "10px 14px",
             background: appTokens.surfaceMuted,
@@ -41,7 +44,7 @@ export function QuoteVersionView({ version }: { version: QuoteVersion }) {
             key={index}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 70px 110px 70px 110px",
+              gridTemplateColumns: "minmax(120px, 1fr) 50px 100px 56px 110px",
               gap: 8,
               padding: "9px 14px",
               alignItems: "center",
@@ -57,10 +60,12 @@ export function QuoteVersionView({ version }: { version: QuoteVersion }) {
             </Text>
           </div>
         ))}
+        </div>
+        </div>
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-        <div style={{ width: 240, display: "flex", flexDirection: "column", gap: 5 }}>
+        <div style={{ width: 240, maxWidth: "100%", display: "flex", flexDirection: "column", gap: 5 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>Subtotal</Text>
             <Text style={{ fontSize: 12.5, color: appTokens.textPrimary }}>{formatCurrency(version.subtotal)}</Text>

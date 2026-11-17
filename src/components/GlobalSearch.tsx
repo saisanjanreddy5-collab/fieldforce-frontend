@@ -23,7 +23,15 @@ const { Text } = Typography;
 // 72px .ant-select root) instead of matching the 36px every other control
 // on this header uses, and fighting that with CSS overrides would be more
 // fragile than just owning the dropdown directly.
-export function GlobalSearch() {
+interface GlobalSearchProps {
+  /** Phone mode: fills its container (a modal opened from the mobile header) and shows results in-flow instead of as a floating dropdown. */
+  fullWidth?: boolean;
+  autoFocus?: boolean;
+  /** Called after a result is picked - lets the mobile modal close itself. */
+  onNavigate?: () => void;
+}
+
+export function GlobalSearch({ fullWidth = false, autoFocus = false, onNavigate }: GlobalSearchProps = {}) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -64,6 +72,7 @@ export function GlobalSearch() {
     setQuery("");
     setResult(null);
     navigate(`/leads?leadId=${id}`);
+    onNavigate?.();
   };
 
   const goToOpportunity = (id: string) => {
@@ -71,6 +80,7 @@ export function GlobalSearch() {
     setQuery("");
     setResult(null);
     navigate(`/opportunities?opportunityId=${id}`);
+    onNavigate?.();
   };
 
   const hasResults = Boolean(result && (result.leads.length > 0 || result.opportunities.length > 0));
@@ -87,7 +97,10 @@ export function GlobalSearch() {
     // the search box and its result rows render far taller than intended.
     // Resetting it here breaks the inheritance chain at the one place this
     // component sits directly inside the Header.
-    <div ref={containerRef} style={{ position: "relative", maxWidth: 380, width: "100%", margin: "0 24px", lineHeight: "normal" }}>
+    <div
+      ref={containerRef}
+      style={{ position: "relative", maxWidth: fullWidth ? undefined : 380, width: "100%", margin: fullWidth ? 0 : "0 24px", lineHeight: "normal" }}
+    >
       <Input
         value={query}
         onChange={(e) => handleChange(e.target.value)}
@@ -95,17 +108,17 @@ export function GlobalSearch() {
         prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
         suffix={loading ? <Spin size="small" /> : null}
         placeholder="Search leads, opportunities, contacts"
+        autoFocus={autoFocus}
+        allowClear={fullWidth}
         style={{ background: appTokens.surfaceMuted }}
       />
 
       {showPanel && (
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            maxHeight: 420,
+            ...(fullWidth
+              ? { position: "static", marginTop: 8, maxHeight: "60vh" }
+              : { position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, maxHeight: 420 }),
             overflowY: "auto",
             background: appTokens.surface,
             border: `1px solid ${appTokens.border}`,

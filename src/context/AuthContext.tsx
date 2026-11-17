@@ -51,8 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // means the session is really gone. Any other failure (backend
       // briefly down during a deploy, network blip) keeps the tokens, so a
       // simple page reload recovers instead of forcing a fresh login.
+      // A 401 can also surface when the interceptor's refresh itself failed
+      // only temporarily (5xx / 429 / weak mobile network) - in that case it
+      // keeps the refresh token, so we keep it too. A truly dead session has
+      // already been cleared by the interceptor (which also dispatches
+      // "auth:logout"), leaving no refresh token here.
       .catch((err) => {
-        if (isAxiosError(err) && err.response?.status === 401) clearTokens();
+        if (isAxiosError(err) && err.response?.status === 401 && !getRefreshToken()) clearTokens();
       })
       .finally(() => setLoading(false));
   }, []);

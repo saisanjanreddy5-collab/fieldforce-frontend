@@ -13,6 +13,8 @@ import * as leaveApi from "../../api/leave-api";
 import type { LeaveBalance, LeaveContextPerson, LeaveRequestKind } from "../../types/leave";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
+import { noManagerApproverLabel } from "../../utils/format";
+import { useAuth } from "../../context/AuthContext";
 
 const { Text, Title } = Typography;
 
@@ -58,6 +60,8 @@ interface ApplyForLeaveModalProps {
 }
 
 export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, managerName, peers }: ApplyForLeaveModalProps) {
+  const { user } = useAuth();
+  const approverLabel = managerName ? `${managerName} (reporting manager)` : noManagerApproverLabel(user?.role);
   const [kind, setKind] = useState<LeaveRequestKind>("casual");
   const [range, setRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [reason, setReason] = useState("");
@@ -222,7 +226,7 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
         </div>
         <div>
           <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Approver</Text>
-          <Input style={{ marginTop: 4 }} value={managerName ? `${managerName} (reporting manager)` : "None - top of org, auto-approved"} disabled />
+          <Input style={{ marginTop: 4 }} value={approverLabel} title={approverLabel} disabled />
         </div>
       </div>
 

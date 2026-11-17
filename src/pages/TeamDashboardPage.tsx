@@ -299,8 +299,8 @@ export default function TeamDashboardPage() {
         open={leaveOpen}
         onClose={() => setLeaveOpen(false)}
         onSubmitted={() => {
+          // The modal already shows its own "submitted" toast.
           setLeaveOpen(false);
-          message.success("Leave request submitted");
           load();
         }}
         balances={balances}
@@ -312,7 +312,6 @@ export default function TeamDashboardPage() {
         onClose={() => setExpenseOpen(false)}
         onSubmitted={() => {
           setExpenseOpen(false);
-          message.success("Expense claim submitted");
         }}
         types={expenseTypes}
         managerName={user?.managerName ?? null}

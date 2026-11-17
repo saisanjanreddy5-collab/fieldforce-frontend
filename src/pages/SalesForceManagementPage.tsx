@@ -365,21 +365,33 @@ export default function SalesForceManagementPage() {
               allowClear
             />
             <Space size={6} wrap>
-              <Tag.CheckableTag checked={statusFilter === null} onChange={() => setStatusFilter(null)}>
+              <Tag.CheckableTag
+                checked={statusFilter === null}
+                onChange={() => {
+                  setStatusFilter(null);
+                  setPeoplePage(1);
+                }}
+              >
                 All {users.length}
               </Tag.CheckableTag>
               {STATUS_OPTIONS.map((s) => (
                 <Tag.CheckableTag
                   key={s.value}
                   checked={statusFilter === s.value}
-                  onChange={(checked) => setStatusFilter(checked ? s.value : null)}
+                  onChange={(checked) => {
+                    setStatusFilter(checked ? s.value : null);
+                    setPeoplePage(1);
+                  }}
                 >
                   {s.label} {statusCounts[s.value] ?? 0}
                 </Tag.CheckableTag>
               ))}
               <Tag.CheckableTag
                 checked={statusFilter === "below_target"}
-                onChange={(checked) => setStatusFilter(checked ? "below_target" : null)}
+                onChange={(checked) => {
+                  setStatusFilter(checked ? "below_target" : null);
+                  setPeoplePage(1);
+                }}
               >
                 Below target {belowTargetUserIds.size}
               </Tag.CheckableTag>

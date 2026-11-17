@@ -47,6 +47,10 @@ export default function ExpensesPage() {
   // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
+  // Which row action is in flight - drives that button's spinner and
+  // blocks double-taps (a second Approve tap would otherwise fire a second
+  // request against an already-decided claim).
+  const [acting, setActing] = useState<{ id: string; action: "approved" | "rejected" | "paid" } | null>(null);
 
   // Opens pre-filled when arriving from a cross-module handoff (the Activity
   // calendar's site-visit "Log fuel expense" button). The param is captured
@@ -129,23 +133,37 @@ export default function ExpensesPage() {
     [allClaims, statusFilter]
   );
 
+  // Same guard as ApprovalsPage: deciding the last claim on the last page
+  // (e.g. under the Pending filter) shrinks the list out from under the
+  // current page - clamp back to the last page that still has rows.
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredClaims.length / PAGE_SIZE));
+    if (page > maxPage) setPage(maxPage);
+  }, [filteredClaims.length, page]);
+
   const handleDecision = async (id: string, decision: "approved" | "rejected") => {
+    setActing({ id, action: decision });
     try {
       await expenseApi.decideExpenseClaim(id, decision);
       message.success(`Claim ${decision}`);
       load();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to record decision"));
+    } finally {
+      setActing(null);
     }
   };
 
   const handleMarkPaid = async (id: string) => {
+    setActing({ id, action: "paid" });
     try {
       await expenseApi.markClaimPaid(id);
       message.success("Claim marked as paid");
       load();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to mark claim paid"));
+    } finally {
+      setActing(null);
     }
   };
 
@@ -358,16 +376,28 @@ export default function ExpensesPage() {
                   )}
                   {isMyDecision && (
                     <>
-                      <Button size="small" type="primary" onClick={() => handleDecision(c.id, "approved")}>
+                      <Button
+                        size="small"
+                        type="primary"
+                        loading={acting?.id === c.id && acting.action === "approved"}
+                        disabled={acting?.id === c.id && acting.action !== "approved"}
+                        onClick={() => handleDecision(c.id, "approved")}
+                      >
                         Approve
                       </Button>
-                      <Button size="small" danger onClick={() => handleDecision(c.id, "rejected")}>
+                      <Button
+                        size="small"
+                        danger
+                        loading={acting?.id === c.id && acting.action === "rejected"}
+                        disabled={acting?.id === c.id && acting.action !== "rejected"}
+                        onClick={() => handleDecision(c.id, "rejected")}
+                      >
                         Reject
                       </Button>
                     </>
                   )}
                   {canMarkPaid && c.status === "approved" && (
-                    <Button size="small" type="link" onClick={() => handleMarkPaid(c.id)}>
+                    <Button size="small" type="link" loading={acting?.id === c.id && acting.action === "paid"} onClick={() => handleMarkPaid(c.id)}>
                       Mark paid
                     </Button>
                   )}

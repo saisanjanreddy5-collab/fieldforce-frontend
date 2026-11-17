@@ -10,6 +10,8 @@ import { errorMessageFrom } from "../../utils/api-error";
 import { limitUnitSuffix } from "../../utils/expense-format";
 import { EXPENSE_TYPE_ICON } from "../../utils/expense-icons";
 import { appTokens } from "../../utils/design-system";
+import { noManagerApproverLabel } from "../../utils/format";
+import { useAuth } from "../../context/AuthContext";
 
 const { Text, Title } = Typography;
 
@@ -39,6 +41,8 @@ interface NewExpenseClaimModalProps {
 }
 
 export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, managerName, initialTypeKey }: NewExpenseClaimModalProps) {
+  const { user } = useAuth();
+  const approverLabel = managerName ? `${managerName} (reporting manager)` : noManagerApproverLabel(user?.role);
   const [typeKey, setTypeKey] = useState<ExpenseTypeKey>("travel");
   const [title, setTitle] = useState("");
   const [expenseDate, setExpenseDate] = useState<Dayjs | null>(dayjs());
@@ -228,7 +232,7 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
         </div>
         <div>
           <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Approver</Text>
-          <Input style={{ marginTop: 4 }} value={managerName ? `${managerName} (reporting manager)` : "None - top of org, auto-approved"} disabled />
+          <Input style={{ marginTop: 4 }} value={approverLabel} title={approverLabel} disabled />
         </div>
       </div>
 

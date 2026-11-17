@@ -43,10 +43,12 @@ async function copy(text: string, label: string) {
 interface WebsiteLeadSourceCardProps {
   source: WebsiteLeadSource;
   onEdit: () => void;
+  /** website_lead_sources.manage - without it Edit / Pause / Activate are hidden. */
+  canManage?: boolean;
   onChanged: () => void;
 }
 
-export function WebsiteLeadSourceCard({ source, onEdit, onChanged }: WebsiteLeadSourceCardProps) {
+export function WebsiteLeadSourceCard({ source, onEdit, onChanged, canManage = true }: WebsiteLeadSourceCardProps) {
   const [showIntegration, setShowIntegration] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -133,15 +135,19 @@ export function WebsiteLeadSourceCard({ source, onEdit, onChanged }: WebsiteLead
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <Button size="small" onClick={onEdit}>
-          Edit
-        </Button>
+        {canManage && (
+          <Button size="small" onClick={onEdit}>
+            Edit
+          </Button>
+        )}
         <Button size="small" onClick={() => setShowIntegration((v) => !v)}>
           {showIntegration ? "Hide integration details" : "Get integration details"}
         </Button>
-        <Button size="small" danger={source.status === "active"} loading={busy} onClick={toggleStatus}>
-          {source.status === "active" ? "Pause" : "Activate"}
-        </Button>
+        {canManage && (
+          <Button size="small" danger={source.status === "active"} loading={busy} onClick={toggleStatus}>
+            {source.status === "active" ? "Pause" : "Activate"}
+          </Button>
+        )}
       </div>
     </div>
   );

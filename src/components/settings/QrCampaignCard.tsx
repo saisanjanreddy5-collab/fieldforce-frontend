@@ -16,6 +16,8 @@ function publicUrlFor(code: string): string {
 interface QrCampaignCardProps {
   campaign: QrCampaign;
   onEdit: () => void;
+  /** qr_campaigns.manage - without it Edit / Pause / Activate are hidden (download + print stay). */
+  canManage?: boolean;
   onChanged: () => void;
 }
 
@@ -23,7 +25,7 @@ interface QrCampaignCardProps {
 // origin's /f/:code route, generated client-side (qrcode) from the same
 // data the "Print sheet"/"Download" actions use, so there's nothing baked
 // into the image that the backend doesn't actually serve.
-export function QrCampaignCard({ campaign, onEdit, onChanged }: QrCampaignCardProps) {
+export function QrCampaignCard({ campaign, onEdit, onChanged, canManage = true }: QrCampaignCardProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const url = campaign.code ? publicUrlFor(campaign.code) : null;
@@ -175,9 +177,11 @@ export function QrCampaignCard({ campaign, onEdit, onChanged }: QrCampaignCardPr
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Button size="small" onClick={onEdit}>
-          Edit
-        </Button>
+        {canManage && (
+          <Button size="small" onClick={onEdit}>
+            Edit
+          </Button>
+        )}
         <Dropdown
           menu={{
             items: [
@@ -194,9 +198,11 @@ export function QrCampaignCard({ campaign, onEdit, onChanged }: QrCampaignCardPr
         <Button size="small" onClick={openPrintSheet} disabled={!dataUrl}>
           Print sheet
         </Button>
-        <Button size="small" danger={campaign.status === "active"} loading={busy} onClick={toggleStatus}>
-          {campaign.status === "active" ? "Pause" : "Activate"}
-        </Button>
+        {canManage && (
+          <Button size="small" danger={campaign.status === "active"} loading={busy} onClick={toggleStatus}>
+            {campaign.status === "active" ? "Pause" : "Activate"}
+          </Button>
+        )}
       </div>
     </div>
   );

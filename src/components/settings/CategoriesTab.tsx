@@ -4,11 +4,15 @@ import { HolderOutlined } from "@ant-design/icons";
 import * as leadCategoryApi from "../../api/lead-category-api";
 import type { LeadCategory } from "../../types/lead-category";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 import { EditCategoryModal } from "./EditCategoryModal";
 
 const { Text } = Typography;
 
 export function CategoriesTab() {
+  const hasPermission = useHasPermission();
+  // Same permission the backend checks on POST/PATCH (incl. reorder) - view-only roles just see the list.
+  const canManage = hasPermission("lead_categories.manage");
   const [categories, setCategories] = useState<LeadCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<LeadCategory | null>(null);
@@ -73,8 +77,8 @@ export function CategoriesTab() {
           return (
             <div
               key={category.key}
-              draggable
-              onDragStart={() => setDraggingKey(category.key)}
+              draggable={canManage}
+              onDragStart={() => canManage && setDraggingKey(category.key)}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOverKey(category.key);
@@ -92,10 +96,10 @@ export function CategoriesTab() {
                 borderBottom: idx === categories.length - 1 ? "none" : `1px solid ${appTokens.borderLight}`,
                 background: isDragOver ? appTokens.primarySoft : appTokens.surface,
                 opacity: draggingKey === category.key ? 0.4 : 1,
-                cursor: "grab",
+                cursor: canManage ? "grab" : "default",
               }}
             >
-              <HolderOutlined style={{ color: appTokens.textTertiary, flexShrink: 0 }} />
+              {canManage && <HolderOutlined style={{ color: appTokens.textTertiary, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Text strong style={{ fontSize: 13.5 }}>
                   {category.label}
@@ -118,16 +122,20 @@ export function CategoriesTab() {
               >
                 {category.isActive ? "Active" : "Inactive"}
               </Tag>
-              <Button size="small" type="link" onClick={() => setEditing(category)}>
-                Edit
-              </Button>
+              {canManage && (
+                <Button size="small" type="link" onClick={() => setEditing(category)}>
+                  Edit
+                </Button>
+              )}
             </div>
           );
         })}
 
-      <div style={{ padding: "14px 18px" }}>
-        <Button onClick={() => setCreating(true)}>+ Add category</Button>
-      </div>
+      {canManage && (
+        <div style={{ padding: "14px 18px" }}>
+          <Button onClick={() => setCreating(true)}>+ Add category</Button>
+        </div>
+      )}
 
       <EditCategoryModal
         open={editing !== null || creating}

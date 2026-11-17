@@ -3,11 +3,15 @@ import { Button, Tag, Typography, message } from "antd";
 import * as messageTemplateApi from "../../api/message-template-api";
 import type { MessageTemplate } from "../../types/message-template";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 import { EditTemplateModal } from "./EditTemplateModal";
 
 const { Text } = Typography;
 
 export function TemplatesTab() {
+  const hasPermission = useHasPermission();
+  // Same permission the backend checks on POST/PATCH - view-only roles just see the list.
+  const canManage = hasPermission("message_templates.manage");
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<MessageTemplate | null>(null);
@@ -86,15 +90,19 @@ export function TemplatesTab() {
             >
               {t.status === "active" ? "Active" : "Draft"}
             </Tag>
-            <Button size="small" type="link" onClick={() => setEditing(t)}>
-              Edit
-            </Button>
+            {canManage && (
+              <Button size="small" type="link" onClick={() => setEditing(t)}>
+                Edit
+              </Button>
+            )}
           </div>
         ))}
 
-      <div style={{ padding: "14px 18px" }}>
-        <Button onClick={() => setCreating(true)}>+ Add template</Button>
-      </div>
+      {canManage && (
+        <div style={{ padding: "14px 18px" }}>
+          <Button onClick={() => setCreating(true)}>+ Add template</Button>
+        </div>
+      )}
 
       <EditTemplateModal
         open={editing !== null || creating}

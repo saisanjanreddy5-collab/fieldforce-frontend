@@ -11,6 +11,7 @@ import {
 import * as leaveApi from "../../api/leave-api";
 import type { LeaveType, LeaveTypeKey } from "../../types/leave";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 import { EditLeaveTypeModal } from "./EditLeaveTypeModal";
 
 const { Text } = Typography;
@@ -29,6 +30,9 @@ function entitlementLabel(type: LeaveType): string {
 }
 
 export function LeaveTypesTab() {
+  const hasPermission = useHasPermission();
+  // Same permission the backend checks on PATCH /leave/types/:key.
+  const canManage = hasPermission("leave_types.manage");
   const [types, setTypes] = useState<LeaveType[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<LeaveType | null>(null);
@@ -105,9 +109,11 @@ export function LeaveTypesTab() {
               </Text>
               <Text style={{ fontSize: 11.5, color: appTokens.textTertiary }}>{type.approverNote}</Text>
             </div>
-            <Button size="small" type="link" onClick={() => setEditing(type)}>
-              Edit
-            </Button>
+            {canManage && (
+              <Button size="small" type="link" onClick={() => setEditing(type)}>
+                Edit
+              </Button>
+            )}
           </div>
         ))}
 

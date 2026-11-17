@@ -22,6 +22,9 @@ export interface Customer {
   addressLine2: string | null;
   territory: string | null;
   creditLimit: number;
+  // What the salesperson requested on the lead (detail view only) - shown to
+  // an Admin as a suggestion; a new customer's real limit starts at 0.
+  creditLimitRequested?: number | null;
   outstandingBalance: number;
   creditCategory: "A" | "B" | "C" | "D" | null;
   status: "active" | "inactive" | "on_hold";

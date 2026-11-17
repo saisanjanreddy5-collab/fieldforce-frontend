@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layout, Menu, Button, Drawer, Grid, Avatar, message } from "antd";
+import { Layout, Menu, Button, Drawer, Grid, Avatar, Modal, message } from "antd";
 import type { MenuProps } from "antd";
-import { MenuOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
+import { MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
@@ -55,6 +55,7 @@ export function AppLayout() {
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const { user } = useAuth();
   const hasPermission = useHasPermission();
   const navigate = useNavigate();
@@ -214,7 +215,10 @@ export function AppLayout() {
 
           {!isMobile && <GlobalSearch />}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 14, flexShrink: 0 }}>
+            {isMobile && (
+              <Button type="text" icon={<SearchOutlined />} aria-label="Search" onClick={() => setMobileSearchOpen(true)} />
+            )}
             <div
               onClick={() => setProfileOpen(true)}
               style={{ display: "flex", alignItems: "center", gap: 9, cursor: "pointer" }}
@@ -248,6 +252,18 @@ export function AppLayout() {
         </Content>
       </Layout>
       <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
+      {/* Phones have no room for the header search box - same GlobalSearch,
+          opened full-width from the header icon. */}
+      <Modal
+        open={isMobile && mobileSearchOpen}
+        onCancel={() => setMobileSearchOpen(false)}
+        footer={null}
+        title="Search"
+        destroyOnHidden
+        style={{ top: 12 }}
+      >
+        <GlobalSearch fullWidth autoFocus onNavigate={() => setMobileSearchOpen(false)} />
+      </Modal>
     </Layout>
   );
 }

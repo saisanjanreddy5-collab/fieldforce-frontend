@@ -34,6 +34,13 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
   const [searchingLeads, setSearchingLeads] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchToken = useRef(0);
+  // Read inside async callbacks (not the render-time leadId closure), so a
+  // response that lands before/after setLeadId(defaultLeadId) still keeps
+  // the selected lead in the options instead of showing a raw UUID.
+  const selectedLeadIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    selectedLeadIdRef.current = leadId;
+  }, [leadId]);
 
   // Searches the server as you type (not just a fixed first page), so any
   // lead you can see is findable however many leads exist. The selected
@@ -46,7 +53,8 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
       .then((result) => {
         if (token !== searchToken.current) return;
         setLeads((prev) => {
-          const selected = prev.find((l) => l.id === leadId);
+          const selectedId = selectedLeadIdRef.current;
+          const selected = prev.find((l) => l.id === selectedId);
           return selected && !result.leads.some((l) => l.id === selected.id) ? [selected, ...result.leads] : result.leads;
         });
       })
@@ -63,6 +71,7 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
 
   useEffect(() => {
     if (!open) return;
+    selectedLeadIdRef.current = defaultLeadId;
     loadLeads();
     // The first page above has no guarantee of including the specific lead
     // this modal was launched from - the Select would then hold
@@ -143,8 +152,10 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Always visible, never scrolls away - you should never lose sight
             of which lead/opportunity you're quoting while adding items. */}
-        <div style={{ display: "flex", gap: 12 }}>
-          <div style={{ flex: 1 }}>
+        {/* Wraps on a phone - side by side, the Opportunity select was
+            pushed off the right edge and could not be picked. */}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <Text style={{ fontSize: 12.5, fontWeight: 600, display: "block", marginBottom: 4, color: appTokens.textSecondary }}>
               Lead <span style={{ color: appTokens.danger }}>*</span>
             </Text>
@@ -165,7 +176,7 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
               }))}
             />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <Text style={{ fontSize: 12.5, fontWeight: 600, display: "block", marginBottom: 4, color: appTokens.textSecondary }}>
               Opportunity <span style={{ color: appTokens.danger }}>*</span>
             </Text>

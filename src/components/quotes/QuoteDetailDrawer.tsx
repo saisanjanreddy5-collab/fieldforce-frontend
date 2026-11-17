@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { App, Button, Drawer, Input, Modal, Select, Skeleton, Space, Tag, Typography } from "antd";
+import { App, Button, Drawer, Empty, Input, Modal, Select, Skeleton, Space, Tag, Typography } from "antd";
 import { DownloadOutlined, EditOutlined, HistoryOutlined } from "@ant-design/icons";
 import * as quoteApi from "../../api/quote-api";
 import type { QuoteDetail, QuoteLineItemInput, QuoteStatus, QuoteVersion } from "../../types/quote";
@@ -26,6 +26,7 @@ export function QuoteDetailDrawer({ quoteId, onClose, onChanged }: QuoteDetailDr
 
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<QuoteDetail | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editLineItems, setEditLineItems] = useState<QuoteLineItemInput[]>([]);
   const [editNotes, setEditNotes] = useState("");
@@ -38,10 +39,14 @@ export function QuoteDetailDrawer({ quoteId, onClose, onChanged }: QuoteDetailDr
   const load = () => {
     if (!quoteId) return;
     setLoading(true);
+    setLoadFailed(false);
     quoteApi
       .getQuote(quoteId)
       .then(setDetail)
-      .catch(() => message.error("Failed to load this quote"))
+      .catch(() => {
+        setLoadFailed(true);
+        message.error("Failed to load this quote");
+      })
       .finally(() => setLoading(false));
   };
 
@@ -122,7 +127,15 @@ export function QuoteDetailDrawer({ quoteId, onClose, onChanged }: QuoteDetailDr
         destroyOnHidden
         styles={{ body: { background: "#fafafa" } }}
       >
-        {loading || !detail ? (
+        {loadFailed && !loading && !detail ? (
+          // Finished loading with nothing to show = the request failed; a
+          // skeleton here would shimmer forever.
+          <Empty description="Couldn't load this quote" style={{ padding: 40 }}>
+            <Button size="small" onClick={load}>
+              Retry
+            </Button>
+          </Empty>
+        ) : loading || !detail ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
