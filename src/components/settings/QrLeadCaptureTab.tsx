@@ -5,6 +5,7 @@ import * as websiteLeadSourceApi from "../../api/website-lead-source-api";
 import type { QrCampaign, QrCampaignSummary } from "../../types/qr-campaign";
 import type { WebsiteLeadSource } from "../../types/website-lead-source";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 import { QrCampaignCard } from "./QrCampaignCard";
 import { GenerateQrCampaignModal } from "./GenerateQrCampaignModal";
 import { WebsiteLeadSourceCard } from "./WebsiteLeadSourceCard";
@@ -14,6 +15,10 @@ import { StatsRow } from "../StatsRow";
 const { Text } = Typography;
 
 export function QrLeadCaptureTab() {
+  const hasPermission = useHasPermission();
+  // Same permissions the backend checks on POST/PATCH - view-only roles see the codes/sources but not the write actions.
+  const canManageQr = hasPermission("qr_campaigns.manage");
+  const canManageSources = hasPermission("website_lead_sources.manage");
   const [campaigns, setCampaigns] = useState<QrCampaign[]>([]);
   const [summary, setSummary] = useState<QrCampaignSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,9 +91,11 @@ export function QrLeadCaptureTab() {
               </Text>
             </div>
           </div>
-          <Button type="primary" onClick={() => setCreating(true)}>
-            + Generate QR code
-          </Button>
+          {canManageQr && (
+            <Button type="primary" onClick={() => setCreating(true)}>
+              + Generate QR code
+            </Button>
+          )}
         </div>
 
         {!loading && campaigns.length === 0 && (
@@ -100,7 +107,7 @@ export function QrLeadCaptureTab() {
         {campaigns.length > 0 && (
           <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
             {campaigns.map((c) => (
-              <QrCampaignCard key={c.id} campaign={c} onEdit={() => setEditing(c)} onChanged={load} />
+              <QrCampaignCard key={c.id} campaign={c} canManage={canManageQr} onEdit={() => setEditing(c)} onChanged={load} />
             ))}
           </div>
         )}
@@ -127,9 +134,11 @@ export function QrLeadCaptureTab() {
               </Text>
             </div>
           </div>
-          <Button type="primary" onClick={() => setCreatingSource(true)}>
-            + Add website source
-          </Button>
+          {canManageSources && (
+            <Button type="primary" onClick={() => setCreatingSource(true)}>
+              + Add website source
+            </Button>
+          )}
         </div>
 
         {!websiteLoading && websiteSources.length === 0 && (
@@ -143,7 +152,7 @@ export function QrLeadCaptureTab() {
         {websiteSources.length > 0 && (
           <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
             {websiteSources.map((s) => (
-              <WebsiteLeadSourceCard key={s.id} source={s} onEdit={() => setEditingSource(s)} onChanged={loadWebsiteSources} />
+              <WebsiteLeadSourceCard key={s.id} source={s} canManage={canManageSources} onEdit={() => setEditingSource(s)} onChanged={loadWebsiteSources} />
             ))}
           </div>
         )}

@@ -4,6 +4,7 @@ import * as leadInquiryOptionApi from "../../api/lead-inquiry-option-api";
 import type { InquiryOptionFieldType, LeadInquiryOption } from "../../types/lead-inquiry-option";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 
 const { Text } = Typography;
 
@@ -16,6 +17,9 @@ function OptionListCard({
   title: string;
   description: string;
 }) {
+  const hasPermission = useHasPermission();
+  // Same permission the backend checks on POST/PATCH - view-only roles just see the list.
+  const canManage = hasPermission("lead_inquiry_options.manage");
   const [options, setOptions] = useState<LeadInquiryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLabel, setNewLabel] = useState("");
@@ -89,27 +93,29 @@ function OptionListCard({
           >
             <Text style={{ fontSize: 13.5, flex: 1 }}>{option.label}</Text>
             <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{option.isActive ? "Active" : "Inactive"}</Text>
-            <Switch checked={option.isActive} onChange={() => toggleActive(option)} />
+            <Switch checked={option.isActive} disabled={!canManage} onChange={() => toggleActive(option)} />
           </div>
         ))}
 
       {!loading && options.length === 0 && (
         <div style={{ padding: "14px 18px" }}>
-          <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>No options yet - add the first one below.</Text>
+          <Text style={{ fontSize: 13, color: appTokens.textTertiary }}>{canManage ? "No options yet - add the first one below." : "No options yet."}</Text>
         </div>
       )}
 
-      <div style={{ padding: "14px 18px", display: "flex", gap: 8 }}>
-        <Input
-          placeholder={`Add a new ${title.toLowerCase().replace(/ options$/, "")}`}
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          onPressEnter={handleAdd}
-        />
-        <Button onClick={handleAdd} loading={adding} disabled={!newLabel.trim()}>
-          Add
-        </Button>
-      </div>
+      {canManage && (
+        <div style={{ padding: "14px 18px", display: "flex", gap: 8 }}>
+          <Input
+            placeholder={`Add a new ${title.toLowerCase().replace(/ options$/, "")}`}
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onPressEnter={handleAdd}
+          />
+          <Button onClick={handleAdd} loading={adding} disabled={!newLabel.trim()}>
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

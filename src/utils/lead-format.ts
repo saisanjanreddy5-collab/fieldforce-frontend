@@ -43,13 +43,16 @@ export function formatCompactCurrency(value: number | null): string {
 // Exact money (paise kept) - for a single claim/invoice/payment amount
 // someone is approving or reconciling, where rounding ₹149.50 to ₹150
 // would misstate it. formatCurrency below stays whole-rupee for summaries.
+// Whole rupees show no decimals (₹4,284); anything with paise always shows
+// both digits (₹149.50, never ₹149.5).
 export function formatExactCurrency(value: number | null): string {
   if (value === null) return "-";
+  const hasPaise = Math.round(value * 100) % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: hasPaise ? 2 : 0,
+    maximumFractionDigits: hasPaise ? 2 : 0,
   }).format(value);
 }
 

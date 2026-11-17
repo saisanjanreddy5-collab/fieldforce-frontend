@@ -8,6 +8,8 @@ import type { ApprovalBand, ApprovalRequestType } from "../../types/approval-ban
 import type { Level } from "../../types/level";
 import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
+import { formatExactCurrency } from "../../utils/lead-format";
+import { useHasPermission } from "../../hooks/use-permission";
 import { ApprovalBandDrawer } from "../ApprovalBandDrawer";
 
 const { Text, Title } = Typography;
@@ -28,6 +30,10 @@ interface Row {
 // was the actual complaint, not the underlying honesty about what's real.
 export function ApprovalsTab() {
   const navigate = useNavigate();
+  const hasPermission = useHasPermission();
+  // Same permissions the backend checks: PATCH /app-settings/:key and POST /approval-bands.
+  const canEditThreshold = hasPermission("app_settings.manage");
+  const canAddBand = hasPermission("approval_bands.create");
   const [threshold, setThreshold] = useState<number | null>(null);
   const [bands, setBands] = useState<ApprovalBand[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
@@ -60,7 +66,7 @@ export function ApprovalsTab() {
     {
       key: "deal_value",
       name: "Deal value approval",
-      description: `Regional head sign-off required above ₹${threshold !== null ? (threshold / 100000).toFixed(0) : "…"}L, before a lead can be pushed to FOFO onboarding.`,
+      description: `Regional head sign-off required above ${threshold !== null ? formatExactCurrency(threshold) : "…"}, before a lead can be pushed to FOFO onboarding.`,
       status: "enforced",
       action: "edit_threshold",
     },
@@ -163,7 +169,7 @@ export function ApprovalsTab() {
             >
               {STATUS_LABEL[row.status]}
             </Tag>
-            {row.action === "edit_threshold" && (
+            {row.action === "edit_threshold" && canEditThreshold && (
               <Button size="small" type="link" onClick={() => setThresholdModalOpen(true)}>
                 Edit
               </Button>
@@ -179,9 +185,11 @@ export function ApprovalsTab() {
           </div>
         ))}
 
-      <div style={{ padding: "14px 18px" }}>
-        <Button onClick={() => setAddBandOpen(true)}>+ Add approval band</Button>
-      </div>
+      {canAddBand && (
+        <div style={{ padding: "14px 18px" }}>
+          <Button onClick={() => setAddBandOpen(true)}>+ Add approval band</Button>
+        </div>
+      )}
 
       <ThresholdModal
         open={thresholdModalOpen}

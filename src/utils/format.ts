@@ -34,3 +34,12 @@ export function roleLabel(role: string): string {
       .join(" ")
   );
 }
+
+// What the "Approver" field says when the requester has no reporting
+// manager - mirrors the backend routing: such a request goes to any Admin;
+// only an Admin with no manager AND no other active Admin is auto-approved.
+export function noManagerApproverLabel(role: string | undefined): string {
+  return role === "admin"
+    ? "No reporting manager - another Admin will approve (auto-approved only if you're the sole Admin)"
+    : "No reporting manager - any Admin will approve";
+}

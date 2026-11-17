@@ -122,7 +122,9 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
           <Button size="small" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Show active" : "Show archived"}
           </Button>
-          <Tag color="gold">Configuration only - not enforced yet</Tag>
+          <Tag color="gold" style={{ whiteSpace: "normal" }}>
+            Expense claim bands are live - discount, customer creation and credit limit bands are configuration only
+          </Tag>
         </div>
       </div>
 
@@ -141,9 +143,18 @@ export function ApprovalBandsCard({ levels }: ApprovalBandsCardProps) {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <Text strong style={{ fontSize: 13 }}>
-                  {opt.label}
-                </Text>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Text strong style={{ fontSize: 13 }}>
+                    {opt.label}
+                  </Text>
+                  {opt.value === "expense_claim" ? (
+                    <Tag color="green" style={{ margin: 0, fontSize: 11 }}>
+                      Live
+                    </Tag>
+                  ) : (
+                    <Tag style={{ margin: 0, fontSize: 11 }}>Configuration only</Tag>
+                  )}
+                </div>
                 {canCreate && !showArchived && (
                   <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => openCreate(opt.value)}>
                     Add band

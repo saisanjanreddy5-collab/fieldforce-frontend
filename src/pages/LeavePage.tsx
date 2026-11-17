@@ -37,6 +37,8 @@ export default function LeavePage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("mine");
   const [minePage, setMinePage] = useState(1);
+  // Which approval row is mid-request - spinner on that button, blocks double-taps.
+  const [deciding, setDeciding] = useState<{ id: string; decision: "approved" | "rejected" } | null>(null);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
@@ -91,12 +93,15 @@ export default function LeavePage() {
   };
 
   const handleDecision = async (id: string, decision: "approved" | "rejected") => {
+    setDeciding({ id, decision });
     try {
       await leaveApi.decideLeaveRequest(id, decision);
       message.success(`Request ${decision}`);
       load();
     } catch (err) {
       message.error(errorMessageFrom(err, "Failed to record decision"));
+    } finally {
+      setDeciding(null);
     }
   };
 
@@ -232,10 +237,22 @@ export default function LeavePage() {
                 key: "actions",
                 render: (_, r) => (
                   <div style={{ display: "flex", gap: 8 }}>
-                    <Button size="small" type="primary" onClick={() => handleDecision(r.id, "approved")}>
+                    <Button
+                      size="small"
+                      type="primary"
+                      loading={deciding?.id === r.id && deciding.decision === "approved"}
+                      disabled={deciding?.id === r.id && deciding.decision !== "approved"}
+                      onClick={() => handleDecision(r.id, "approved")}
+                    >
                       Approve
                     </Button>
-                    <Button size="small" danger onClick={() => handleDecision(r.id, "rejected")}>
+                    <Button
+                      size="small"
+                      danger
+                      loading={deciding?.id === r.id && deciding.decision === "rejected"}
+                      disabled={deciding?.id === r.id && deciding.decision !== "rejected"}
+                      onClick={() => handleDecision(r.id, "rejected")}
+                    >
                       Reject
                     </Button>
                   </div>

@@ -607,23 +607,27 @@ function DocumentsStep({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            // Wraps the action buttons onto their own line on a phone instead
+            // of a long filename pushing Replace/Upload off-screen.
+            flexWrap: "wrap",
+            gap: 8,
             padding: "10px 14px",
             background: appTokens.surfaceMuted,
             borderRadius: appTokens.radiusSm,
             borderLeft: `3px solid ${DOC_STATUS_ACCENT[doc.status] ?? appTokens.textTertiary}`,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0, flex: "1 1 160px" }}>
             <Text strong style={{ display: "block", fontSize: 13 }}>
               {doc.label}
             </Text>
             {doc.hasFile && (
-              <Text type="secondary" style={{ fontSize: 11 }}>
+              <Text type="secondary" style={{ display: "block", fontSize: 11, overflowWrap: "anywhere" }}>
                 {doc.originalFilename}
               </Text>
             )}
           </div>
-          <Space size={8}>
+          <Space size={8} wrap>
             <Tag color={DOC_STATUS_COLORS[doc.status]}>{DOC_STATUS_LABELS[doc.status]}</Tag>
             {doc.hasFile && (
               <Button size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(doc)} />

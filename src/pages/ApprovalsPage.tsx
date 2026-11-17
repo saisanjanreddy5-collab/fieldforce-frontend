@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button, Input, Pagination, Spin, Tag, Typography, message } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Grid, Input, Pagination, Spin, Tag, Typography, message } from "antd";
 import { CheckCircleFilled, ClockCircleOutlined, SearchOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as approvalsInboxApi from "../api/approvals-inbox-api";
@@ -12,6 +12,7 @@ import type { ExpenseClaim } from "../types/expense";
 import type { FofoHandoff } from "../types/fofo-onboarding";
 import { errorMessageFrom } from "../utils/api-error";
 import { appTokens } from "../utils/design-system";
+import { formatCompactCurrency } from "../utils/lead-format";
 import { StatsRow } from "../components/StatsRow";
 
 const { Text, Title } = Typography;
@@ -34,6 +35,11 @@ type ViewKey = "pending" | "history";
 const PAGE_SIZE = 10;
 
 export default function ApprovalsPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  // Phone: the detail (with Approve/Reject) is stacked below the queue, so
+  // tapping an item scrolls it into view - same approach as CustomersPage.
+  const detailRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ViewKey>("pending");
   const [inbox, setInbox] = useState<ApprovalInbox | null>(null);
   const [history, setHistory] = useState<ApprovalHistoryItem[] | null>(null);
@@ -150,7 +156,7 @@ export default function ApprovalsPage() {
             },
             {
               label: "Value in queue",
-              value: inbox ? `₹${(inbox.stats.valueInQueue / 100000).toFixed(1)}L` : "—",
+              value: inbox ? formatCompactCurrency(inbox.stats.valueInQueue) : "—",
               subtitle: inbox ? `${inbox.stats.valueInQueueCount} item${inbox.stats.valueInQueueCount === 1 ? "" : "s"}` : undefined,
             },
             {
@@ -275,7 +281,10 @@ export default function ApprovalsPage() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    if (isMobile) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
                   style={{
                     padding: "12px 16px",
                     borderBottom: `1px solid ${appTokens.borderLight}`,
@@ -340,7 +349,7 @@ export default function ApprovalsPage() {
             )}
           </div>
 
-          <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+          <div ref={detailRef} style={{ flex: "1 1 320px", minWidth: 0, scrollMarginTop: 8 }}>
             {selected ? (
               <ApprovalDetail key={selected.id} item={selected} onDecided={view === "pending" ? handleDecided : undefined} />
             ) : (
@@ -631,7 +640,7 @@ function FofoDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () =>
           </Text>
         </div>
         <Text strong style={{ fontSize: 18 }}>
-          {lead.expectedValue !== null ? `₹${(lead.expectedValue / 100000).toFixed(1)}L` : "—"}
+          {lead.expectedValue !== null ? formatCompactCurrency(lead.expectedValue) : "—"}
         </Text>
       </div>
 

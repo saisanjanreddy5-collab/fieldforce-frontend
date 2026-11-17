@@ -228,6 +228,12 @@ function OverviewTab({
             Credit limit and outstanding balance can only be changed by an Admin.
           </Text>
         )}
+        {canEditCredit && customer.creditLimitRequested !== null && customer.creditLimitRequested !== undefined && customer.creditLimitRequested > 0 && (
+          <Text style={{ fontSize: 11.5, color: appTokens.textTertiary, display: "block", marginTop: 6 }}>
+            Requested on the lead: {formatExactCurrency(customer.creditLimitRequested)}
+            {customer.creditLimit === 0 ? " - set the credit limit above to approve it." : ""}
+          </Text>
+        )}
       </div>
 
       <div>
@@ -240,7 +246,8 @@ function OverviewTab({
           <Field label="Territory" value={customer.territory} />
           <div>
             <Text style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, display: "block" }}>Salesperson</Text>
-            {canUpdate && users.length > 0 ? (
+            {/* Reassigning the account is Admin-only (enforced by the backend). */}
+            {canUpdate && canEditCredit && users.length > 0 ? (
               <Select
                 showSearch
                 allowClear
@@ -754,7 +761,18 @@ function AddTransactionModal({
   );
 }
 
-function TransactionsTab({ customerId, canUpdate, onDataChanged }: { customerId: string; canUpdate: boolean; onDataChanged: () => void }) {
+type TransactionKind = "sales_order" | "invoice" | "payment";
+
+function TransactionsTab({
+  customerId,
+  canCreate,
+  onDataChanged,
+}: {
+  customerId: string;
+  /** Per-kind create permission - mirrors the backend (sales_orders.create / invoices.create / payments.create), not customers.update. */
+  canCreate: Record<TransactionKind, boolean>;
+  onDataChanged: () => void;
+}) {
   const [items, setItems] = useState<TransactionFeedItem[] | null>(null);
   const [addKind, setAddKind] = useState<"sales_order" | "invoice" | "payment" | null>(null);
 
@@ -765,17 +783,21 @@ function TransactionsTab({ customerId, canUpdate, onDataChanged }: { customerId:
 
   if (items === null) return <Skeleton active paragraph={{ rows: 3 }} />;
 
+  const addMenuItems = (
+    [
+      { key: "sales_order", label: "Sales order" },
+      { key: "invoice", label: "Invoice" },
+      { key: "payment", label: "Payment" },
+    ] as const
+  ).filter((item) => canCreate[item.key]);
+
   return (
     <div>
-      {canUpdate && (
+      {addMenuItems.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
           <Dropdown
             menu={{
-              items: [
-                { key: "sales_order", label: "Sales order" },
-                { key: "invoice", label: "Invoice" },
-                { key: "payment", label: "Payment" },
-              ],
+              items: addMenuItems,
               onClick: ({ key }) => setAddKind(key as "sales_order" | "invoice" | "payment"),
             }}
           >
@@ -898,11 +920,17 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
   const canUpdate = hasPermission("customers.update");
+  const canCreateTransaction = {
+    sales_order: hasPermission("sales_orders.create"),
+    invoice: hasPermission("invoices.create"),
+    payment: hasPermission("payments.create"),
+  };
   const { connected: microsoftConnected } = useMicrosoftConnection();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [meetingOpen, setMeetingOpen] = useState(false);
@@ -918,6 +946,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const load = () => {
     if (!customerId) return;
     setLoading(true);
+    setLoadFailed(false);
     // Only the customer itself is required - the reassignment dropdown's
     // user list needs users.view, which agent-tier owners (who can still
     // have customers.update) don't have, and states is best-effort display
@@ -929,7 +958,10 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
         setUsers(u);
         setStates(s);
       })
-      .catch(() => message.error("Failed to load this customer"))
+      .catch(() => {
+        setLoadFailed(true);
+        message.error("Failed to load this customer");
+      })
       .finally(() => setLoading(false));
   };
 
@@ -1030,6 +1062,20 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
     );
   }
 
+  if (loadFailed && !loading && !customer) {
+    // Finished loading with nothing to show = the request failed; a
+    // skeleton here would shimmer forever.
+    return (
+      <div style={{ minHeight: 320, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
+        <Empty description="Couldn't load this customer" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+          <Button size="small" onClick={load}>
+            Retry
+          </Button>
+        </Empty>
+      </div>
+    );
+  }
+
   if (loading || !customer) {
     return (
       <div style={{ padding: 20 }}>
@@ -1121,7 +1167,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
           <Button
             size="small"
             icon={<ShoppingOutlined />}
-            disabled={!canUpdate}
+            disabled={!canCreateTransaction.sales_order}
             onClick={() => {
               setTab("transactions");
               setOrderModalOpen(true);
@@ -1157,7 +1203,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
             <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={() => setTab("whatsapp")} />
           )}
           {tab === "transactions" && (
-            <TransactionsTab key={txRefreshKey} customerId={customer.id} canUpdate={canUpdate} onDataChanged={load} />
+            <TransactionsTab key={txRefreshKey} customerId={customer.id} canCreate={canCreateTransaction} onDataChanged={load} />
           )}
           {tab === "whatsapp" && <WhatsAppTab leadId={customer.leadId} fullName={customer.fullName} phone={customer.phone} />}
           {tab === "activity" && <ActivityTimelineTab customerId={customer.id} />}

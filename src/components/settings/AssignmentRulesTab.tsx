@@ -3,11 +3,15 @@ import { Button, Tag, Typography, message } from "antd";
 import * as assignmentRuleApi from "../../api/assignment-rule-api";
 import type { AssignmentRule } from "../../types/assignment-rule";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 import { EditAssignmentRuleModal } from "./EditAssignmentRuleModal";
 
 const { Text } = Typography;
 
 export function AssignmentRulesTab() {
+  const hasPermission = useHasPermission();
+  // Same permission the backend checks on POST/PATCH - view-only roles just see the list.
+  const canManage = hasPermission("assignment_rules.manage");
   const [rules, setRules] = useState<AssignmentRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<AssignmentRule | null>(null);
@@ -87,15 +91,19 @@ export function AssignmentRulesTab() {
             >
               {rule.isActive ? "Active" : "Inactive"}
             </Tag>
-            <Button size="small" type="link" onClick={() => setEditing(rule)}>
-              Edit
-            </Button>
+            {canManage && (
+              <Button size="small" type="link" onClick={() => setEditing(rule)}>
+                Edit
+              </Button>
+            )}
           </div>
         ))}
 
-      <div style={{ padding: "14px 18px" }}>
-        <Button onClick={() => setCreating(true)}>+ Add rule</Button>
-      </div>
+      {canManage && (
+        <div style={{ padding: "14px 18px" }}>
+          <Button onClick={() => setCreating(true)}>+ Add rule</Button>
+        </div>
+      )}
 
       <EditAssignmentRuleModal
         open={editing !== null || creating}

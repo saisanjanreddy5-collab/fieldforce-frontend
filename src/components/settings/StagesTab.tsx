@@ -4,11 +4,15 @@ import { HolderOutlined } from "@ant-design/icons";
 import * as pipelineStageApi from "../../api/pipeline-stage-api";
 import type { PipelineStage } from "../../types/pipeline-stage";
 import { appTokens } from "../../utils/design-system";
+import { useHasPermission } from "../../hooks/use-permission";
 import { EditStageModal } from "./EditStageModal";
 
 const { Text } = Typography;
 
 export function StagesTab() {
+  const hasPermission = useHasPermission();
+  // Same permission the backend checks on POST/PATCH (incl. reorder) - view-only roles just see the list.
+  const canManage = hasPermission("pipeline_stages.manage");
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<PipelineStage | null>(null);
@@ -66,7 +70,7 @@ export function StagesTab() {
         </Text>
         <div>
           <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
-            Drag to reorder. Descriptions show as guidance inside the stage column. Opportunities keep their own separate deal-stage pipeline (the Kanban board), not this list.
+            {canManage ? "Drag to reorder. " : ""}Descriptions show as guidance inside the stage column. Opportunities keep their own separate deal-stage pipeline (the Kanban board), not this list.
           </Text>
         </div>
       </div>
@@ -77,8 +81,8 @@ export function StagesTab() {
           return (
             <div
               key={stage.key}
-              draggable
-              onDragStart={() => setDraggingKey(stage.key)}
+              draggable={canManage}
+              onDragStart={() => canManage && setDraggingKey(stage.key)}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOverKey(stage.key);
@@ -96,10 +100,10 @@ export function StagesTab() {
                 borderBottom: idx === stages.length - 1 ? "none" : `1px solid ${appTokens.borderLight}`,
                 background: isDragOver ? appTokens.primarySoft : appTokens.surface,
                 opacity: draggingKey === stage.key ? 0.4 : 1,
-                cursor: "grab",
+                cursor: canManage ? "grab" : "default",
               }}
             >
-              <HolderOutlined style={{ color: appTokens.textTertiary, flexShrink: 0 }} />
+              {canManage && <HolderOutlined style={{ color: appTokens.textTertiary, flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Text strong style={{ fontSize: 13.5 }}>
                   {stage.label}
@@ -123,16 +127,20 @@ export function StagesTab() {
               >
                 {stage.isActive ? "Active" : "Inactive"}
               </Tag>
-              <Button size="small" type="link" onClick={() => setEditing(stage)}>
-                Edit
-              </Button>
+              {canManage && (
+                <Button size="small" type="link" onClick={() => setEditing(stage)}>
+                  Edit
+                </Button>
+              )}
             </div>
           );
         })}
 
-      <div style={{ padding: "14px 18px" }}>
-        <Button onClick={() => setCreating(true)}>+ Add stage</Button>
-      </div>
+      {canManage && (
+        <div style={{ padding: "14px 18px" }}>
+          <Button onClick={() => setCreating(true)}>+ Add stage</Button>
+        </div>
+      )}
 
       <EditStageModal
         open={editing !== null || creating}

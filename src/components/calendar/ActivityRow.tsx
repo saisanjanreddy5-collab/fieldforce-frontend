@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Tag, Typography, message } from "antd";
+import { Button, Grid, Tag, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import type { Activity } from "../../types/activity";
@@ -12,6 +12,7 @@ import { EmailComposeDrawer } from "./EmailComposeDrawer";
 import { SiteVisitModal } from "./SiteVisitModal";
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const DEFAULT_SUBLABEL: Record<Activity["type"], string> = {
   call: "Phone",
@@ -52,6 +53,8 @@ interface ActivityRowProps {
 // composer here - a duplicate one would drift from the real one over time.
 export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
   const navigate = useNavigate();
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
   const [emailDrawerOpen, setEmailDrawerOpen] = useState(false);
   const [siteVisitModalOpen, setSiteVisitModalOpen] = useState(false);
   const isCompleted = activity.status === "completed";
@@ -135,6 +138,10 @@ export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
       style={{
         display: "flex",
         alignItems: "center",
+        // Phone: the action/status block drops onto its own line under the
+        // subject - side by side, its fixed widths left ~45px for the subject.
+        flexWrap: isMobile ? "wrap" : undefined,
+        rowGap: 6,
         gap: 10,
         padding: "8px 4px",
         borderBottom: isLast ? "none" : `1px solid ${appTokens.borderLight}`,
@@ -180,7 +187,13 @@ export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
         )}
       </div>
 
-      <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+      <div
+        style={
+          isMobile
+            ? { flexBasis: "100%", paddingLeft: 80, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }
+            : { flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }
+        }
+      >
         <div style={{ width: 104, flexShrink: 0 }}>
           {actionLabel && (
             <Button
@@ -205,7 +218,7 @@ export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
             </Button>
           )}
         </div>
-        <div style={{ width: 58, flexShrink: 0, textAlign: "right", lineHeight: 1.25 }}>
+        <div style={isMobile ? { minWidth: 0, textAlign: "right", lineHeight: 1.25 } : { width: 58, flexShrink: 0, textAlign: "right", lineHeight: 1.25 }}>
           <Text strong style={{ fontSize: 11, color: statusColor, display: "block" }}>
             {statusLabel}
           </Text>

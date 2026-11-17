@@ -34,21 +34,24 @@ export function CalendarGrid({ mode, days, activitiesByDay, dayTags, selectedDat
         overflow: "hidden",
       }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: `1px solid ${appTokens.borderLight}` }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", borderBottom: `1px solid ${appTokens.borderLight}` }}>
         {WEEKDAY_HEADERS.map((label) => (
-          <div key={label} style={{ padding: "8px 10px", textAlign: mode === "week" ? "left" : "center" }}>
+          <div key={label} style={{ minWidth: 0, overflow: "hidden", padding: "8px 10px", textAlign: mode === "week" ? "left" : "center" }}>
             <Text style={{ fontSize: 11, fontWeight: 700, color: appTokens.textTertiary, letterSpacing: 0.4 }}>{label}</Text>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+      {/* minmax(0, 1fr) + minWidth: 0 on each cell: a plain 1fr track has an
+          implicit min-content minimum, so one long activity subject could
+          widen its column and squeeze the other six. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
         {days.map((day, idx) => {
           if (!day) {
             return (
               <div
                 key={`blank-${idx}`}
-                style={{ minHeight: cellMinHeight, borderRight: `1px solid ${appTokens.borderLight}`, borderTop: `1px solid ${appTokens.borderLight}` }}
+                style={{ minWidth: 0, minHeight: cellMinHeight, borderRight: `1px solid ${appTokens.borderLight}`, borderTop: `1px solid ${appTokens.borderLight}` }}
               />
             );
           }
@@ -65,6 +68,8 @@ export function CalendarGrid({ mode, days, activitiesByDay, dayTags, selectedDat
               type="button"
               onClick={() => onSelectDate(day)}
               style={{
+                minWidth: 0,
+                overflow: "hidden",
                 minHeight: cellMinHeight,
                 textAlign: "left",
                 border: "none",
@@ -107,7 +112,7 @@ export function CalendarGrid({ mode, days, activitiesByDay, dayTags, selectedDat
                 )}
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
                 {dayActivities.slice(0, maxPreview).map((activity) => (
                   <div
                     key={activity.id}

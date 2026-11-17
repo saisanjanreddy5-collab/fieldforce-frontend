@@ -9,6 +9,8 @@ import type { UserPermissionOverride } from "../types/user-permission-override";
 import type { TeamMember } from "../types/user";
 import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
+import { useAuth } from "../context/AuthContext";
+import { errorMessageFrom } from "../utils/api-error";
 import { verbOf } from "../utils/permission-format";
 import { RECORD_SCOPE_OPTIONS, ladderIndex, seesLabel } from "../utils/level-format";
 import { appTokens } from "../utils/design-system";
@@ -234,8 +236,14 @@ const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => voi
 // "By employee" shows the 4-state effective view (From role / Extra grant
 // / Revoked / Not allowed) on top of that baseline via
 // user_permission_overrides, foundation only exactly as before.
+// Revoking any of these from your own tier would lock you out of this very
+// screen (and with it all of Sales force management) in one click.
+const SELF_LOCKOUT_MODULE_PREFIX = "role_permissions.";
+const SELF_LOCKOUT_TOOLTIP = "You can't remove your own access to permissions";
+
 export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCardProps) {
   const hasPermission = useHasPermission();
+  const { user: currentUser } = useAuth();
   const canManageRoles = hasPermission("role_permissions.update");
   const canManageOverrides = hasPermission("user_permission_overrides.create");
 
@@ -288,6 +296,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
 
   const verbs = useMemo(() => (matrix ? allVerbsIn(matrix.catalog) : []), [matrix]);
 
+  const isOwnTier = Boolean(currentUser && selectedLevel && selectedLevel.securityTier === currentUser.role);
   const grantsForSelectedTier = selectedLevel ? matrix?.grants[selectedLevel.securityTier] ?? [] : [];
   const levelsSharingTier = selectedLevel ? levels.filter((l) => l.id !== selectedLevel.id && l.securityTier === selectedLevel.securityTier) : [];
   const topLadderSortOrder = useMemo(() => {
@@ -308,8 +317,8 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
       const updated = await rolePermissionApi.setRolePermission(selectedLevel.securityTier, permission, !currentlyGranted);
       setMatrix(updated);
       message.success(`${permission} ${!currentlyGranted ? "granted to" : "revoked from"} the ${selectedLevel.securityTier} tier`);
-    } catch {
-      message.error("Failed to update role permission");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to update role permission"));
     }
   };
 
@@ -328,8 +337,12 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
       message.success(
         `${perms.length} permission${perms.length === 1 ? "" : "s"} under ${group.label} ${grant ? "granted to" : "revoked from"} the ${selectedLevel.securityTier} tier`
       );
-    } catch {
-      message.error("Failed to update role permissions");
+    } catch (err) {
+      // Some of the loop may already have been applied server-side before
+      // this one failed - refetch so the grid shows what is really granted
+      // now, not the pre-click state.
+      loadMatrix();
+      message.error(errorMessageFrom(err, "Failed to update role permissions"));
     }
   };
 
@@ -454,6 +467,9 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
             return <Cell state={state} tooltip={mixedTooltip(state, perms, perms.filter((p) => grantsForSelectedTier.includes(p)).length)} />;
           }
           const shouldGrant = !(state === "granted" || state === "extra-grant");
+          if (!shouldGrant && isOwnTier && perms.some((p) => p.startsWith(SELF_LOCKOUT_MODULE_PREFIX))) {
+            return <Cell state={state} tooltip={SELF_LOCKOUT_TOOLTIP} />;
+          }
           // Every route checks this table directly now, so every change here
           // is real and live for everyone on this tier.
           const description = "This takes effect immediately for everyone on this tier.";
