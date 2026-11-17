@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tabs, Typography, message } from "antd";
+import { Button, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tabs, Typography, Upload, message } from "antd";
 import {
   BankOutlined,
   ContactsOutlined,
@@ -11,10 +11,12 @@ import {
   InfoCircleOutlined,
   SafetyCertificateOutlined,
   ShopOutlined,
+  UploadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as leadApi from "../../api/lead-api";
+import * as leadDocumentApi from "../../api/lead-document-api";
 import * as salesTeamApi from "../../api/sales-team-api";
 import * as userApi from "../../api/user-api";
 import type { CreateLeadPayload, Lead } from "../../types/lead";
@@ -23,7 +25,7 @@ import type { TeamMember } from "../../types/user";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
 import { errorMessageFrom, fieldErrorsFrom } from "../../utils/api-error";
-import { suggestEmailDomainFix } from "../../utils/email-typo-check";
+import { emailRules, normalizeEmail, suggestEmailDomainFix } from "../../utils/email-typo-check";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
 import { ConsentTab } from "./tabs/ConsentTab";
 
@@ -150,6 +152,13 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("customer");
+  // New lead only: the signed consent form / screenshot, uploaded right after
+  // the lead is created (it needs the new lead's id). Same file rules as the
+  // lead's own Consent tab: PDF or image, up to 10 MB.
+  const [consentFile, setConsentFile] = useState<File | null>(null);
+  useEffect(() => {
+    if (open) setConsentFile(null);
+  }, [open]);
   const isEdit = lead !== null;
   const emailValue = Form.useWatch("email", form);
   const emailSuggestion = emailValue ? suggestEmailDomainFix(emailValue) : null;
@@ -327,6 +336,15 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
 
     try {
       const saved = isEdit ? await leadApi.updateLead(lead.id, payload) : await leadApi.createLead(payload as CreateLeadPayload);
+      if (!isEdit && consentFile) {
+        try {
+          await leadDocumentApi.uploadDocument(saved.id, "consent_form", consentFile);
+        } catch (uploadErr) {
+          // The lead itself is saved - only the attachment failed.
+          message.warning(errorMessageFrom(uploadErr, "Lead saved, but the consent document didn't upload - add it from the lead's Consent tab"));
+        }
+        setConsentFile(null);
+      }
       if (mode === "saveAndAddAnother") {
         message.success("Lead created - form cleared for the next one");
         form.resetFields();
@@ -555,23 +573,11 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     <Form.Item
                       name="email"
                       label="Email address"
-                      rules={[
-                        { type: "email", message: "Invalid email" },
-                        // A known-provider typo (gmail.co, gmial.com, etc.) -
-                        // hard-blocks Save/Save & Next, same as any other
-                        // invalid field, with no override - this is a
-                        // deliberately narrow, curated list of genuine typos
-                        // (see email-typo-check.ts), not a fuzzy guess, so
-                        // there's no legitimate "I really meant this" case to
-                        // preserve an escape hatch for.
-                        {
-                          validator: (_, value: string | undefined) => {
-                            const suggestion = value ? suggestEmailDomainFix(value) : null;
-                            if (!suggestion) return Promise.resolve();
-                            return Promise.reject(new Error("Possible email typo - see suggestion below"));
-                          },
-                        },
-                      ]}
+                      // Shared rules (utils/email-typo-check.ts): lowercased as
+                      // typed, real name@domain.tld format (any TLD), and the
+                      // known provider-typo block.
+                      normalize={normalizeEmail}
+                      rules={emailRules}
                       extra={
                         emailSuggestion ? (
                           <Text type="danger" style={{ fontSize: 12 }}>
@@ -820,6 +826,34 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                   <FormSectionFullWidth>
                     <Form.Item name="consentNotes" label="Notes">
                       <Input.TextArea rows={2} />
+                    </Form.Item>
+                  </FormSectionFullWidth>
+                  <FormSectionFullWidth>
+                    <Form.Item label="Consent document" extra="Signed consent form or screenshot - PDF, JPG, PNG or WEBP, up to 10 MB. Uploaded when you save the lead.">
+                      <Upload
+                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        maxCount={1}
+                        fileList={consentFile ? [{ uid: "consent", name: consentFile.name, status: "done" }] : []}
+                        onRemove={() => {
+                          setConsentFile(null);
+                          return true;
+                        }}
+                        beforeUpload={(file) => {
+                          const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+                          if (!allowed.includes(file.type)) {
+                            message.error("Only PDF, JPG, PNG or WEBP files can be attached");
+                            return Upload.LIST_IGNORE;
+                          }
+                          if (file.size > 10 * 1024 * 1024) {
+                            message.error("The file is larger than 10 MB");
+                            return Upload.LIST_IGNORE;
+                          }
+                          setConsentFile(file);
+                          return false; // keep it here - uploaded after the lead is saved
+                        }}
+                      >
+                        <Button icon={<UploadOutlined />}>{consentFile ? "Replace file" : "Attach file"}</Button>
+                      </Upload>
                     </Form.Item>
                   </FormSectionFullWidth>
                 </FormSection>

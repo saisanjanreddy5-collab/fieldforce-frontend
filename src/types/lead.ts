@@ -119,6 +119,8 @@ export interface LeadConsent {
 
 export interface LeadListFilters {
   status?: string;
+  /** Only leads an opportunity can be created for (owned by Field Sales, not closed-lost). */
+  opportunityReady?: boolean;
   ownerId?: string;
   search?: string;
   category?: string;

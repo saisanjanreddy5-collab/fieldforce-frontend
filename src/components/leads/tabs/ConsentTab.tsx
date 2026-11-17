@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Empty, Space, Spin, Tag, Typography, Upload, message } from "antd";
+import { errorMessageFrom } from "../../../utils/api-error";
 import { CheckCircleFilled, DownloadOutlined, InboxOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import * as leadApi from "../../../api/lead-api";
 import * as leadDocumentApi from "../../../api/lead-document-api";
@@ -54,8 +55,8 @@ function ConsentEvidenceUpload({ leadId }: { leadId: string }) {
       await leadDocumentApi.uploadDocument(leadId, "consent_form", file);
       message.success("Consent evidence uploaded");
       load();
-    } catch {
-      message.error("Failed to upload consent evidence");
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to upload consent evidence"));
     }
   };
 

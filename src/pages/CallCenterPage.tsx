@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { emailRules, normalizeEmail } from "../utils/email-typo-check";
 import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Popover, Select, Table, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -572,7 +573,7 @@ function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () =
         >
           <Input placeholder="10-digit mobile number" />
         </Form.Item>
-        <Form.Item name="email" label="Email">
+        <Form.Item name="email" label="Email" normalize={normalizeEmail} rules={emailRules}>
           <Input placeholder="Optional" />
         </Form.Item>
         <Form.Item name="pincode" label="Pincode" extra="Needed later to auto-match the right field employee - fine to leave blank for now and add it once you have it.">
@@ -966,7 +967,7 @@ function MyQueueTab() {
 
       <AddLeadModal open={addLeadOpen} onClose={() => setAddLeadOpen(false)} onAdded={() => { setAddLeadOpen(false); load(); }} />
 
-      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); load(); }} />
+      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load()} />
 
       <Drawer
         title={selectedLead?.fullName ?? ""}

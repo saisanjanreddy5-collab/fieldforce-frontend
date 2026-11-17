@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { emailRules, normalizeEmail } from "../../utils/email-typo-check";
 import {
   Avatar,
   Button,
@@ -418,7 +419,7 @@ function ApplicantStep({ leadId, lead, onSaved, onNext }: { leadId: string; lead
       <Form.Item name="phone" label="Mobile" rules={[{ pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" }]}>
         <Input maxLength={10} />
       </Form.Item>
-      <Form.Item name="email" label="Email">
+      <Form.Item name="email" label="Email" normalize={normalizeEmail} rules={emailRules}>
         <Input />
       </Form.Item>
       <Form.Item

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { App, Form, Input, InputNumber, Modal, Select } from "antd";
 import { isAxiosError } from "axios";
 import * as leadApi from "../../api/lead-api";
@@ -27,6 +27,35 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
   const { message } = App.useApp();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchToken = useRef(0);
+  const selectedLeadRef = useRef<Lead | null>(null);
+
+  // Exactly the leads the server will accept (owned by a Field Sales
+  // Executive - whatever stage they're at - and not closed-lost; see
+  // convertLeadToOpportunity), searched on the server as you type so every
+  // such lead is findable, not just the first page.
+  const loadLeads = (search?: string) => {
+    const token = ++searchToken.current;
+    setSearching(true);
+    leadApi
+      .listLeads({ opportunityReady: true, limit: 50, ...(search ? { search } : {}) })
+      .then((result) => {
+        if (token !== searchToken.current) return;
+        const selected = selectedLeadRef.current;
+        setLeads(selected && !result.leads.some((l) => l.id === selected.id) ? [selected, ...result.leads] : result.leads);
+      })
+      .catch(() => message.error("Failed to load leads"))
+      .finally(() => {
+        if (token === searchToken.current) setSearching(false);
+      });
+  };
+
+  const handleSearch = (value: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => loadLeads(value.trim() || undefined), 300);
+  };
   const [form] = Form.useForm<FormValues>();
 
   useEffect(() => {
@@ -37,11 +66,19 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
     // that here means every lead in this dropdown is guaranteed to convert;
     // picking from an unfiltered list (every stage mixed together, sorted by
     // recency) was why this looked like a random, intermittent failure.
-    leadApi
-      .listAllLeadsForStatus({ status: "Qualified" })
-      .then((result) => setLeads(result.filter((l) => l.ownerRole === "agent")))
-      .catch(() => message.error("Failed to load leads"));
+    selectedLeadRef.current = null;
+    loadLeads();
+    if (defaultLeadId) {
+      leadApi
+        .getLead(defaultLeadId)
+        .then((lead) => {
+          selectedLeadRef.current = lead;
+          setLeads((prev) => (prev.some((l) => l.id === lead.id) ? prev : [lead, ...prev]));
+        })
+        .catch(() => undefined);
+    }
     form.setFieldsValue({ leadId: defaultLeadId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultLeadId, form, message]);
 
   const handleSubmit = async (values: FormValues) => {
@@ -78,9 +115,18 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
         <Form.Item name="leadId" label="Lead" rules={[{ required: true, message: "Select the lead this deal belongs to" }]}>
           <Select
             showSearch
-            placeholder="Search by name, company, or city"
-            optionFilterProp="label"
-            notFoundContent="No leads are ready yet - a lead must be Qualified and sent to Field Sales before it can become an opportunity"
+            placeholder="Search by name, company, or phone"
+            filterOption={false}
+            onSearch={handleSearch}
+            loading={searching}
+            onChange={(id: string) => {
+              selectedLeadRef.current = leads.find((l) => l.id === id) ?? null;
+            }}
+            notFoundContent={
+              searching
+                ? "Searching..."
+                : "No matching lead with Field Sales - an opportunity can only be created once a lead has been sent to a Field Sales Executive"
+            }
             options={leads.map((l) => ({
               value: l.id,
               label: `${l.fullName}${l.companyName ? ` — ${l.companyName}` : ""}${l.storeCity ? ` (${l.storeCity})` : ""}`,
