@@ -48,6 +48,27 @@ export async function getTransactions(id: string): Promise<TransactionFeedItem[]
   return response.data.data;
 }
 
+// Support-portal (Frappe Helpdesk) access for a customer: given once one of
+// their deals is Won (or an Admin grants it early), with a one-click invite.
+export interface SupportPortalStatus {
+  enabled: boolean;
+  qualifies: boolean;
+  manual: boolean;
+  active: boolean;
+  invitedAt: string | null;
+  invitedEmail: string | null;
+}
+
+export async function getSupportPortalStatus(id: string): Promise<SupportPortalStatus> {
+  const response = await apiClient.get<ApiSuccess<SupportPortalStatus>>(`/customers/${id}/support-portal`);
+  return response.data.data;
+}
+
+export async function sendSupportPortalInvite(id: string, grant = false): Promise<SupportPortalStatus> {
+  const response = await apiClient.post<ApiSuccess<SupportPortalStatus>>(`/customers/${id}/support-portal/invite`, { grant });
+  return response.data.data;
+}
+
 export async function getTimeline(id: string): Promise<TimelineFeedItem[]> {
   const response = await apiClient.get<ApiSuccess<TimelineFeedItem[]>>(`/customers/${id}/timeline`);
   return response.data.data;
