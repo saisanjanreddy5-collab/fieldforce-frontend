@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, DatePicker, Drawer, Form, Input, InputNumber, Select, Space, Tabs, Typography, Upload, message } from "antd";
 import {
   BankOutlined,
@@ -249,8 +249,18 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   // than silently showing nothing or forcing a destructive reset. Waits on
   // inquiryOptionsLoading so this doesn't fire (and flash "Other") before
   // the real options have even loaded once.
+  // Once per opening (per lead) only - re-applying on a later re-render would
+  // overwrite whatever the user has picked since with the old saved value.
+  const inquiryAppliedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!open || inquiryOptionsLoading) return;
+    if (!open) {
+      inquiryAppliedFor.current = null;
+      return;
+    }
+    if (inquiryOptionsLoading) return;
+    const key = lead?.id ?? "new";
+    if (inquiryAppliedFor.current === key) return;
+    inquiryAppliedFor.current = key;
     if (!lead) {
       form.setFieldsValue({ inquiryCategory: undefined, inquiryCategoryOther: undefined, inquirySource: undefined, inquirySourceOther: undefined });
       return;
