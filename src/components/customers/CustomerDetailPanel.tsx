@@ -122,6 +122,102 @@ function MetricBox({ label, value, danger }: { label: string; value: React.React
 
 const CREDIT_CATEGORIES = ["A", "B", "C", "D"] as const;
 
+// The customer's own support portal (Frappe Helpdesk): opened automatically
+// once one of their deals is Won, with a one-click invite email. Hidden
+// entirely on a server where the portal isn't switched on.
+function SupportPortalSection({ customer, canInvite, isAdmin }: { customer: Customer; canInvite: boolean; isAdmin: boolean }) {
+  const { message } = App.useApp();
+  const [status, setStatus] = useState<customerApi.SupportPortalStatus | null>(null);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus(null);
+    customerApi
+      .getSupportPortalStatus(customer.id)
+      .then((s) => !cancelled && setStatus(s))
+      .catch(() => !cancelled && setStatus(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [customer.id, customer.email]);
+
+  if (!status?.enabled) return null;
+
+  const send = async (grant: boolean) => {
+    setSending(true);
+    try {
+      const next = await customerApi.sendSupportPortalInvite(customer.id, grant);
+      setStatus(next);
+      message.success(`Invite sent to ${next.invitedEmail ?? customer.email}`);
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Couldn't send the invite"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  let tag: React.ReactNode;
+  let line: React.ReactNode;
+  let action: React.ReactNode = null;
+  if (!customer.email) {
+    tag = <Tag>No email</Tag>;
+    line = "Add an email address to this customer to give them portal access.";
+  } else if (!status.qualifies) {
+    tag = <Tag>Not yet</Tag>;
+    line = "Opens automatically when one of this customer's deals is marked Won.";
+    if (canInvite && isAdmin) {
+      action = (
+        <Popconfirm
+          title="Give portal access now?"
+          description={`${customer.email} gets a sign-in invite even though no deal is Won yet.`}
+          okText="Give access"
+          onConfirm={() => send(true)}
+        >
+          <Button size="small" loading={sending}>
+            Give access now
+          </Button>
+        </Popconfirm>
+      );
+    }
+  } else {
+    tag = status.active ? <Tag color="green">Active</Tag> : <Tag color="blue">Setting up</Tag>;
+    line = status.invitedAt
+      ? `Invite sent to ${status.invitedEmail} on ${formatDateTime(status.invitedAt)}. They sign in with one click - no password.`
+      : "Account ready - invite not sent yet.";
+    if (canInvite) {
+      action = (
+        <Button size="small" type={status.invitedAt ? "default" : "primary"} loading={sending} onClick={() => send(false)}>
+          {status.invitedAt ? "Resend invite" : "Send invite"}
+        </Button>
+      );
+    }
+  }
+
+  return (
+    <div>
+      <SectionLabel description="Where this customer raises and follows their support tickets">Support portal</SectionLabel>
+      <div
+        style={{
+          background: appTokens.surfaceMuted,
+          borderRadius: appTokens.radius,
+          padding: "12px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+          <div style={{ marginBottom: 2 }}>{tag}</div>
+          <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>{line}</Text>
+        </div>
+        {action}
+      </div>
+    </div>
+  );
+}
+
 function OverviewTab({
   customer,
   canUpdate,
@@ -274,6 +370,8 @@ function OverviewTab({
           </div>
         </div>
       </div>
+
+      <SupportPortalSection customer={customer} canInvite={canUpdate} isAdmin={canEditCredit} />
     </div>
   );
 }
