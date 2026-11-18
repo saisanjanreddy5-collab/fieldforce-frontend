@@ -21,8 +21,12 @@ function safeSsoContinue(raw: string | null): string | null {
   if (!raw) return null;
   try {
     const target = new URL(raw);
-    const expected = new URL(`${import.meta.env.VITE_API_BASE_URL}/sso/authorize`, window.location.origin);
-    const sameEndpoint = target.origin === expected.origin && target.pathname === expected.pathname;
+    // Only our own backend's two SSO steps: the Helpdesk one-click launch,
+    // and the authorize step Frappe's "Login with FieldForce" button uses.
+    const api = new URL(`${import.meta.env.VITE_API_BASE_URL}`, window.location.origin);
+    const apiPath = api.pathname.replace(/\/+$/, "");
+    const sameEndpoint =
+      target.origin === api.origin && (target.pathname === `${apiPath}/sso/authorize` || target.pathname === `${apiPath}/sso/launch`);
     return (target.protocol === "https:" || target.protocol === "http:") && sameEndpoint ? target.toString() : null;
   } catch {
     return null;

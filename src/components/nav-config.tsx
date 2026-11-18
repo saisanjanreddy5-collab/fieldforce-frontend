@@ -80,7 +80,10 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: <TagsOutlined />,
         built: true,
         permissions: ["support_tickets.view"],
-        externalUrl: "https://zotanextech-helpdesk.frappe.cloud/login",
+        // One click into Frappe Helpdesk, already logged in - the backend
+        // checks access, gets a fresh login link from Frappe and sends the
+        // browser straight through (see sso-controller.ts launch()).
+        externalUrl: `${import.meta.env.VITE_API_BASE_URL}/sso/launch`,
       },
     ],
   },
