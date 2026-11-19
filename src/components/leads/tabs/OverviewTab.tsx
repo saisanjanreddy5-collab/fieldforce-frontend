@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Col, Descriptions, Progress, Row, Tag, Typography, message } from "antd";
 import type { Lead, LeadConsent } from "../../../types/lead";
 import * as leadApi from "../../../api/lead-api";
+import * as salesTeamApi from "../../../api/sales-team-api";
 import { formatCompactCurrency, formatDate } from "../../../utils/lead-format";
 import { appTokens } from "../../../utils/design-system";
 import { useHasPermission } from "../../../hooks/use-permission";
@@ -10,12 +11,16 @@ import { ConsentTab } from "./ConsentTab";
 const { Text } = Typography;
 
 // Every field listed here must also appear as a rendered Descriptions.Item
-// below for the same section, and vice versa - this is the Decision-1 fix:
-// the synopsis fill-count and the actual displayed fields must always
-// represent the same underlying data. Fields with no real display value on
-// the Lead type (e.g. salesTeamId/stateId/districtId/campaignId have no
-// denormalized name to show) are intentionally left out of both the count
-// and the render, rather than counted but silently never shown.
+// below for the same section, and vice versa - the synopsis fill-count and
+// the displayed fields always represent the same data. Each section's list
+// is also exactly the fields the Edit lead form has on its matching tab
+// (LeadFormDrawer's TAB_FIELDS), so "x/N" here is the same N as the form -
+// Status and Salesperson are shown but not counted: they change through
+// actions (stage buttons, Reassign / Send to Field Sales), not that form.
+// Inquiry Source is ONE field: a bulk-imported lead keeps its source in
+// `source`, a manually entered one in `inquirySource` (the rest of the app -
+// list filter, reports - already treats them as one), so it's shown and
+// counted from whichever is set.
 const SECTION_FIELDS: Record<string, (keyof Lead)[]> = {
   customer: [
     "fullName",
@@ -24,10 +29,9 @@ const SECTION_FIELDS: Record<string, (keyof Lead)[]> = {
     "startDate",
     "qualifiedPerson",
     "financialStatus",
-    "status",
     "prospectStatus",
     "category",
-    "ownerId",
+    "leadScore",
   ],
   contact: [
     "phone",
@@ -36,13 +40,13 @@ const SECTION_FIELDS: Record<string, (keyof Lead)[]> = {
     "website",
     "preferredLanguage",
     "pincode",
+    "stateId",
     "addressLine1",
     "addressLine2",
     "territory",
   ],
   inquiry: [
     "companyName",
-    "source",
     "inquiryCategory",
     "inquirySource",
     "captureChannel",
@@ -97,11 +101,31 @@ function countConsentFilled(consent: LeadConsent | null): number {
   return n;
 }
 
+// The lead's real value for a field - Inquiry Source falls back to the
+// bulk-import `source` (see SECTION_FIELDS' comment).
+function effectiveInquirySource(lead: Lead): string | null {
+  return lead.inquirySource || lead.source || null;
+}
+
 function countFilled(lead: Lead, fields: (keyof Lead)[]): number {
   return fields.filter((field) => {
-    const value = lead[field];
+    const value = field === "inquirySource" ? effectiveInquirySource(lead) : lead[field];
     return value !== null && value !== undefined && value !== "";
   }).length;
+}
+
+// State names for the Contact section's State row - fetched once per page
+// load and shared by every lead opened, not refetched per lead.
+let statesPromise: Promise<Map<string, string>> | null = null;
+function loadStateNames(): Promise<Map<string, string>> {
+  statesPromise ??= salesTeamApi
+    .listStates()
+    .then((states) => new Map(states.map((s) => [s.id, s.name])))
+    .catch(() => {
+      statesPromise = null; // try again next time rather than caching a failure
+      return new Map<string, string>();
+    });
+  return statesPromise;
 }
 
 function yesNo(value: boolean | null): string {
@@ -124,6 +148,16 @@ export function OverviewTab({ lead }: OverviewTabProps) {
   const [activeSection, setActiveSection] = useState<string>("customer");
   const [consent, setConsent] = useState<LeadConsent | null>(null);
   const [consentLoaded, setConsentLoaded] = useState(!canViewConsent);
+  const [stateNames, setStateNames] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!lead.stateId) return;
+    let alive = true;
+    loadStateNames().then((names) => alive && setStateNames(names));
+    return () => {
+      alive = false;
+    };
+  }, [lead.stateId]);
 
   // Fetched once here (not inside ConsentTab) so the synopsis count and the
   // Consent section itself share the same data - see ConsentTab's `consent`
@@ -215,9 +249,15 @@ export function OverviewTab({ lead }: OverviewTabProps) {
             <Descriptions.Item label="Start Date">{formatDate(lead.startDate)}</Descriptions.Item>
             <Descriptions.Item label="Qualified Person">{lead.qualifiedPerson ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Financial Status">{lead.financialStatus ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Status">{lead.status}</Descriptions.Item>
             <Descriptions.Item label="Prospect Status">{lead.prospectStatus ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Category">{lead.category ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="Lead Score">{lead.leadScore !== null && lead.leadScore !== undefined ? `${lead.leadScore}%` : "-"}</Descriptions.Item>
+          </Descriptions>
+        )}
+        {activeSection === "customer" && (
+          // Not form fields (see SECTION_FIELDS' comment) - shown, not counted.
+          <Descriptions column={1} size="small" style={{ marginTop: 12, paddingTop: 12, borderTop: `1px dashed ${appTokens.borderLight}` }}>
+            <Descriptions.Item label="Stage">{lead.status}</Descriptions.Item>
             <Descriptions.Item label="Salesperson">{lead.ownerName ?? "Unassigned"}</Descriptions.Item>
           </Descriptions>
         )}
@@ -241,6 +281,7 @@ export function OverviewTab({ lead }: OverviewTabProps) {
             <Descriptions.Item label="Website">{lead.website ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Preferred Language">{lead.preferredLanguage ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="PinCode">{lead.pincode ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="State">{lead.stateId ? (stateNames.get(lead.stateId) ?? "…") : "-"}</Descriptions.Item>
             <Descriptions.Item label="Address">
               {[lead.addressLine1, lead.addressLine2].filter(Boolean).join(", ") || "-"}
             </Descriptions.Item>
@@ -250,9 +291,8 @@ export function OverviewTab({ lead }: OverviewTabProps) {
         {activeSection === "inquiry" && (
           <Descriptions column={1} size="small" title="Inquiry">
             <Descriptions.Item label="Company">{lead.companyName ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Source">{lead.source ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Inquiry Category">{lead.inquiryCategory ?? "-"}</Descriptions.Item>
-            <Descriptions.Item label="Inquiry Source">{lead.inquirySource ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="Inquiry Source">{effectiveInquirySource(lead) ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Capture Channel">{lead.captureChannel ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="UTM / Campaign Tags">{lead.utmTags ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="Expected Value">{formatCompactCurrency(lead.expectedValue)}</Descriptions.Item>

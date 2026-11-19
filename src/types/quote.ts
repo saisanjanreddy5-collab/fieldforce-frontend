@@ -32,6 +32,11 @@ export interface QuoteListItem extends Quote {
   opportunityName: string | null;
   createdByName: string | null;
   grandTotal: number;
+  /** The lead's category (FOFO / COCO / ...). */
+  leadCategory: string | null;
+  /** Salesperson = the lead's owner (who the deal belongs to). */
+  ownerId: string | null;
+  ownerName: string | null;
 }
 
 export interface QuoteVersion {
