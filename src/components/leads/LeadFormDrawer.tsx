@@ -212,7 +212,9 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
         companyName: lead.companyName ?? undefined,
         source: lead.source ?? undefined,
         inquiryCategory: lead.inquiryCategory ?? undefined,
-        inquirySource: lead.inquirySource ?? undefined,
+        // A bulk-imported lead keeps its source in `source` - shown here as
+        // its Inquiry Source (same single field as the lead's Overview).
+        inquirySource: lead.inquirySource || lead.source || undefined,
         captureChannel: lead.captureChannel ?? undefined,
         utmTags: lead.utmTags ?? undefined,
         expectedValue: lead.expectedValue ?? undefined,
@@ -266,12 +268,14 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
       return;
     }
     const categoryKnown = !lead.inquiryCategory || categoryOptions.some((o) => o.label === lead.inquiryCategory);
-    const sourceKnown = !lead.inquirySource || sourceOptions.some((o) => o.label === lead.inquirySource);
+    // Bulk-imported leads keep their source in `source` (see above).
+    const savedSource = lead.inquirySource || lead.source || null;
+    const sourceKnown = !savedSource || sourceOptions.some((o) => o.label === savedSource);
     form.setFieldsValue({
       inquiryCategory: categoryKnown ? lead.inquiryCategory ?? undefined : OTHER_VALUE,
       inquiryCategoryOther: categoryKnown ? undefined : lead.inquiryCategory ?? undefined,
-      inquirySource: sourceKnown ? lead.inquirySource ?? undefined : OTHER_VALUE,
-      inquirySourceOther: sourceKnown ? undefined : lead.inquirySource ?? undefined,
+      inquirySource: sourceKnown ? savedSource ?? undefined : OTHER_VALUE,
+      inquirySourceOther: sourceKnown ? undefined : savedSource ?? undefined,
     });
   }, [open, lead, inquiryOptionsLoading, categoryOptions, sourceOptions, form]);
 
