@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Avatar, Empty, Input, Pagination, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Empty, Input, Space, Table, Tag, Typography, message } from "antd";
 import { HourglassOutlined } from "@ant-design/icons";
 import * as fofoApi from "../api/fofo-onboarding-api";
 import type { FofoOnboardingListItem } from "../types/fofo-onboarding";
@@ -8,6 +8,8 @@ import { FofoHandoffDetail } from "../components/fofo/FofoHandoffDetail";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 
 const { Title, Text } = Typography;
 
@@ -39,16 +41,6 @@ function FofoOnboardingList() {
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
-  // Pagination lifted out of antd Table's own internal/uncontrolled page
-  // state - rendered as its own always-visible footer below a bounded,
-  // internally-scrolling row area instead of inline with the table rows
-  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
-  const [page, setPage] = useState(1);
-  // Onboarding handoffs are a narrower, lower-volume list than a lead/quote
-  // queue by nature (one per FOFO-category lead that's reached "Onboard"),
-  // so this uses a smaller page size than the 20 other modules use - sized
-  // to this list's real shape, not copy-pasted from a bigger-volume module.
-  const PAGE_SIZE = 8;
 
   useEffect(() => {
     setLoading(true);
@@ -78,6 +70,10 @@ function FofoOnboardingList() {
       return true;
     });
   }, [items, search, statusFilter]);
+  // Paged outside antd Table - an always-visible footer below a bounded,
+  // internally-scrolling row area. Onboarding handoffs are a low-volume
+  // list, so it starts at the smallest rows-per-page option.
+  const pager = usePagination("fofo-onboarding", 10, filteredItems.length);
 
   return (
     <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -103,7 +99,7 @@ function FofoOnboardingList() {
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            setPage(1);
+            pager.setPage(1);
           }}
           style={{ maxWidth: 360 }}
           allowClear
@@ -113,7 +109,7 @@ function FofoOnboardingList() {
             checked={statusFilter === null}
             onChange={() => {
               setStatusFilter(null);
-              setPage(1);
+              pager.setPage(1);
             }}
           >
             All {items.length}
@@ -122,7 +118,7 @@ function FofoOnboardingList() {
             checked={statusFilter === "pushed"}
             onChange={(checked) => {
               setStatusFilter(checked ? "pushed" : null);
-              setPage(1);
+              pager.setPage(1);
             }}
           >
             Pushed {pushedCount}
@@ -131,7 +127,7 @@ function FofoOnboardingList() {
             checked={statusFilter === "not_pushed"}
             onChange={(checked) => {
               setStatusFilter(checked ? "not_pushed" : null);
-              setPage(1);
+              pager.setPage(1);
             }}
           >
             Not pushed {notPushedCount}
@@ -176,7 +172,7 @@ function FofoOnboardingList() {
         size="small"
         rowKey="id"
         loading={loading}
-        dataSource={filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+        dataSource={pager.slice(filteredItems)}
         pagination={false}
         // Columns add up to 810px - scroll sideways (with a visible
         // scrollbar) on a narrow screen instead of silently clipping them.
@@ -239,7 +235,7 @@ function FofoOnboardingList() {
               const idleDays = daysSince(r.createdAt);
               const stuck = pending && idleDays >= STUCK_AFTER_DAYS;
               return (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                   <Tag color={pending ? "gold" : "green"}>{pending ? "Not pushed" : "Pushed"}</Tag>
                   {stuck && (
                     <Text style={{ fontSize: 10.5, fontWeight: 600, color: appTokens.danger, display: "flex", alignItems: "center", gap: 3 }}>
@@ -256,8 +252,8 @@ function FofoOnboardingList() {
       </div>
 
       {filteredItems.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0", flexShrink: 0 }}>
-          <Pagination current={page} pageSize={PAGE_SIZE} total={filteredItems.length} onChange={setPage} showSizeChanger={false} />
+        <div style={{ padding: "12px 0", flexShrink: 0, width: "100%" }}>
+          <ListPagination {...pager.props(filteredItems.length)} />
         </div>
       )}
     </div>

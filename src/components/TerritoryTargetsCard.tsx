@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, DatePicker, Form, Modal, Progress, Select, Table, Tag, Typography, message } from "antd";
 import { SwapOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import * as dashboardApi from "../api/dashboard-api";
 import * as scheduledTransferApi from "../api/scheduled-transfer-api";
@@ -15,6 +14,9 @@ import { resolveCurrentTarget } from "../utils/target-format";
 import { useHasPermission } from "../hooks/use-permission";
 import { appTokens } from "../utils/design-system";
 import { SPAN_WARNING_THRESHOLD } from "../utils/level-format";
+import { usePagination } from "../hooks/use-pagination";
+import { ListPagination } from "./ListPagination";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -81,6 +83,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
       })),
     [activeUsers, targets, performanceById, spanById]
   );
+  const pager = usePagination("territory-targets", 20, rows.length);
 
   const divisionChannelLabel = (id: string | null) => divisionChannels.find((d) => d.id === id)?.label ?? "-";
 
@@ -106,11 +109,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
       message.success("Bulk re-assign scheduled");
       setReassignOpen(false);
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to schedule bulk re-assign - both people must be within your reporting tree";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to schedule bulk re-assign - both people must be within your reporting tree"));
     } finally {
       setReassigning(false);
     }
@@ -138,8 +137,8 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
         size="small"
         style={{ marginTop: 12 }}
         rowKey={(row) => row.user.id}
-        dataSource={rows}
-        pagination={{ pageSize: 20, hideOnSinglePage: true }}
+        dataSource={pager.slice(rows)}
+        pagination={false}
         columns={[
           { title: "Name", key: "name", render: (_, row) => row.user.name },
           { title: "Territory", key: "territory", render: (_, row) => row.user.territory ?? "-" },
@@ -158,7 +157,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
                     {formatCompactCurrency(row.target.achievedAmount)}
                     <Text style={{ fontSize: 12, fontWeight: 400, color: appTokens.textTertiary }}> / {formatCompactCurrency(row.target.targetAmount)}</Text>
                   </Text>
-                  <Progress percent={Math.min(row.target.achievementPercent, 100)} size="small" showInfo={false} strokeColor={tierColor} trailColor={appTokens.surfaceSunken} />
+                  <Progress percent={Math.min(row.target.achievementPercent, 100)} size="small" showInfo={false} strokeColor={tierColor} railColor={appTokens.surfaceSunken} />
                 </div>
               );
             },
@@ -177,6 +176,11 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
         ]}
         scroll={{ x: "max-content" }}
       />
+      {rows.length > 0 && (
+        <div style={{ paddingTop: 12, width: "100%" }}>
+          <ListPagination {...pager.props(rows.length)} />
+        </div>
+      )}
 
       <Modal
         title="Bulk re-assign leads"
@@ -194,8 +198,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
         <Form<ReassignFormValues> form={form} layout="vertical" onFinish={handleReassign}>
           <Form.Item name="fromUserId" label="Move leads from" rules={[{ required: true, message: "Pick a person" }]}>
             <Select
-              showSearch
-              optionFilterProp="label"
+              showSearch={{ optionFilterProp: "label" }}
               placeholder="Select a person"
               options={activeUsers.map((u) => ({ value: u.id, label: `${u.name} (${u.role})` }))}
             />
@@ -208,8 +211,7 @@ export function TerritoryTargetsCard({ users, targets }: TerritoryTargetsCardPro
           )}
           <Form.Item name="toUserId" label="Move leads to" rules={[{ required: true, message: "Pick a person" }]}>
             <Select
-              showSearch
-              optionFilterProp="label"
+              showSearch={{ optionFilterProp: "label" }}
               placeholder="Select a person"
               options={activeUsers.map((u) => ({ value: u.id, label: `${u.name} (${u.role})` }))}
             />

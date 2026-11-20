@@ -1,4 +1,5 @@
 import { apiClient } from "./api-client";
+import { fetchAllPages } from "./fetch-all-pages";
 import type { ApiSuccess } from "../types/api";
 import type { Call } from "../types/call";
 
@@ -12,27 +13,12 @@ export async function listCalls(filters: { assignedTo?: string; page?: number; l
   return response.data.data;
 }
 
-// A single listCalls() call silently capped at its own default limit (200) -
-// anything past that was invisible, not just slow. Same drain-every-real-
-// page pattern as quote-api.ts's listAllQuotes - not a new idea.
-export async function listAllCalls(
+// Every call, not just the first page of 200.
+export function listAllCalls(
   filters: { assignedTo?: string } = {},
   onProgress?: (loadedSoFar: Call[], total: number) => void
 ): Promise<Call[]> {
-  const PAGE_SIZE = 200;
-  const first = await listCalls({ ...filters, page: 1, limit: PAGE_SIZE });
-  let all = first.calls;
-  onProgress?.(all, first.total);
-
-  let page = 2;
-  while (all.length < first.total) {
-    const next = await listCalls({ ...filters, page, limit: PAGE_SIZE });
-    if (next.calls.length === 0) break;
-    all = [...all, ...next.calls];
-    onProgress?.(all, first.total);
-    page += 1;
-  }
-  return all;
+  return fetchAllPages((page, limit) => listCalls({ ...filters, page, limit }).then((r) => ({ items: r.calls, total: r.total })), 200, onProgress);
 }
 
 export async function listUpcomingCalls(limit = 20): Promise<Call[]> {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Pagination, Tooltip, Typography, message } from "antd";
+import { Button, Tooltip, Typography, message } from "antd";
 import dayjs from "dayjs";
 import * as teamDashboardApi from "../api/team-dashboard-api";
 import * as leaveApi from "../api/leave-api";
@@ -13,6 +13,8 @@ import type { LeaveBalance, LeaveContextPerson } from "../types/leave";
 import type { ExpenseType } from "../types/expense";
 import { appTokens } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 
 const { Title, Text } = Typography;
 
@@ -37,14 +39,12 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-const PAGE_SIZE = 10;
-
 export default function TeamDashboardPage() {
   const { user } = useAuth();
   const hasPermission = useHasPermission();
   const [data, setData] = useState<TeamAvailability | null>(null);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const pager = usePagination("team-dashboard", 10, data?.team.length);
 
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
@@ -81,9 +81,7 @@ export default function TeamDashboardPage() {
   const stats = data?.stats;
   const weekDates = data?.team[0]?.days.map((d) => d.date) ?? [];
   const team = data?.team ?? [];
-  const pageCount = Math.max(1, Math.ceil(team.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const pagedTeam = team.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pagedTeam = pager.slice(team);
 
   return (
     <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -280,17 +278,9 @@ export default function TeamDashboardPage() {
           ))}
         </div>
 
-        {pageCount > 1 && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "12px 18px",
-              borderTop: `1px solid ${appTokens.borderLight}`,
-              flexShrink: 0,
-            }}
-          >
-            <Pagination current={currentPage} pageSize={PAGE_SIZE} total={team.length} onChange={setPage} showSizeChanger={false} />
+        {team.length > 0 && (
+          <div style={{ padding: "12px 18px", borderTop: `1px solid ${appTokens.borderLight}`, flexShrink: 0 }}>
+            <ListPagination {...pager.props(team.length)} />
           </div>
         )}
       </div>

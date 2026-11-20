@@ -29,6 +29,9 @@ export interface Level {
   canSeeUnmaskedPii: boolean;
   currentHeadcount: number;
   createdAt: string;
+  /** Archived roles can't be given to anyone new; people already on one keep it, with all their data. */
+  isArchived: boolean;
+  archivedAt: string | null;
 }
 
 export interface CreateLevelPayload {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Drawer, Empty, Pagination, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Drawer, Empty, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -9,6 +9,8 @@ import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 import { initials, formatCompactCurrency, formatExactCurrency } from "../utils/lead-format";
 import { formatExpenseDate, limitUnitSuffix } from "../utils/expense-format";
 import { EXPENSE_TYPE_ICON } from "../utils/expense-icons";
@@ -41,12 +43,6 @@ export default function ExpensesPage() {
   const [policyDrawerOpen, setPolicyDrawerOpen] = useState(false);
   const [prefillTypeKey, setPrefillTypeKey] = useState<ExpenseTypeKey | undefined>();
   const [searchParams, setSearchParams] = useSearchParams();
-  // Pagination lifted out of antd Table's own internal/uncontrolled page
-  // state - rendered as its own always-visible footer below a bounded,
-  // internally-scrolling row area instead of inline with the table rows
-  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
   // Which row action is in flight - drives that button's spinner and
   // blocks double-taps (a second Approve tap would otherwise fire a second
   // request against an already-decided claim).
@@ -133,13 +129,10 @@ export default function ExpensesPage() {
     [allClaims, statusFilter]
   );
 
-  // Same guard as ApprovalsPage: deciding the last claim on the last page
-  // (e.g. under the Pending filter) shrinks the list out from under the
-  // current page - clamp back to the last page that still has rows.
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredClaims.length / PAGE_SIZE));
-    if (page > maxPage) setPage(maxPage);
-  }, [filteredClaims.length, page]);
+  // Paged outside antd Table - an always-visible footer below a bounded,
+  // internally-scrolling row area. Also snaps back to the last page that
+  // still has rows when deciding a claim shrinks the filtered list.
+  const pager = usePagination("expenses", 20, filteredClaims.length);
 
   const handleDecision = async (id: string, decision: "approved" | "rejected") => {
     setActing({ id, action: decision });
@@ -244,7 +237,7 @@ export default function ExpensesPage() {
               shape="round"
               onClick={() => {
                 setStatusFilter(tab.key);
-                setPage(1);
+                pager.setPage(1);
               }}
               style={{
                 background: appTokens.surface,
@@ -281,7 +274,7 @@ export default function ExpensesPage() {
         size="small"
         rowKey="id"
         loading={loading}
-        dataSource={filteredClaims.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+        dataSource={pager.slice(filteredClaims)}
         pagination={false}
         // Scrolls sideways on a narrow screen instead of overflowing the card.
         scroll={{ x: 860 }}
@@ -410,8 +403,8 @@ export default function ExpensesPage() {
       </div>
 
       {filteredClaims.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
-          <Pagination current={page} pageSize={PAGE_SIZE} total={filteredClaims.length} onChange={setPage} showSizeChanger={false} />
+        <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
+          <ListPagination {...pager.props(filteredClaims.length)} />
         </div>
       )}
       </div>
@@ -420,7 +413,7 @@ export default function ExpensesPage() {
         title="Expense types & policy"
         open={policyDrawerOpen}
         onClose={() => setPolicyDrawerOpen(false)}
-        width={420}
+        size={420}
       >
         <Text style={{ fontSize: 12.5, color: appTokens.textTertiary, display: "block", marginBottom: 16 }}>
           Limits are checked when the claim is filed

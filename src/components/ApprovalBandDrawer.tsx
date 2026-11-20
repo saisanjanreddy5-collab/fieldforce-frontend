@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Button, Drawer, Input, InputNumber, Select, Typography, message } from "antd";
 import { FileProtectOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import * as approvalBandApi from "../api/approval-band-api";
 import type { ApprovalBand, ApprovalRequestType } from "../types/approval-band";
 import type { Level } from "../types/level";
 import { REQUEST_TYPE_OPTIONS } from "./ApprovalBandsCard";
 import { appTokens } from "../utils/design-system";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text, Title } = Typography;
 
@@ -89,11 +89,7 @@ export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrd
       }
       onSaved();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to save approval band";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to save approval band"));
     } finally {
       setSaving(false);
     }
@@ -103,7 +99,7 @@ export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrd
     <Drawer
       open={open}
       onClose={onClose}
-      width={420}
+      size={420}
       title={
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
@@ -164,8 +160,7 @@ export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrd
           <Select
             style={{ width: "100%", marginTop: 4 }}
             allowClear
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             placeholder="Select an approver level"
             value={approverLevelId}
             onChange={setApproverLevelId}
@@ -178,8 +173,7 @@ export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrd
           <Select
             style={{ width: "100%", marginTop: 4 }}
             allowClear
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             placeholder="No countersigner"
             value={countersignedByLevelId}
             onChange={setCountersignedByLevelId}

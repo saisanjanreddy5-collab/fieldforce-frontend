@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button, Checkbox, Drawer, Form, Input, Space, Typography, message } from "antd";
-import { isAxiosError } from "axios";
 import * as incentivePlanApi from "../api/incentive-plan-api";
 import type { IncentivePlan } from "../types/incentive-plan";
 import { useHasPermission } from "../hooks/use-permission";
 import { CommissionRulesSection } from "./CommissionRulesSection";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -57,11 +57,7 @@ export function IncentivePlanDrawer({ open, plan, onClose, onSaved }: IncentiveP
       }
       onSaved();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to save incentive plan";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to save incentive plan"));
     } finally {
       setSaving(false);
     }

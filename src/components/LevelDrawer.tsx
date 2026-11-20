@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button, Drawer, Form, Input, InputNumber, Select, Space, Switch, message } from "antd";
-import { isAxiosError } from "axios";
 import * as levelApi from "../api/level-api";
 import type { Level, RecordScope } from "../types/level";
 import type { Role } from "../types/auth";
 import { RECORD_SCOPE_OPTIONS } from "../utils/level-format";
+import { errorMessageFrom } from "../utils/api-error";
 
 interface FormValues {
   name: string;
@@ -96,11 +96,7 @@ export function LevelDrawer({ open, level, nextSortOrder, onClose, onSaved }: Le
       }
       onSaved();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to save level - the name may already be taken";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to save level - the name may already be taken"));
     } finally {
       setSaving(false);
     }

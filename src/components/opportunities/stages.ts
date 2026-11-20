@@ -28,6 +28,8 @@ export const STAGES: StageDef[] = [
 
 export const STAGE_OPTIONS = STAGES.map((s) => ({ value: s.key, label: s.label }));
 
+export const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
+
 // Used only to make the "weighted forecast" stat meaningful before a user
 // manually sets a probability on an opportunity - never stored, just a
 // fallback for the calculation and the card's progress bar.

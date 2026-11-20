@@ -18,7 +18,6 @@ import {
   message,
 } from "antd";
 import { CheckCircleFilled, DownloadOutlined, ExclamationCircleFilled, InboxOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import * as fofoApi from "../../api/fofo-onboarding-api";
@@ -30,6 +29,7 @@ import { useHasPermission } from "../../hooks/use-permission";
 import { formatDate, initials } from "../../utils/lead-format";
 import { appTokens, avatarGradient } from "../../utils/design-system";
 import { DocumentHistoryButton } from "./DocumentHistoryButton";
+import { errorMessageFrom } from "../../utils/api-error";
 
 const { Text, Title } = Typography;
 
@@ -83,6 +83,9 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [pushing, setPushing] = useState(false);
+  // The step being approved/rejected right now - its buttons are busy, so a
+  // double click can't send the decision twice.
+  const [decidingStepId, setDecidingStepId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -129,23 +132,23 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
       // away, instead of leaving the user stranded on this detail screen.
       navigate("/fofo-onboarding");
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : "Failed to push";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to push"));
     } finally {
       setPushing(false);
     }
   };
 
   const handleDecide = async (stepId: string, decision: "approved" | "rejected") => {
+    if (decidingStepId) return;
+    setDecidingStepId(stepId);
     try {
       const updated = await fofoApi.decideStep(stepId, decision);
       setHandoff(updated);
       message.success(decision === "approved" ? "Step approved" : "Step rejected");
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : "Failed to decide step";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to decide step"));
+    } finally {
+      setDecidingStepId(null);
     }
   };
 
@@ -264,10 +267,10 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
                 </div>
                 {step.isCurrentTurn && user?.id === step.approverUserId && (
                   <Space size={4} style={{ marginTop: 6, marginLeft: 36 }}>
-                    <Button size="small" type="primary" onClick={() => handleDecide(step.id, "approved")}>
+                    <Button size="small" type="primary" loading={decidingStepId === step.id} disabled={decidingStepId !== null && decidingStepId !== step.id} onClick={() => handleDecide(step.id, "approved")}>
                       Approve
                     </Button>
-                    <Button size="small" danger onClick={() => handleDecide(step.id, "rejected")}>
+                    <Button size="small" danger disabled={decidingStepId !== null} onClick={() => handleDecide(step.id, "rejected")}>
                       Reject
                     </Button>
                   </Space>

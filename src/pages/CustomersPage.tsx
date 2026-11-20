@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Avatar, Button, Grid, Input, Pagination, Table, Tag, Typography } from "antd";
+import { App, Avatar, Button, Input, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import * as customerApi from "../api/customer-api";
 import * as salesTeamApi from "../api/sales-team-api";
@@ -8,20 +8,20 @@ import type { State } from "../types/sales-team";
 import { useHasPermission } from "../hooks/use-permission";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 import { formatCompactCurrency, initials } from "../utils/lead-format";
 import { categoryColor, customerRisk } from "../components/customers/customer-constants";
 import { CustomerDetailPanel } from "../components/customers/CustomerDetailPanel";
+import { useIsMobile } from "../hooks/use-is-mobile";
 
 const { Title, Text } = Typography;
-const { useBreakpoint } = Grid;
-
 export default function CustomersPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
   // Same "md" cut-off AppLayout uses - below it there's no room for the
   // list and detail side by side, so they stack (list first, detail below).
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const detailRef = useRef<HTMLDivElement>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [states, setStates] = useState<State[]>([]);
@@ -29,12 +29,6 @@ export default function CustomersPage() {
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Pagination lifted out of antd Table's own internal/uncontrolled page
-  // state - rendered as its own always-visible footer below a bounded,
-  // internally-scrolling row area instead of inline with the table rows
-  // (see the Table wrapper below - same pattern as QuotesPage/LeadQueue).
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
 
   // Same race-guard as OpportunitiesPage's own multi-page load - only the
   // most recently started load's progress callbacks are allowed to touch
@@ -76,6 +70,9 @@ export default function CustomersPage() {
         (c.phone ?? "").toLowerCase().includes(q)
     );
   }, [customers, search]);
+  // Paged outside antd Table - an always-visible footer below a bounded,
+  // internally-scrolling row area instead of inline with the table rows.
+  const pager = usePagination("customers", 20, filtered.length);
 
   // Real counts/sums from the customers already loaded - "Over credit
   // limit" is an honest arithmetic read (outstanding > limit), same spirit
@@ -215,7 +212,7 @@ export default function CustomersPage() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setPage(1);
+                pager.setPage(1);
               }}
               allowClear
               style={{ maxWidth: 360 }}
@@ -227,7 +224,7 @@ export default function CustomersPage() {
               rowKey="id"
               size="small"
               loading={loading}
-              dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+              dataSource={pager.slice(filtered)}
               pagination={false}
               tableLayout="fixed"
               // A phone-width list can't fit five fixed-percentage columns -
@@ -331,16 +328,8 @@ export default function CustomersPage() {
           </div>
 
           {filtered.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                padding: "10px 0",
-                flexShrink: 0,
-                borderTop: `1px solid ${appTokens.borderLight}`,
-              }}
-            >
-              <Pagination size="small" current={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} showSizeChanger={false} />
+            <div style={{ padding: "12px 14px", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
+              <ListPagination {...pager.props(filtered.length)} />
             </div>
           )}
         </div>

@@ -242,8 +242,7 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
         <Select
           style={{ width: "100%", marginTop: 4 }}
           allowClear
-          showSearch
-          optionFilterProp="label"
+          showSearch={{ optionFilterProp: "label" }}
           placeholder="Select a colleague (optional)"
           value={coverUserId}
           onChange={setCoverUserId}

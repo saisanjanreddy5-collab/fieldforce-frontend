@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Button, Checkbox, Form, Input, Modal, Select, Space, Typography, message } from "antd";
 import { EnvironmentOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import * as officeApi from "../api/office-api";
 import * as salesTeamApi from "../api/sales-team-api";
 import type { Office, OfficeType } from "../types/office";
 import type { State, Zone } from "../types/sales-team";
 import { OFFICE_TYPE_OPTIONS } from "./OfficesCard";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -103,11 +103,7 @@ export function OfficeDrawer({ open, office, zones, onClose, onSaved }: OfficeDr
       }
       onSaved();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to save office";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to save office"));
     } finally {
       setSaving(false);
     }
@@ -184,8 +180,7 @@ export function OfficeDrawer({ open, office, zones, onClose, onSaved }: OfficeDr
           </Form.Item>
           <Form.Item name="stateId" label="State (GST)" rules={[{ required: true, message: "State is required" }]}>
             <Select
-              showSearch
-              optionFilterProp="label"
+              showSearch={{ optionFilterProp: "label" }}
               placeholder={zoneId ? "Select a state" : "Select a region first"}
               disabled={!zoneId}
               options={states.map((s) => ({ value: s.id, label: s.gstCode ? `${s.name} · ${s.gstCode}` : s.name }))}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Input, InputNumber, Modal, Switch, Typography, message } from "antd";
+import { Button, Input, InputNumber, Modal, Space, Switch, Typography, message } from "antd";
 import * as pipelineStageApi from "../../api/pipeline-stage-api";
 import type { PipelineStage } from "../../types/pipeline-stage";
 import { errorMessageFrom } from "../../utils/api-error";
@@ -97,7 +97,10 @@ export function EditStageModal({ open, onClose, onSaved, stage }: EditStageModal
         </div>
         <div>
           <Text style={{ fontSize: 12, fontWeight: 500 }}>Probability</Text>
-          <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} max={100} value={probability} onChange={(v) => setProbability(v ?? 0)} addonAfter="%" />
+          <Space.Compact>
+            <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} max={100} value={probability} onChange={(v) => setProbability(v ?? 0)} />
+            <Space.Addon>%</Space.Addon>
+          </Space.Compact>
         </div>
         {!isNew && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

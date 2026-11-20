@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Grid, Input, Pagination, Spin, Tag, Typography, message } from "antd";
+import { Button, Input, Spin, Tag, Typography, message } from "antd";
 import { CheckCircleFilled, ClockCircleOutlined, SearchOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as approvalsInboxApi from "../api/approvals-inbox-api";
@@ -14,6 +14,9 @@ import { errorMessageFrom } from "../utils/api-error";
 import { appTokens } from "../utils/design-system";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
+import { useIsMobile } from "../hooks/use-is-mobile";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -32,11 +35,8 @@ function formatWaiting(hours: number): string {
 
 type ViewKey = "pending" | "history";
 
-const PAGE_SIZE = 10;
-
 export default function ApprovalsPage() {
-  const screens = Grid.useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   // Phone: the detail (with Approve/Reject) is stacked below the queue, so
   // tapping an item scrolls it into view - same approach as CustomersPage.
   const detailRef = useRef<HTMLDivElement>(null);
@@ -47,7 +47,6 @@ export default function ApprovalsPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [filter, setFilter] = useState<ApprovalItemType | "all">("all");
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = (keepSelection = false) => {
@@ -82,7 +81,7 @@ export default function ApprovalsPage() {
     setView(next);
     setFilter("all");
     setSearch("");
-    setPage(1);
+    pager.setPage(1);
     if (next === "history" && history === null) {
       loadHistory();
     } else {
@@ -92,12 +91,12 @@ export default function ApprovalsPage() {
 
   const setFilterAndResetPage = (key: ApprovalItemType | "all") => {
     setFilter(key);
-    setPage(1);
+    pager.setPage(1);
   };
 
   const setSearchAndResetPage = (value: string) => {
     setSearch(value);
-    setPage(1);
+    pager.setPage(1);
   };
 
   // Explicitly typed as the union, not left to inference - ApprovalHistoryItem
@@ -111,16 +110,11 @@ export default function ApprovalsPage() {
     if (!q) return typeFilteredItems;
     return typeFilteredItems.filter((i) => `${i.title} ${i.subtitle} ${i.raisedByName ?? ""}`.toLowerCase().includes(q));
   }, [typeFilteredItems, search]);
-  const pagedItems = useMemo(() => filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filteredItems, page]);
+  // Also snaps the page back into range when a decision/reload shrinks the
+  // list out from under it (e.g. deciding the only item left on page 3).
+  const pager = usePagination("approvals", 10, filteredItems.length);
+  const pagedItems = useMemo(() => pager.slice(filteredItems), [pager.slice, filteredItems]);
   const selected = items.find((i) => i.id === selectedId) ?? pagedItems[0] ?? null;
-
-  // Guards against a stale page number left over from a decision/reload that
-  // shrank the list out from under it - e.g. being on page 3 when the item
-  // just decided was the only one left on that page.
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
-    if (page > maxPage) setPage(maxPage);
-  }, [filteredItems.length, page]);
 
   const countFor = (key: ApprovalItemType | "all") => (key === "all" ? items.length : items.filter((i) => i.type === key).length);
 
@@ -128,7 +122,7 @@ export default function ApprovalsPage() {
     message.success("Decision recorded");
     load(false);
     setHistory(null);
-    setPage(1);
+    pager.setPage(1);
   };
 
   return (
@@ -335,16 +329,9 @@ export default function ApprovalsPage() {
               );
             })}
             </div>
-            {filteredItems.length > PAGE_SIZE && (
-              <div style={{ padding: "12px 16px", borderTop: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "center", flexShrink: 0 }}>
-                <Pagination
-                  simple
-                  size="small"
-                  current={page}
-                  pageSize={PAGE_SIZE}
-                  total={filteredItems.length}
-                  onChange={setPage}
-                />
+            {filteredItems.length > 0 && (
+              <div style={{ padding: "12px 16px", borderTop: `1px solid ${appTokens.borderLight}`, flexShrink: 0 }}>
+                <ListPagination {...pager.props(filteredItems.length)} compact />
               </div>
             )}
           </div>

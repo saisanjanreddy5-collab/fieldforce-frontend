@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import * as levelApi from "../api/level-api";
@@ -11,6 +11,7 @@ import { MODULE_LABELS, modulesOf } from "../utils/permission-format";
 import { approvesUpToLabel, headcountLabel, peersLabel, seesLabel } from "../utils/level-format";
 import { appTokens } from "../utils/design-system";
 import { LevelDrawer } from "./LevelDrawer";
+import { ArchivedRolesList, useRoleArchive } from "./RoleArchiveControls";
 
 const { Text } = Typography;
 
@@ -48,9 +49,11 @@ export function RolesAccessCard({ users, levels, onLevelsChange }: RolesAccessCa
     return ladder.length === 0 ? null : Math.min(...ladder);
   }, [levels]);
 
+  // Active roles in the tables; archived ones listed (with Restore) below.
+  const archivedLevels = useMemo(() => levels.filter((l) => l.isArchived), [levels]);
   const rows = useMemo(
     () =>
-      levels.map((level) => ({
+      levels.filter((l) => !l.isArchived).map((level) => ({
         level,
         userCount: users.filter((u) => u.levelId === level.id).length,
       })),
@@ -65,10 +68,15 @@ export function RolesAccessCard({ users, levels, onLevelsChange }: RolesAccessCa
   };
 
   const closeDrawer = () => setDrawerOpen(false);
+  const reloadLevels = useCallback(() => {
+    levelApi.listLevels().then((next) => onLevelsChange?.(next)).catch(() => undefined);
+  }, [onLevelsChange]);
   const handleSaved = () => {
     closeDrawer();
-    levelApi.listLevels().then((rows) => onLevelsChange?.(rows));
+    reloadLevels();
   };
+  const canArchive = hasPermission("levels.delete");
+  const roleArchive = useRoleArchive(reloadLevels);
 
   return (
     <Card size="small" style={{ marginBottom: 16, borderColor: appTokens.border, boxShadow: appTokens.shadowSm }} loading={loading}>
@@ -105,8 +113,29 @@ export function RolesAccessCard({ users, levels, onLevelsChange }: RolesAccessCa
           { title: "Can edit", key: "canEdit", render: (_, row) => row.level.canEditLabel ?? "-" },
           { title: "Approves up to", key: "approvesUpTo", render: (_, row) => approvesUpToLabel(row.level) },
           { title: "Users / open", key: "users", render: (_, row) => headcountLabel(row.level) },
+          ...(canArchive
+            ? [
+                {
+                  title: "",
+                  key: "archive",
+                  width: 90,
+                  render: (_: unknown, row: (typeof rows)[number]) => (
+                    <Button
+                      type="link"
+                      size="small"
+                      loading={roleArchive.busyId === row.level.id}
+                      onClick={() => roleArchive.archive(row.level)}
+                      style={{ color: appTokens.textTertiary }}
+                    >
+                      Archive
+                    </Button>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
+      <ArchivedRolesList levels={archivedLevels} canManage={canArchive} busyId={roleArchive.busyId} onRestore={roleArchive.restore} />
 
       <Text strong style={{ display: "block", marginTop: 16, marginBottom: 4 }}>
         Record visibility matrix

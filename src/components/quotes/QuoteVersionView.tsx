@@ -1,6 +1,6 @@
 import { Typography } from "antd";
 import type { QuoteVersion } from "../../types/quote";
-import { formatCurrency } from "../../utils/lead-format";
+import { formatWholeCurrency } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
 
 const { Text } = Typography;
@@ -53,10 +53,10 @@ export function QuoteVersionView({ version }: { version: QuoteVersion }) {
           >
             <Text style={{ fontSize: 13, color: appTokens.textPrimary }}>{item.description}</Text>
             <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>{item.quantity}</Text>
-            <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>{formatCurrency(item.unitPrice)}</Text>
+            <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>{formatWholeCurrency(item.unitPrice)}</Text>
             <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>{item.taxPercent}%</Text>
             <Text strong style={{ fontSize: 13, color: appTokens.textPrimary }}>
-              {formatCurrency(item.lineTotal)}
+              {formatWholeCurrency(item.lineTotal)}
             </Text>
           </div>
         ))}
@@ -68,18 +68,18 @@ export function QuoteVersionView({ version }: { version: QuoteVersion }) {
         <div style={{ width: 240, maxWidth: "100%", display: "flex", flexDirection: "column", gap: 5 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>Subtotal</Text>
-            <Text style={{ fontSize: 12.5, color: appTokens.textPrimary }}>{formatCurrency(version.subtotal)}</Text>
+            <Text style={{ fontSize: 12.5, color: appTokens.textPrimary }}>{formatWholeCurrency(version.subtotal)}</Text>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>Tax</Text>
-            <Text style={{ fontSize: 12.5, color: appTokens.textPrimary }}>{formatCurrency(version.taxTotal)}</Text>
+            <Text style={{ fontSize: 12.5, color: appTokens.textPrimary }}>{formatWholeCurrency(version.taxTotal)}</Text>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 6, borderTop: `1px solid ${appTokens.border}` }}>
             <Text strong style={{ fontSize: 14, color: appTokens.textPrimary }}>
               Grand total
             </Text>
             <Text strong style={{ fontSize: 14, color: appTokens.primary }}>
-              {formatCurrency(version.grandTotal)}
+              {formatWholeCurrency(version.grandTotal)}
             </Text>
           </div>
         </div>

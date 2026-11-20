@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLatestRequest } from "../hooks/use-latest-request";
 import { emailRules, normalizeEmail } from "../utils/email-typo-check";
-import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Pagination, Popover, Select, Table, Tag, Typography } from "antd";
+import { App, Avatar, Button, Drawer, Dropdown, Empty, Form, Input, Modal, Popover, Select, Table, Tag, Typography } from "antd";
 import { DownOutlined, PhoneOutlined, PlayCircleOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as callCenterApi from "../api/call-center-api";
-import * as smartfloApi from "../api/smartflo-api";
+import { useClickToCall } from "../hooks/use-click-to-call";
 import * as customerExtrasApi from "../api/customer-extras-api";
 import * as leadApi from "../api/lead-api";
 import type { Call } from "../types/call";
@@ -17,6 +18,8 @@ import { FLC_STAGE, LEAD_STATUS_COLORS, NEW_STAGE, SLC_STAGE } from "../utils/le
 import { errorMessageFrom } from "../utils/api-error";
 import { avatarGradient, appTokens } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from "../utils/lead-format";
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
@@ -65,8 +68,7 @@ export default function CallCenterPage() {
   const [loading, setLoading] = useState(true);
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [search, setSearch] = useState("");
-  const [callLogPage, setCallLogPage] = useState(1);
-  const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
+  const { call, callingKey: callingLeadId } = useClickToCall();
   // Queue items whose lead has converted to a customer - keyed by
   // customerId, so the "Call" button can offer a per-contact picker
   // instead of always dialing the lead's own number. Prefetched once per
@@ -82,11 +84,15 @@ export default function CallCenterPage() {
   // not just slow - now drains every real page (listAllCalls), streaming
   // results in as they arrive so the table is usable immediately rather
   // than blocking on the whole history loading first.
+  // Reloads can overlap (every call placed reloads) - only the newest wins.
+  const latestCalls = useLatestRequest();
   const load = () => {
+    const token = latestCalls.start();
     setLoading(true);
     setStreamProgress(null);
     Promise.all([
       callCenterApi.listAllCalls({}, (loadedSoFar, total) => {
+        if (!latestCalls.isCurrent(token)) return;
         setCalls(loadedSoFar);
         setLoading(false);
         setStreamProgress(loadedSoFar.length < total ? { loaded: loadedSoFar.length, total } : null);
@@ -95,15 +101,16 @@ export default function CallCenterPage() {
       callCenterApi.getStats(),
     ])
       .then(async ([, upcoming, callStats]) => {
+        if (!latestCalls.isCurrent(token)) return;
         setQueue(upcoming);
         setStats(callStats);
 
         const customerIds = [...new Set(upcoming.map((c) => c.customerId).filter((id): id is string => id !== null))];
         const contactLists = await Promise.all(customerIds.map((id) => customerExtrasApi.listContacts(id).catch(() => [])));
-        setQueueContacts(Object.fromEntries(customerIds.map((id, i) => [id, contactLists[i]])));
+        if (latestCalls.isCurrent(token)) setQueueContacts(Object.fromEntries(customerIds.map((id, i) => [id, contactLists[i]])));
       })
-      .catch(() => message.error("Failed to load calls"))
-      .finally(() => setLoading(false));
+      .catch(() => latestCalls.isCurrent(token) && message.error("Failed to load calls"))
+      .finally(() => latestCalls.isCurrent(token) && setLoading(false));
   };
 
   useEffect(load, []);
@@ -119,28 +126,15 @@ export default function CallCenterPage() {
     );
   }, [calls, search]);
 
-  const CALL_LOG_PAGE_SIZE = 20;
-  const pagedCalls = useMemo(
-    () => filtered.slice((callLogPage - 1) * CALL_LOG_PAGE_SIZE, callLogPage * CALL_LOG_PAGE_SIZE),
-    [filtered, callLogPage]
-  );
+  const callLogPager = usePagination("call-center-log", 20, filtered.length);
+  const pagedCalls = useMemo(() => callLogPager.slice(filtered), [callLogPager.slice, filtered]);
 
-  const handleCall = async (leadId: string | null, override?: { phone: string; contactName?: string }) => {
+  // Once placed, the call is already logged as an Activity - reload so it
+  // shows up right away (as "In progress" until the webhook fills in the
+  // outcome).
+  const handleCall = (leadId: string | null, contact?: { phone: string; contactName?: string }, name?: string) => {
     if (!leadId) return;
-    setCallingLeadId(leadId);
-    try {
-      // By the time this resolves, smartflo-service.ts has already logged
-      // the new call as an Activity - reload so it shows up right away (as
-      // "In progress", until the webhook fills in the real outcome) instead
-      // of only appearing after a manual page refresh.
-      await smartfloApi.callLead(leadId, override);
-      message.success(override ? `Calling ${override.contactName ?? override.phone}` : "Calling now");
-      load();
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to place the call"));
-    } finally {
-      setCallingLeadId(null);
-    }
+    call({ leadId, name: name ?? contact?.contactName ?? "this lead", phone: contact?.phone ?? null, contact, onPlaced: load });
   };
 
   if (!hasPermission("call_center.view")) {
@@ -194,7 +188,7 @@ export default function CallCenterPage() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setCallLogPage(1);
+                callLogPager.setPage(1);
               }}
               allowClear
               style={{ maxWidth: 320 }}
@@ -332,15 +326,8 @@ export default function CallCenterPage() {
           />
           </div>
           {filtered.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", padding: "12px 14px", borderTop: `1px solid ${appTokens.borderLight}` }}>
-              <Pagination
-                size="small"
-                current={callLogPage}
-                pageSize={CALL_LOG_PAGE_SIZE}
-                total={filtered.length}
-                onChange={setCallLogPage}
-                showSizeChanger={false}
-              />
+            <div style={{ padding: "12px 14px", borderTop: `1px solid ${appTokens.borderLight}` }}>
+              <ListPagination {...callLogPager.props(filtered.length)} />
             </div>
           )}
         </div>
@@ -412,7 +399,7 @@ export default function CallCenterPage() {
                             icon={<PhoneOutlined />}
                             loading={callingLeadId === c.leadId}
                             disabled={!c.leadId}
-                            onClick={() => handleCall(c.leadId)}
+                            onClick={() => handleCall(c.leadId, undefined, c.leadFullName ?? undefined)}
                           >
                             Call
                           </Button>
@@ -432,7 +419,7 @@ export default function CallCenterPage() {
                             ],
                             onClick: ({ key }) => {
                               if (key === "__lead__") {
-                                handleCall(c.leadId);
+                                handleCall(c.leadId, undefined, c.leadFullName ?? undefined);
                                 return;
                               }
                               const contact = contacts.find((ct) => ct.id === key);
@@ -533,7 +520,7 @@ interface AddLeadFormValues {
 // Edit screen once qualified.
 function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
   const { message } = App.useApp();
-  const { categories } = useLeadCategories();
+  const { categories } = useLeadCategories(open);
   const [form] = Form.useForm<AddLeadFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const duplicates = useLeadDuplicateCheck({
@@ -566,7 +553,7 @@ function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () =
       onOk={() => form.submit()}
       okText="Add lead"
       confirmLoading={submitting}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" onFinish={submit} style={{ marginTop: 8 }}>
         <Form.Item name="fullName" label="Full name" rules={[{ required: true, message: "Full name is required" }]}>
@@ -649,7 +636,7 @@ function MyQueueTab() {
   // hides the inline Call button for these.
   const [handedOffLeads, setHandedOffLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [callingLeadId, setCallingLeadId] = useState<string | null>(null);
+  const { call, callingKey: callingLeadId } = useClickToCall();
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
@@ -665,7 +652,11 @@ function MyQueueTab() {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<AdvancedFilters>({});
 
+  // Every stage action reloads the queue, and quick clicks overlap - only
+  // the newest reload may update it.
+  const latestQueue = useLatestRequest();
   const load = () => {
+    const token = latestQueue.start();
     setLoading(true);
     // One request for every tier stage together (status accepts a
     // comma-separated list server-side now) instead of one full paginated
@@ -680,6 +671,7 @@ function MyQueueTab() {
       leadApi.listAllLeadsForStatus({ status: "Qualified" }),
       leadApi.listHandedOffLeads(),
     ]).then(([callCenterResult, qualifiedResult, handedOffResult]) => {
+      if (!latestQueue.isCurrent(token)) return;
       // status alone can't tell "I still own this" apart from "I used to
       // own this" - sendToField never changes status (see
       // lead-call-center-service.ts's own comment on that), so a leftover
@@ -761,30 +753,19 @@ function MyQueueTab() {
   // independently since they're logically separate lists. Resets to page 1
   // whenever the visible set changes shape, so narrowing a filter never
   // leaves the view stranded on a now-nonexistent later page.
-  const QUEUE_PAGE_SIZE = 10;
-  const [qualifiedPage, setQualifiedPage] = useState(1);
-  const [callingPage, setCallingPage] = useState(1);
-  const [handedOffPage, setHandedOffPage] = useState(1);
+  const qualifiedPager = usePagination("call-center-queue-qualified", 10, filteredQualified.length);
+  const callingPager = usePagination("call-center-queue-awaiting", 10, filteredCalling.length);
+  const handedOffPager = usePagination("call-center-queue-handed-off", 10, filteredHandedOff.length);
   useEffect(() => {
-    setQualifiedPage(1);
-    setCallingPage(1);
-    setHandedOffPage(1);
-  }, [search, filters]);
-  const pagedQualified = filteredQualified.slice((qualifiedPage - 1) * QUEUE_PAGE_SIZE, qualifiedPage * QUEUE_PAGE_SIZE);
-  const pagedCalling = filteredCalling.slice((callingPage - 1) * QUEUE_PAGE_SIZE, callingPage * QUEUE_PAGE_SIZE);
-  const pagedHandedOff = filteredHandedOff.slice((handedOffPage - 1) * QUEUE_PAGE_SIZE, handedOffPage * QUEUE_PAGE_SIZE);
+    qualifiedPager.setPage(1);
+    callingPager.setPage(1);
+    handedOffPager.setPage(1);
+  }, [search, filters, qualifiedPager.setPage, callingPager.setPage, handedOffPager.setPage]);
+  const pagedQualified = qualifiedPager.slice(filteredQualified);
+  const pagedCalling = callingPager.slice(filteredCalling);
+  const pagedHandedOff = handedOffPager.slice(filteredHandedOff);
 
-  const handleCall = async (leadId: string) => {
-    setCallingLeadId(leadId);
-    try {
-      await smartfloApi.callLead(leadId);
-      message.success("Calling now");
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to place the call"));
-    } finally {
-      setCallingLeadId(null);
-    }
-  };
+  const handleCall = (lead: Lead) => call({ leadId: lead.id, name: lead.fullName, phone: lead.phone });
 
   // A scannable summary row per lead - full detail (edit customer info,
   // Call/Email/Teams/WhatsApp, call history and comments, Log call outcome/
@@ -852,7 +833,7 @@ function MyQueueTab() {
             loading={callingLeadId === lead.id}
             onClick={(e) => {
               e.stopPropagation();
-              handleCall(lead.id);
+              handleCall(lead);
             }}
           >
             Call
@@ -926,14 +907,8 @@ function MyQueueTab() {
             {pagedQualified.map((l) => renderRow(l))}
           </div>
           {filteredQualified.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
-              <Pagination
-                current={qualifiedPage}
-                pageSize={QUEUE_PAGE_SIZE}
-                total={filteredQualified.length}
-                onChange={setQualifiedPage}
-                showSizeChanger={false}
-              />
+            <div style={{ paddingTop: 12, width: "100%" }}>
+              <ListPagination {...qualifiedPager.props(filteredQualified.length)} />
             </div>
           )}
         </div>
@@ -947,14 +922,8 @@ function MyQueueTab() {
             {pagedCalling.map((l) => renderRow(l, { showStageTag: myTierStages.length > 1 }))}
           </div>
           {filteredCalling.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
-              <Pagination
-                current={callingPage}
-                pageSize={QUEUE_PAGE_SIZE}
-                total={filteredCalling.length}
-                onChange={setCallingPage}
-                showSizeChanger={false}
-              />
+            <div style={{ paddingTop: 12, width: "100%" }}>
+              <ListPagination {...callingPager.props(filteredCalling.length)} />
             </div>
           )}
         </div>
@@ -968,14 +937,8 @@ function MyQueueTab() {
             {pagedHandedOff.map((l) => renderRow(l, { showCallButton: false }))}
           </div>
           {filteredHandedOff.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
-              <Pagination
-                current={handedOffPage}
-                pageSize={QUEUE_PAGE_SIZE}
-                total={filteredHandedOff.length}
-                onChange={setHandedOffPage}
-                showSizeChanger={false}
-              />
+            <div style={{ paddingTop: 12, width: "100%" }}>
+              <ListPagination {...handedOffPager.props(filteredHandedOff.length)} />
             </div>
           )}
         </div>
@@ -990,8 +953,8 @@ function MyQueueTab() {
         title={selectedLead?.fullName ?? ""}
         open={Boolean(selectedLead)}
         onClose={() => setSelectedLeadId(null)}
-        width={820}
-        destroyOnClose
+        size={820}
+        destroyOnHidden
       >
         {selectedLead ? (
           <LeadDetail

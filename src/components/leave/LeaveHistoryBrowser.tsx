@@ -6,15 +6,9 @@ import type { LeaveBalance, LeaveContextPerson, LeaveRequest } from "../../types
 import { appTokens, avatarGradient } from "../../utils/design-system";
 import { initials } from "../../utils/lead-format";
 import { daysLabel, formatDateRange, kindColor, kindLabel } from "../../utils/leave-format";
+import { LeaveStatusTag } from "./LeaveStatusTag";
 
 const { Text } = Typography;
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: appTokens.warning,
-  approved: appTokens.success,
-  rejected: appTokens.danger,
-  cancelled: appTokens.textTertiary,
-};
 
 interface LeaveHistoryBrowserProps {
   balances: LeaveBalance[];
@@ -119,11 +113,7 @@ export function LeaveHistoryBrowser({ balances, directReports }: LeaveHistoryBro
           {
             title: "Status",
             key: "status",
-            render: (_, r) => (
-              <Tag style={{ color: STATUS_COLOR[r.status], background: `${STATUS_COLOR[r.status]}17`, border: "none", fontWeight: 600 }}>
-                {r.status[0].toUpperCase() + r.status.slice(1)}
-              </Tag>
-            ),
+            render: (_, r) => <LeaveStatusTag status={r.status} />,
           },
         ]}
       />

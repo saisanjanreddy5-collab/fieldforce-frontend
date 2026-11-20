@@ -1,26 +1,15 @@
 import { apiClient } from "./api-client";
+import { fetchAllPages } from "./fetch-all-pages";
 import type { ApiSuccess } from "../types/api";
 import type { CreateUserPayload, TeamMember, UpdateUserPayload } from "../types/user";
 
-// Every caller here wants the complete roster (owner pickers, assignment
-// rules, People list, report filters) - never a partial page - so a single
-// capped request silently dropping anyone past #200 was a real bug, not
-// just slow, once the sales force grew past that. Drains every real page,
-// same pattern as quote-api.ts's listAllQuotes.
-export async function listUsers(): Promise<TeamMember[]> {
-  const PAGE_SIZE = 200;
-  const first = await apiClient.get<ApiSuccess<{ users: TeamMember[]; total: number }>>("/users", { params: { page: 1, limit: PAGE_SIZE } });
-  let all = first.data.data.users;
-  const total = first.data.data.total;
-
-  let page = 2;
-  while (all.length < total) {
-    const next = await apiClient.get<ApiSuccess<{ users: TeamMember[]; total: number }>>("/users", { params: { page, limit: PAGE_SIZE } });
-    if (next.data.data.users.length === 0) break;
-    all = [...all, ...next.data.data.users];
-    page += 1;
-  }
-  return all;
+// Every caller wants the complete roster (owner pickers, assignment rules,
+// People list, report filters) - never a partial page.
+export function listUsers(): Promise<TeamMember[]> {
+  return fetchAllPages(async (page, limit) => {
+    const response = await apiClient.get<ApiSuccess<{ users: TeamMember[]; total: number }>>("/users", { params: { page, limit } });
+    return { items: response.data.data.users, total: response.data.data.total };
+  }, 200);
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<TeamMember> {

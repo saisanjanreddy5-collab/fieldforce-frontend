@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Input, Pagination, Popconfirm, Progress, Space, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Input, Popconfirm, Progress, Space, Table, Tag, Typography, message } from "antd";
 import {
   ApartmentOutlined,
   AuditOutlined,
@@ -22,7 +22,7 @@ import * as incentivePlanApi from "../api/incentive-plan-api";
 import * as userIncentivePlanApi from "../api/user-incentive-plan-api";
 import * as commissionRuleApi from "../api/commission-rule-api";
 import type { TeamMember } from "../types/user";
-import type { SalesTeam, Zone } from "../types/sales-team";
+import type { Zone } from "../types/sales-team";
 import type { Office } from "../types/office";
 import type { Level } from "../types/level";
 import type { Target } from "../types/target";
@@ -49,6 +49,8 @@ import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { STATUS_COLORS, STATUS_OPTIONS, UserFormWizard } from "../components/UserFormWizard";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 
 const { Title, Text } = Typography;
 
@@ -76,7 +78,6 @@ export default function SalesForceManagementPage() {
   const hasPermission = useHasPermission();
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [, setSalesTeams] = useState<SalesTeam[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [offices, setOffices] = useState<Office[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
@@ -88,8 +89,6 @@ export default function SalesForceManagementPage() {
   const [editingUser, setEditingUser] = useState<TeamMember | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [peoplePage, setPeoplePage] = useState(1);
-  const PEOPLE_PAGE_SIZE = 20;
   const [testAccessOpen, setTestAccessOpen] = useState(false);
   const [resettingPasswordUser, setResettingPasswordUser] = useState<TeamMember | null>(null);
 
@@ -125,10 +124,10 @@ export default function SalesForceManagementPage() {
   // Each fetch here is gated behind the same permission that already
   // decides whether its corresponding tab/card even renders (People ->
   // users.view, Territory & targets -> targets.view, Incentive plans ->
-  // incentive_plans.view). Firing them unconditionally for someone like a
-  // plain Agent - who has none of these permissions, since this page has
-  // no route-level guard and is reachable from the sidebar by anyone -
-  // meant every visit threw 403s and an unexplained "Failed to load team
+  // incentive_plans.view). App.tsx's route Gate only checks that the user
+  // holds at least one of this page's tab permissions, so someone who can
+  // open the page may still lack any given tab's - firing every fetch
+  // unconditionally threw 403s and an unexplained "Failed to load team
   // members" toast for content that was never going to be shown anyway.
   useEffect(() => {
     if (hasPermission("users.view")) load();
@@ -147,14 +146,11 @@ export default function SalesForceManagementPage() {
   }, []);
   // Fetched here rather than left to each tab's own card to populate via
   // onChange - those cards only mount when their own tab is active, so
-  // relying on that left offices/salesTeams/levels empty everywhere else
+  // relying on that left offices/levels empty everywhere else
   // (Permissions, Roles & access, Org chart, the People table's own
   // columns) until the user happened to visit that specific tab first.
   useEffect(() => {
     officeApi.listOffices().then(setOffices).catch(() => undefined);
-  }, []);
-  useEffect(() => {
-    salesTeamApi.listSalesTeams().then(setSalesTeams).catch(() => undefined);
   }, []);
   useEffect(() => {
     levelApi.listLevels().then(setLevels).catch(() => undefined);
@@ -207,6 +203,7 @@ export default function SalesForceManagementPage() {
       );
     });
   }, [users, search, statusFilter, belowTargetUserIds]);
+  const peoplePager = usePagination("people", 20, filteredUsers.length);
 
   const openAddDrawer = () => {
     setEditingUser(null);
@@ -328,7 +325,7 @@ export default function SalesForceManagementPage() {
         <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           {hasPermission("sales_teams.view") && (
             <div style={{ flexShrink: 0 }}>
-              <SalesTeamsCard onChange={setSalesTeams} />
+              <SalesTeamsCard />
             </div>
           )}
 
@@ -359,7 +356,7 @@ export default function SalesForceManagementPage() {
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
-                setPeoplePage(1);
+                peoplePager.setPage(1);
               }}
               style={{ maxWidth: 360 }}
               allowClear
@@ -369,7 +366,7 @@ export default function SalesForceManagementPage() {
                 checked={statusFilter === null}
                 onChange={() => {
                   setStatusFilter(null);
-                  setPeoplePage(1);
+                  peoplePager.setPage(1);
                 }}
               >
                 All {users.length}
@@ -380,7 +377,7 @@ export default function SalesForceManagementPage() {
                   checked={statusFilter === s.value}
                   onChange={(checked) => {
                     setStatusFilter(checked ? s.value : null);
-                    setPeoplePage(1);
+                    peoplePager.setPage(1);
                   }}
                 >
                   {s.label} {statusCounts[s.value] ?? 0}
@@ -390,7 +387,7 @@ export default function SalesForceManagementPage() {
                 checked={statusFilter === "below_target"}
                 onChange={(checked) => {
                   setStatusFilter(checked ? "below_target" : null);
-                  setPeoplePage(1);
+                  peoplePager.setPage(1);
                 }}
               >
                 Below target {belowTargetUserIds.size}
@@ -404,7 +401,7 @@ export default function SalesForceManagementPage() {
             size="small"
             rowKey="id"
             loading={loading}
-            dataSource={filteredUsers.slice((peoplePage - 1) * PEOPLE_PAGE_SIZE, peoplePage * PEOPLE_PAGE_SIZE)}
+            dataSource={peoplePager.slice(filteredUsers)}
             pagination={false}
             // Column widths below add up to ~1085px - fits a 1366px laptop
             // as-is, and scrolls sideways on anything narrower instead of
@@ -521,7 +518,7 @@ export default function SalesForceManagementPage() {
                         size="small"
                         showInfo={false}
                         strokeColor={tierColor}
-                        trailColor={appTokens.surfaceSunken}
+                        railColor={appTokens.surfaceSunken}
                       />
                     </div>
                   );
@@ -596,14 +593,8 @@ export default function SalesForceManagementPage() {
           </div>
 
           {filteredUsers.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, flexShrink: 0 }}>
-              <Pagination
-                current={peoplePage}
-                pageSize={PEOPLE_PAGE_SIZE}
-                total={filteredUsers.length}
-                onChange={setPeoplePage}
-                showSizeChanger={false}
-              />
+            <div style={{ paddingTop: 12, flexShrink: 0, width: "100%" }}>
+              <ListPagination {...peoplePager.props(filteredUsers.length)} />
             </div>
           )}
         </div>

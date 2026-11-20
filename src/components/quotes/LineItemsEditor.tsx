@@ -1,12 +1,11 @@
-import { Button, Grid, Input, InputNumber, Typography } from "antd";
+import { Button, Input, InputNumber, Typography } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import type { QuoteLineItemInput } from "../../types/quote";
-import { formatCurrency } from "../../utils/lead-format";
+import { formatWholeCurrency } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
+import { useIsMobile } from "../../hooks/use-is-mobile";
 
 const { Text } = Typography;
-const { useBreakpoint } = Grid;
-
 export function emptyLineItem(): QuoteLineItemInput {
   return { description: "", quantity: 1, unitPrice: 0, taxPercent: 18 };
 }
@@ -39,8 +38,7 @@ const headerLabelStyle = { fontSize: 11, fontWeight: 600, textTransform: "upperc
 // editing experience itself never differs depending on whether you're
 // creating version 1 or version 6.
 export function LineItemsEditor({ value, onChange }: LineItemsEditorProps) {
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const updateItem = (index: number, patch: Partial<QuoteLineItemInput>) => {
     onChange(value.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
@@ -139,7 +137,7 @@ export function LineItemsEditor({ value, onChange }: LineItemsEditorProps) {
                   <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>
                     Line total:{" "}
                     <Text strong style={{ color: appTokens.textPrimary }}>
-                      {formatCurrency(lineTotal)}
+                      {formatWholeCurrency(lineTotal)}
                     </Text>
                   </Text>
                   {deleteButton}
@@ -165,7 +163,7 @@ export function LineItemsEditor({ value, onChange }: LineItemsEditorProps) {
               {unitPriceInput}
               {taxInput}
               <Text strong style={{ textAlign: "right", color: appTokens.textPrimary }}>
-                {formatCurrency(lineTotal)}
+                {formatWholeCurrency(lineTotal)}
               </Text>
               {deleteButton}
             </div>
@@ -181,11 +179,11 @@ export function LineItemsEditor({ value, onChange }: LineItemsEditorProps) {
         <div style={{ width: 260, maxWidth: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>Subtotal</Text>
-            <Text style={{ fontSize: 13, color: appTokens.textPrimary }}>{formatCurrency(totals.subtotal)}</Text>
+            <Text style={{ fontSize: 13, color: appTokens.textPrimary }}>{formatWholeCurrency(totals.subtotal)}</Text>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 13, color: appTokens.textSecondary }}>Tax</Text>
-            <Text style={{ fontSize: 13, color: appTokens.textPrimary }}>{formatCurrency(totals.taxTotal)}</Text>
+            <Text style={{ fontSize: 13, color: appTokens.textPrimary }}>{formatWholeCurrency(totals.taxTotal)}</Text>
           </div>
           <div
             style={{
@@ -199,7 +197,7 @@ export function LineItemsEditor({ value, onChange }: LineItemsEditorProps) {
               Grand total
             </Text>
             <Text strong style={{ fontSize: 15, color: appTokens.primary }}>
-              {formatCurrency(totals.grandTotal)}
+              {formatWholeCurrency(totals.grandTotal)}
             </Text>
           </div>
         </div>

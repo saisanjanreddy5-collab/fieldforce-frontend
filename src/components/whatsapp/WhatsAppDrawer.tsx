@@ -27,12 +27,8 @@ interface WhatsAppThreadProps {
   leadId: string;
   fullName: string;
   phone: string | null;
-  // Optional, defaults to true - only the Lead context passes this
-  // explicitly (false when !lead.inOwnerScope, e.g. a Call Center rep's
-  // read-only view after handing this lead to Field Sales). Customers'
-  // reuse of this same component has no equivalent "merely shared, not
-  // owned" concept, so it's left at the default there rather than forcing
-  // every caller to reason about a restriction that only applies to Leads.
+  // Read-only unless the caller says otherwise: needs whatsapp.send, and on a
+  // lead, owning it (a Call Center rep can still read a lead they handed off).
   canSend?: boolean;
 }
 
@@ -201,7 +197,7 @@ function EmptyState() {
 
 // Messages + composer. Lives inside the drawer and is unmounted when it
 // closes, so the 5-second refresh only runs while the chat is open.
-function WhatsAppThread({ leadId, canSend = true }: Omit<WhatsAppThreadProps, "fullName" | "phone">) {
+function WhatsAppThread({ leadId, canSend = false }: Omit<WhatsAppThreadProps, "fullName" | "phone">) {
   const [messages, setMessages] = useState<WhatsappMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -228,29 +224,29 @@ function WhatsAppThread({ leadId, canSend = true }: Omit<WhatsAppThreadProps, "f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
 
-  // Inbound messages arrive via a server-side webhook, not anything this tab
-  // triggered itself - without this, a real reply from the lead only ever
-  // showed up after a manual page refresh, confirmed against production
-  // logs. No websocket infra exists elsewhere in this app, so this polls
-  // the same way the rest of FieldForce does. Only actually replaces
-  // `messages` (and so re-triggers the scroll-to-bottom effect below) when
-  // the thread genuinely changed, so quietly polling every few seconds
-  // doesn't yank the view back to the bottom while someone's scrolled up
-  // reading history.
+  // Replies and delivered/read ticks arrive via the provider's webhook, so
+  // the open chat checks for changes every 5 seconds (paused while the
+  // browser tab is hidden). The list is only replaced when something
+  // actually changed - a new message or a tick - so polling never jumps the
+  // view while someone is reading older messages. A late answer for another
+  // lead's chat is ignored.
   useEffect(() => {
+    let active = true;
+    const signature = (list: WhatsappMessage[]) => list.map((m) => `${m.id}:${m.status}`).join("|");
     const interval = setInterval(() => {
+      if (document.hidden) return;
       whatsappApi
         .listMessagesForLead(leadId)
         .then((fresh) => {
-          setMessages((prev) => {
-            const samePrevLast = prev[prev.length - 1]?.id;
-            const sameFreshLast = fresh[fresh.length - 1]?.id;
-            return fresh.length !== prev.length || sameFreshLast !== samePrevLast ? fresh : prev;
-          });
+          if (!active) return;
+          setMessages((prev) => (signature(fresh) === signature(prev) ? prev : fresh));
         })
         .catch(() => undefined);
     }, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [leadId]);
 
   // Scrolls only the message list, never the page behind the drawer.
@@ -434,7 +430,7 @@ function WhatsAppThread({ leadId, canSend = true }: Omit<WhatsAppThreadProps, "f
         <Input.TextArea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={canSend ? "Type a message..." : "This lead has been handed off to someone else - you can read this thread, but not send"}
+          placeholder={canSend ? "Type a message..." : "You can read this conversation, but not send messages from here"}
           disabled={!canSend}
           autoSize={{ minRows: 1, maxRows: 4 }}
           style={{ borderRadius: 22, resize: "none", padding: "8px 16px", background: appTokens.surfaceMuted, border: "none" }}
@@ -478,7 +474,7 @@ function WhatsAppThread({ leadId, canSend = true }: Omit<WhatsAppThreadProps, "f
 // conversation: the record stays where it is on the left, and the chat gets
 // the whole screen height instead of the few lines left under the lead's
 // details.
-export function WhatsAppDrawer({ open, onClose, leadId, fullName, phone, canSend = true }: WhatsAppDrawerProps) {
+export function WhatsAppDrawer({ open, onClose, leadId, fullName, phone, canSend = false }: WhatsAppDrawerProps) {
   const screens = Grid.useBreakpoint();
   return (
     <Drawer

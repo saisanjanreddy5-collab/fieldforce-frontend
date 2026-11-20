@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, Empty, Typography } from "antd";
 import type { PipelineStageStat } from "../types/dashboard";
-import { formatCurrency } from "../utils/format";
+import { formatCompactCurrency } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
 
 const { Title } = Typography;
@@ -61,11 +61,11 @@ export function PipelineByStageChart({ data, loading }: PipelineByStageChartProp
               tick={{ fill: appTokens.textTertiary, fontSize: 12 }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(value: number) => formatCurrency(value)}
+              tickFormatter={(value: number) => formatCompactCurrency(value)}
               width={64}
             />
             <Tooltip
-              formatter={(value) => formatCurrency(Number(value))}
+              formatter={(value) => formatCompactCurrency(Number(value))}
               labelFormatter={(label) => stageLabel(String(label))}
               contentStyle={{ borderRadius: appTokens.radiusSm, border: `1px solid ${appTokens.borderLight}`, boxShadow: appTokens.shadowMd }}
             />

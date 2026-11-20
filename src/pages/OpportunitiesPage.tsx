@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Grid, Segmented, Select, Typography } from "antd";
+import { App, Button, Segmented, Select, Typography } from "antd";
 import { AppstoreOutlined, BarChartOutlined, PlusOutlined, TableOutlined, TeamOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
 import * as opportunityApi from "../api/opportunity-api";
@@ -22,10 +22,9 @@ import { useHasPermission } from "../hooks/use-permission";
 import { exportToXlsx } from "../utils/export-xlsx";
 import { appTokens } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { useIsMobile } from "../hooks/use-is-mobile";
 
 const { Text } = Typography;
-const { useBreakpoint } = Grid;
-
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_COLORS).map((c) => ({ value: c, label: c }));
 
 const FILTER_DOT = <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#9aa2b1" }} />;
@@ -35,8 +34,7 @@ type View = "kanban" | "list" | "team-rollup" | "forecast";
 export default function OpportunitiesPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [users, setUsers] = useState<TeamMember[]>([]);
@@ -294,8 +292,7 @@ export default function OpportunitiesPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Select
             prefix={FILTER_DOT}
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             style={{ minWidth: 120, flexShrink: 0 }}
             value={territoryFilter ?? "all"}
             onChange={(v) => setTerritoryFilter(v === "all" ? undefined : v)}

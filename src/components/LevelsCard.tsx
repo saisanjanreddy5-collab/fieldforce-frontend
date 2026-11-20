@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Space, Switch, Typography, message } from "antd";
 import { HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import * as levelApi from "../api/level-api";
@@ -10,6 +10,7 @@ import { formatCompactCurrency } from "../utils/lead-format";
 import { ladderIndex } from "../utils/level-format";
 import { appTokens } from "../utils/design-system";
 import { LevelDrawer } from "./LevelDrawer";
+import { ArchivedRolesList, useRoleArchive } from "./RoleArchiveControls";
 
 const { Text } = Typography;
 
@@ -36,7 +37,7 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
   const [editingLevel, setEditingLevel] = useState<Level | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
-  const loadLevels = () => {
+  const loadLevels = useCallback(() => {
     setLoading(true);
     levelApi
       .listLevels()
@@ -46,7 +47,14 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
       })
       .catch(() => message.error("Failed to load levels"))
       .finally(() => setLoading(false));
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The ladder shows active roles; archived ones are listed (with Restore) below it.
+  const activeLevels = levels.filter((l) => !l.isArchived);
+  const archivedLevels = levels.filter((l) => l.isArchived);
+  const canArchive = hasPermission("levels.delete");
+  const roleArchive = useRoleArchive(loadLevels);
 
   const loadAxes = () => {
     structureAxisApi.listStructureAxes().then(setAxes).catch(() => undefined);
@@ -82,7 +90,7 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
       setDragIndex(null);
       return;
     }
-    const reordered = [...levels];
+    const reordered = [...activeLevels];
     const [moved] = reordered.splice(dragIndex, 1);
     reordered.splice(targetIndex, 0, moved);
     setDragIndex(null);
@@ -128,10 +136,10 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
             )}
           </div>
 
-          {levels.length === 0 ? (
+          {activeLevels.length === 0 ? (
             <Text type="secondary">No levels yet - add one above</Text>
           ) : (
-            levels.map((level, idx) => (
+            activeLevels.map((level, idx) => (
               <div
                 key={level.id}
                 draggable={canReorder}
@@ -186,14 +194,28 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
                     {level.approvalCeiling !== null ? `up to ${formatCompactCurrency(level.approvalCeiling)}` : "no ceiling set"}
                   </Text>
                 </div>
-                {hasPermission("levels.create") && (
-                  <Button type="link" size="small" onClick={() => openEdit(level)}>
-                    Edit
-                  </Button>
-                )}
+                <div style={{ display: "flex", flexShrink: 0 }}>
+                  {hasPermission("levels.create") && (
+                    <Button type="link" size="small" onClick={() => openEdit(level)}>
+                      Edit
+                    </Button>
+                  )}
+                  {canArchive && (
+                    <Button
+                      type="link"
+                      size="small"
+                      loading={roleArchive.busyId === level.id}
+                      onClick={() => roleArchive.archive(level)}
+                      style={{ color: appTokens.textTertiary }}
+                    >
+                      Archive
+                    </Button>
+                  )}
+                </div>
               </div>
             ))
           )}
+          <ArchivedRolesList levels={archivedLevels} canManage={canArchive} busyId={roleArchive.busyId} onRestore={roleArchive.restore} />
         </div>
 
         <div style={{ flex: "1 1 240px", minWidth: 220 }}>
@@ -203,7 +225,7 @@ export function LevelsCard({ onChange }: LevelsCardProps) {
               The hierarchy branches on every axis you switch on
             </Text>
           </div>
-          <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
+          <Space orientation="vertical" style={{ width: "100%", marginTop: 8 }}>
             {axes.map((axis) => (
               <div
                 key={axis.id}

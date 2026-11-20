@@ -47,8 +47,13 @@ export function QrCampaignCard({ campaign, onEdit, onChanged, canManage = true }
     if (format === "png" && dataUrl) {
       link.href = dataUrl;
     } else if (format === "svg") {
-      const svg = await QRCode.toString(url, { type: "svg", margin: 1 });
-      link.href = `data:image/svg+xml;base64,${btoa(svg)}`;
+      try {
+        const svg = await QRCode.toString(url, { type: "svg", margin: 1 });
+        link.href = `data:image/svg+xml;base64,${btoa(svg)}`;
+      } catch {
+        message.error("Couldn't create the QR image - try PNG instead");
+        return;
+      }
     } else {
       return;
     }

@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 
 export interface ParsedImportFile {
   headers: string[];
@@ -93,7 +93,9 @@ function cellToString(value: ExcelJS.CellValue): string {
 
 async function parseXlsxRows(file: File): Promise<string[][]> {
   const buffer = await file.arrayBuffer();
-  const workbook = new ExcelJS.Workbook();
+  // Loaded on first import only - exceljs is large (~900 KB).
+  const { Workbook } = (await import("exceljs")).default;
+  const workbook = new Workbook();
   await workbook.xlsx.load(buffer);
   const sheet = workbook.worksheets[0];
   if (!sheet) return [];

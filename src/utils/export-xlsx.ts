@@ -1,4 +1,10 @@
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
+
+// exceljs is large (~900 KB), so it is only downloaded the first time someone
+// actually exports - not with every page that has an Export button.
+async function loadExcelJS() {
+  return (await import("exceljs")).default;
+}
 
 export interface ExportColumn {
   header: string;
@@ -23,7 +29,7 @@ async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string) {
 // rows the table on screen renders (client-side only, never touches any
 // server-side file storage).
 export async function exportToXlsx(sheetName: string, columns: ExportColumn[], rows: Record<string, unknown>[], filename: string) {
-  const workbook = new ExcelJS.Workbook();
+  const workbook = new (await loadExcelJS()).Workbook();
   const sheet = workbook.addWorksheet(sheetName);
   sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 18 }));
   sheet.getRow(1).font = { bold: true };
@@ -42,7 +48,7 @@ export interface ExportSheet {
 // sheet) - same column/bold-header conventions as exportToXlsx above, just
 // one worksheet per entry.
 export async function exportMultiSheetXlsx(sheets: ExportSheet[], filename: string) {
-  const workbook = new ExcelJS.Workbook();
+  const workbook = new (await loadExcelJS()).Workbook();
   for (const { name, columns, rows } of sheets) {
     const sheet = workbook.addWorksheet(name);
     sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 18 }));

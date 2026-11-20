@@ -7,16 +7,15 @@ import type { Opportunity } from "../../types/opportunity";
 import type { QuoteListItem } from "../../types/quote";
 import type { AuditEvent } from "../../types/audit-consent";
 import { useHasPermission } from "../../hooks/use-permission";
-import { formatDate, formatDateTime } from "../../utils/lead-format";
+import { formatDate, formatDateTime, formatWholeCurrency } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
 import { QUOTE_STATUS_COLORS, QUOTE_STATUS_LABELS } from "../quotes/quote-constants";
 import { NewQuoteModal } from "../quotes/NewQuoteModal";
 import { QuoteDetailDrawer } from "../quotes/QuoteDetailDrawer";
-import { STAGE_OPTIONS, STAGES } from "./stages";
+import { STAGE_LABEL, STAGE_OPTIONS } from "./stages";
 
 const { Text, Title } = Typography;
 
-const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
 
 interface EditOpportunityDrawerProps {
   opportunity: Opportunity | null;
@@ -240,7 +239,7 @@ export function EditOpportunityDrawer({ opportunity, onClose, onUpdated, onArchi
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Text strong>{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(q.grandTotal)}</Text>
+                  <Text strong>{formatWholeCurrency(q.grandTotal)}</Text>
                   <Tag color={QUOTE_STATUS_COLORS[q.status]}>{QUOTE_STATUS_LABELS[q.status]}</Tag>
                 </div>
               </div>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { AutoComplete, Avatar, Button, Drawer, Form, Input, Radio, Select, Space, Tabs, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import * as userApi from "../api/user-api";
 import type { CreateUserPayload, TeamMember, UserStatus } from "../types/user";
 import type { Level } from "../types/level";
@@ -12,25 +11,9 @@ import { appTokens, avatarGradient } from "../utils/design-system";
 import { TargetsSection } from "./TargetsSection";
 import { IncentivePlanSection } from "./IncentivePlanSection";
 import { UserCommissionSection } from "./UserCommissionSection";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
-
-// Kept for the People table's role chip - accounts still get one of these 4
-// real tiers, just derived from the selected Level now rather than picked
-// directly in this wizard (see level-service.ts's getLevelSecurityTier).
-export const ROLE_OPTIONS = [
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "agent", label: "Agent" },
-  { value: "call_center", label: "Call Center" },
-];
-
-export const ROLE_COLORS: Record<string, string> = {
-  admin: "purple",
-  manager: "blue",
-  agent: "default",
-  call_center: "gold",
-};
 
 export const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -313,11 +296,7 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
       }
       onSaved();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : `Failed to ${user ? "update" : "create"} account`;
-      message.error(description);
+      message.error(errorMessageFrom(err, `Failed to ${user ? "update" : "create"} account`));
     } finally {
       setSaving(false);
     }
@@ -589,7 +568,11 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                     >
                       <Select
                         placeholder="Select a level"
-                        options={levels.map((l) => ({ value: l.id, label: `L${ladderIndex(l, levels)} · ${l.name}` }))}
+                        // Archived roles can't be given to anyone new - but someone
+                        // already on one keeps seeing it here.
+                        options={levels
+                          .filter((l) => !l.isArchived || l.id === user?.levelId)
+                          .map((l) => ({ value: l.id, label: `L${ladderIndex(l, levels)} · ${l.name}${l.isArchived ? " (archived)" : ""}` }))}
                       />
                     </Form.Item>
                   </SectionCard>
@@ -620,7 +603,7 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                         <AutoComplete
                           placeholder="e.g. Karnataka · Mysuru"
                           options={territories.map((t) => ({ value: t }))}
-                          filterOption={(input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase())}
+                          showSearch={{ filterOption: (input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase()) }}
                         />
                       </Form.Item>
                       {selectedLevel?.securityTier === "agent" && (

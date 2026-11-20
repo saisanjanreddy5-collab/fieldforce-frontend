@@ -90,7 +90,7 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
   };
 
   return (
-    <Drawer open={open} onClose={onClose} width={420} title={null} closeIcon={null} styles={{ body: { padding: 0 } }}>
+    <Drawer open={open} onClose={onClose} size={420} title={null} closeIcon={null} styles={{ body: { padding: 0 } }}>
       <div style={{ padding: "20px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
           <div
@@ -237,7 +237,7 @@ export function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
         onOk={() => passwordForm.submit()}
         okText="Change password"
         confirmLoading={changingPassword}
-        destroyOnClose
+        destroyOnHidden
       >
         <Text type="secondary" style={{ fontSize: 12.5 }}>
           This will log you out everywhere, including this session - you'll need to log back in with your new password.

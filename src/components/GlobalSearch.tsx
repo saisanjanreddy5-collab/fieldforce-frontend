@@ -7,6 +7,7 @@ import type { GlobalSearchResult } from "../types/global-search";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
 import { CATEGORY_COLORS } from "./opportunities/stages";
+import { useLatestRequest } from "../hooks/use-latest-request";
 
 const { Text } = Typography;
 
@@ -48,22 +49,30 @@ export function GlobalSearch({ fullWidth = false, autoFocus = false, onNavigate 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Only the answer to the newest query may show.
+  const latest = useLatestRequest();
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
+
   const handleChange = (value: string) => {
     setQuery(value);
     setOpen(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.trim().length < 2) {
+      latest.cancel();
       setResult(null);
       setLoading(false);
       return;
     }
     debounceRef.current = setTimeout(() => {
+      const token = latest.start();
       setLoading(true);
       globalSearchApi
         .globalSearch(value.trim())
-        .then(setResult)
-        .catch(() => setResult(null))
-        .finally(() => setLoading(false));
+        .then((next) => latest.isCurrent(token) && setResult(next))
+        .catch(() => latest.isCurrent(token) && setResult(null))
+        .finally(() => latest.isCurrent(token) && setLoading(false));
     }, 300);
   };
 

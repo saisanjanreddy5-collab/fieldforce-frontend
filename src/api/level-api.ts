@@ -12,6 +12,16 @@ export async function createLevel(payload: CreateLevelPayload): Promise<Level> {
   return response.data.data;
 }
 
+export async function archiveLevel(id: string): Promise<Level> {
+  const response = await apiClient.patch<ApiSuccess<Level>>(`/levels/${id}/archive`);
+  return response.data.data;
+}
+
+export async function restoreLevel(id: string): Promise<Level> {
+  const response = await apiClient.patch<ApiSuccess<Level>>(`/levels/${id}/restore`);
+  return response.data.data;
+}
+
 export async function updateLevel(id: string, payload: UpdateLevelPayload): Promise<Level> {
   const response = await apiClient.patch<ApiSuccess<Level>>(`/levels/${id}`, payload);
   return response.data.data;

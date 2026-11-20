@@ -6,6 +6,8 @@ import * as leadApi from "../api/lead-api";
 import type { Lead, LeadListFilters } from "../types/lead";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/use-permission";
+import { useLatestRequest } from "../hooks/use-latest-request";
+import { usePagination } from "../hooks/use-pagination";
 import { LeadQueue } from "../components/leads/LeadQueue";
 import { LeadFilterToolbar } from "../components/leads/LeadFilterToolbar";
 import { LeadFilterBar, QUICK_FILTERS, type QuickFilterKey } from "../components/leads/LeadFilterBar";
@@ -21,7 +23,17 @@ import { errorMessageFrom } from "../utils/api-error";
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
 
-const PAGE_SIZE = 30;
+// The default view (page 1, no search or filters) as last loaded in this
+// browser tab, per user and rows-per-page: coming back to Leads shows it
+// instantly and refreshes it in the background, instead of a blank spinner
+// on every visit.
+let lastDefaultView: {
+  userId: string;
+  pageSize: number;
+  leads: Lead[];
+  total: number;
+  counts: leadApi.LeadQuickFilterCounts | null;
+} | null = null;
 
 // Elements where arrow-key lead navigation must never fire, even though
 // their container is nested inside the workspace - typing in any of these
@@ -35,6 +47,10 @@ function isTypingTarget(el: EventTarget | null): boolean {
 export default function LeadsPage() {
   const { user } = useAuth();
   const hasPermission = useHasPermission();
+  // Server-side pages: no `total` passed, since each page is fetched by `load`.
+  const pager = usePagination("leads", 20);
+  const cached =
+    lastDefaultView && lastDefaultView.userId === user?.id && lastDefaultView.pageSize === pager.pageSize ? lastDefaultView : null;
   const screens = useBreakpoint();
   // Below "lg" rather than "md" - at tablet widths (~768-900px) there isn't
   // enough room left for both the list column and a usable detail pane
@@ -42,15 +58,20 @@ export default function LeadsPage() {
   // the single-column "tap a lead to see it" mobile treatment too.
   const isMobile = !screens.lg;
 
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [leads, setLeads] = useState<Lead[]>(() => cached?.leads ?? []);
+  const [total, setTotal] = useState(() => cached?.total ?? 0);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // The box updates as you type; the list only reloads once typing pauses.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handle);
+  }, [search]);
   const [quickFilter, setQuickFilter] = useState<QuickFilterKey>("all");
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters>({});
-  const [counts, setCounts] = useState<leadApi.LeadQuickFilterCounts | null>(null);
+  const [counts, setCounts] = useState<leadApi.LeadQuickFilterCounts | null>(() => cached?.counts ?? null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -92,7 +113,7 @@ export default function LeadsPage() {
 
   const filters: LeadListFilters = useMemo(
     () => ({
-      search: search.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       ownerId: quickFilter === "myLeads" ? "me" : undefined,
       unassignedOnly: quickFilter === "unassigned" || undefined,
       overdueOnly: quickFilter === "overdue" || undefined,
@@ -104,7 +125,7 @@ export default function LeadsPage() {
       createdFrom: advancedFilters.createdFrom,
       createdTo: advancedFilters.createdTo,
     }),
-    [search, quickFilter, advancedFilters]
+    [debouncedSearch, quickFilter, advancedFilters]
   );
 
   // "me" isn't a real user id - resolved to the actual id below before any
@@ -116,41 +137,67 @@ export default function LeadsPage() {
 
   // Real numbered pages, not infinite scroll - each call replaces `leads`
   // with exactly that one page's rows (never appends), so the rail only
-  // ever needs to render `PAGE_SIZE` rows at a time regardless of how many
-  // pages exist in total.
-  const load = (targetPage: number) => {
+  // ever needs to render one page's rows (the chosen rows-per-page) at a time
+  // regardless of how many pages exist in total.
+  const filtersKey = JSON.stringify(resolvedFilters);
+  const isDefaultView = Object.values(resolvedFilters).every((v) => v === undefined);
+  // Only the newest request may update the list - a slower, older one (e.g.
+  // an earlier search) is ignored when it finally arrives.
+  const latestList = useLatestRequest();
+  const load = (targetPage: number, pageSize = pager.pageSize) => {
+    const token = latestList.start();
     setLoading(true);
     leadApi
-      .listLeads({ ...resolvedFilters, page: targetPage, limit: PAGE_SIZE })
+      .listLeads({ ...resolvedFilters, page: targetPage, limit: pageSize })
       .then((result) => {
+        if (!latestList.isCurrent(token)) return;
         setLeads(result.leads);
         setTotal(result.total);
-        setPage(targetPage);
+        pager.setPage(targetPage);
+        if (isDefaultView && targetPage === 1 && user) {
+          lastDefaultView = {
+            userId: user.id,
+            pageSize,
+            leads: result.leads,
+            total: result.total,
+            counts: lastDefaultView?.counts ?? null,
+          };
+        }
       })
-      .catch(() => message.error("Failed to load leads"))
-      .finally(() => setLoading(false));
+      .catch(() => latestList.isCurrent(token) && message.error("Failed to load leads"))
+      .finally(() => latestList.isCurrent(token) && setLoading(false));
   };
 
-  // Re-fetch from page 1 whenever search/filters change; debounced so
-  // typing in search doesn't fire a request per keystroke.
+  // Reload page 1 straight away whenever the filters change (search is
+  // already debounced above); the current rows stay on screen meanwhile.
   useEffect(() => {
-    const handle = setTimeout(() => load(1), 300);
-    return () => clearTimeout(handle);
+    load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(resolvedFilters)]);
+  }, [filtersKey]);
 
   // Quick-filter chip counts ignore the active filters themselves (they
   // show every bucket at once, e.g. "Overdue 3" while "My leads" is
-  // selected) so they only need to refetch when the underlying lead data
-  // could have changed, not on every filter toggle.
-  useEffect(() => {
+  // selected), so they load once and refresh only after something that can
+  // change them (save, stage change, import, archive/restore).
+  const refreshCounts = () => {
     leadApi
       .getQuickFilterCounts()
-      .then(setCounts)
+      .then((next) => {
+        if (lastDefaultView && lastDefaultView.userId === user?.id) lastDefaultView.counts = next;
+        setCounts(next);
+      })
       .catch(() => undefined);
-  }, [total]);
+  };
+  useEffect(() => {
+    refreshCounts();
+  }, []);
 
-  const handlePageChange = (targetPage: number) => load(targetPage);
+  // A new rows-per-page is shown (and remembered) straight away and reloads
+  // page 1; a plain page flip only moves once its rows have arrived.
+  const handlePageChange = (targetPage: number, pageSize: number) => {
+    if (pageSize !== pager.pageSize) pager.onChange(targetPage, pageSize);
+    load(targetPage, pageSize);
+  };
 
   // Auto-select the first lead once loaded, so the detail panel isn't
   // empty - skipped on mobile, where list/detail are separate full-width
@@ -190,8 +237,9 @@ export default function LeadsPage() {
   // lag those actions used to have. Falls back to a real reload only when
   // the action genuinely has no updated lead to hand back (e.g. Archive).
   const handleLeadUpdated = (updated?: Lead) => {
+    refreshCounts();
     if (!updated) {
-      load(page);
+      load(pager.page);
       return;
     }
     if (deepLinkedLead?.id === updated.id) {
@@ -210,6 +258,7 @@ export default function LeadsPage() {
 
   const handleSaved = (lead: Lead, keepOpen: boolean) => {
     load(1);
+    refreshCounts();
     if (keepOpen) return;
     setDrawerOpen(false);
     setEditingLead(null);
@@ -388,8 +437,8 @@ export default function LeadsPage() {
                 leads={leads}
                 total={total}
                 loading={loading}
-                page={page}
-                pageSize={PAGE_SIZE}
+                page={pager.page}
+                pageSize={pager.pageSize}
                 onPageChange={handlePageChange}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
@@ -490,7 +539,7 @@ export default function LeadsPage() {
                   onOpenChange={setQuickFilterOpen}
                   trigger="click"
                   placement="bottomLeft"
-                  overlayInnerStyle={{ padding: 6, width: 220 }}
+                  styles={{ container: { padding: 6, width: 220 } }}
                   content={
                     <LeadFilterBar
                       value={quickFilter}
@@ -587,8 +636,8 @@ export default function LeadsPage() {
                 leads={leads}
                 total={total}
                 loading={loading}
-                page={page}
-                pageSize={PAGE_SIZE}
+                page={pager.page}
+                pageSize={pager.pageSize}
                 onPageChange={handlePageChange}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
@@ -646,8 +695,16 @@ export default function LeadsPage() {
         }}
         onSaved={handleSaved}
       />
-      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => load(1)} />
-      <ArchivedLeadsModal open={archivedOpen} onClose={() => setArchivedOpen(false)} onRestored={() => load(page)} />
+      <ImportLeadsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => {
+          load(1);
+          refreshCounts();
+        }}
+      />
+      <ArchivedLeadsModal open={archivedOpen} onClose={() => setArchivedOpen(false)} onRestored={() => {
+          load(pager.page);
+          refreshCounts();
+        }}
+      />
     </div>
   );
 }

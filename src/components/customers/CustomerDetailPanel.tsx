@@ -37,7 +37,7 @@ import * as customerApi from "../../api/customer-api";
 import * as customerExtrasApi from "../../api/customer-extras-api";
 import * as userApi from "../../api/user-api";
 import * as salesTeamApi from "../../api/sales-team-api";
-import * as smartfloApi from "../../api/smartflo-api";
+import { useClickToCall } from "../../hooks/use-click-to-call";
 import * as microsoftApi from "../../api/microsoft-api";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import { useAuth } from "../../context/AuthContext";
@@ -61,7 +61,7 @@ import { WhatsAppDrawer } from "../whatsapp/WhatsAppDrawer";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { avatarGradient, appTokens } from "../../utils/design-system";
-import { formatCompactCurrency, formatCurrency, formatDate, formatDateTime, formatExactCurrency, initials } from "../../utils/lead-format";
+import { formatCompactCurrency, formatWholeCurrency, formatDate, formatDateTime, formatExactCurrency, initials } from "../../utils/lead-format";
 import { CREDIT_CATEGORY_COLORS, CUSTOMER_STATUSES, CUSTOMER_STATUS_LABELS, categoryColor, customerRisk } from "./customer-constants";
 
 const { Text, Title } = Typography;
@@ -263,9 +263,9 @@ function OverviewTab({
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <Text style={{ fontSize: 12.5, color: appTokens.textSecondary }}>
-              Exposure <Text strong style={{ color: barColor }}>{formatCurrency(exposure)}</Text>
+              Exposure <Text strong style={{ color: barColor }}>{formatWholeCurrency(exposure)}</Text>
             </Text>
-            <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Limit {formatCurrency(limit)}</Text>
+            <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>Limit {formatWholeCurrency(limit)}</Text>
           </div>
         </div>
         {canUpdate && (
@@ -346,12 +346,11 @@ function OverviewTab({
             {/* Reassigning the account is Admin-only (enforced by the backend). */}
             {canUpdate && canEditCredit && users.length > 0 ? (
               <Select
-                showSearch
+                showSearch={{ optionFilterProp: "label" }}
                 allowClear
                 placeholder="Unassigned"
                 value={customer.ownerId ?? undefined}
                 onChange={(ownerId) => onUpdate({ ownerId: ownerId ?? null })}
-                optionFilterProp="label"
                 loading={saving}
                 size="small"
                 style={{ width: "100%", marginTop: 2 }}
@@ -510,7 +509,8 @@ function ContactsTab({
   customerId: string;
   leadId: string;
   canUpdate: boolean;
-  onOpenWhatsApp: () => void;
+  /** Omitted when the viewer can't see WhatsApp - hides the button. */
+  onOpenWhatsApp?: () => void;
 }) {
   const { message } = App.useApp();
   const [contacts, setContacts] = useState<CustomerContact[] | null>(null);
@@ -518,7 +518,7 @@ function ContactsTab({
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<CustomerContact | null>(null);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
-  const [callingId, setCallingId] = useState<string | null>(null);
+  const { call, callingKey: callingId } = useClickToCall();
   const [emailContact, setEmailContact] = useState<CustomerContact | null>(null);
   const [showArchivedContacts, setShowArchivedContacts] = useState(false);
   const [showArchivedAddresses, setShowArchivedAddresses] = useState(false);
@@ -563,17 +563,9 @@ function ContactsTab({
   // Dials this contact's own number (not the customer's default phone) via
   // the same real Smartflo integration, still logged against this lead -
   // see smartflo-service.ts's optional overridePhone/contactName.
-  const handleCallContact = async (contact: CustomerContact) => {
+  const handleCallContact = (contact: CustomerContact) => {
     if (!contact.phone) return;
-    setCallingId(contact.id);
-    try {
-      await smartfloApi.callLead(leadId, { phone: contact.phone, contactName: contact.name });
-      message.success(`Calling ${contact.name}`);
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to place the call"));
-    } finally {
-      setCallingId(null);
-    }
+    call({ leadId, name: contact.name, phone: contact.phone, contact: { phone: contact.phone, contactName: contact.name }, key: contact.id });
   };
   const removeAddress = async (id: string) => {
     try {
@@ -653,13 +645,15 @@ function ContactsTab({
                         onClick={() => c.email && setEmailContact(c)}
                         title={c.email ? `Email ${c.name}` : "No email on file"}
                       />
-                      <Button
-                        size="small"
-                        type="text"
-                        icon={<WhatsAppLogo size={13} />}
-                        onClick={onOpenWhatsApp}
-                        title="WhatsApp (shared thread with this account's registered number)"
-                      />
+                      {onOpenWhatsApp && (
+                        <Button
+                          size="small"
+                          type="text"
+                          icon={<WhatsAppLogo size={13} />}
+                          onClick={onOpenWhatsApp}
+                          title="WhatsApp (shared thread with this account's registered number)"
+                        />
+                      )}
                       {canUpdate && (
                         <Button
                           size="small"
@@ -1018,6 +1012,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
+  const canViewWhatsApp = hasPermission("whatsapp.view");
   const canUpdate = hasPermission("customers.update");
   const canCreateTransaction = {
     sales_order: hasPermission("sales_orders.create"),
@@ -1041,7 +1036,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const [tab, setTab] = useState("overview");
   // WhatsApp opens as a side panel (same as on a lead), not a tab.
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
-  const [calling, setCalling] = useState(false);
+  const { call: startCall, callingKey } = useClickToCall();
   const [emailOpen, setEmailOpen] = useState(false);
 
   const load = () => {
@@ -1092,34 +1087,9 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
     }
   };
 
-  // Same real checks and confirmation step as LeadDetail.tsx's own
-  // handleCall - this used to skip both (no smartfloAgentNumber guard, no
-  // confirm dialog), which wasn't a deliberate simplification, it was a gap:
-  // clicking Call here placed a real phone call with no heads-up and no
-  // guidance when the only thing actually missing was the caller's own
-  // Smartflo number.
   const handleCall = () => {
     if (!customer?.leadId) return;
-    if (!user?.smartfloAgentNumber) {
-      message.error("Set your calling number from your profile (top right) first");
-      return;
-    }
-    Modal.confirm({
-      title: `Call ${customer.fullName}?`,
-      content: `Calling from ${user.smartfloAgentNumber} to ${customer.phone}. Your phone rings first - answer it to connect.`,
-      okText: "Call now",
-      onOk: async () => {
-        setCalling(true);
-        try {
-          await smartfloApi.callLead(customer.leadId);
-          message.success("Call started - answer your phone to connect");
-        } catch (err) {
-          message.error(errorMessageFrom(err, "Failed to start call"));
-        } finally {
-          setCalling(false);
-        }
-      },
-    });
+    startCall({ leadId: customer.leadId, name: customer.fullName, phone: customer.phone });
   };
 
   // Same real Microsoft Graph flow as LeadDetail.tsx's own Teams button -
@@ -1227,7 +1197,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
           <Tooltip title={!customer.phone ? "This customer has no phone number on file" : "Call"}>
-            <Button size="small" icon={<PhoneOutlined />} loading={calling} disabled={!customer.phone} onClick={handleCall}>
+            <Button size="small" icon={<PhoneOutlined />} loading={callingKey !== null} disabled={!customer.phone} onClick={handleCall}>
               Call
             </Button>
           </Tooltip>
@@ -1244,9 +1214,11 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
               Email
             </Button>
           </Tooltip>
-          <Button size="small" icon={<WhatsAppLogo size={13} />} onClick={() => setWhatsAppOpen(true)}>
-            WhatsApp
-          </Button>
+          {canViewWhatsApp && (
+            <Button size="small" icon={<WhatsAppLogo size={13} />} onClick={() => setWhatsAppOpen(true)}>
+              WhatsApp
+            </Button>
+          )}
           <Tooltip
             title={
               !microsoftConnected
@@ -1300,7 +1272,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
             <OverviewTab customer={customer} canUpdate={canUpdate} canEditCredit={user?.role === "admin"} users={users} stateName={stateName} saving={saving} onUpdate={applyUpdate} />
           )}
           {tab === "contacts" && (
-            <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={() => setWhatsAppOpen(true)} />
+            <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={canViewWhatsApp ? () => setWhatsAppOpen(true) : undefined} />
           )}
           {tab === "transactions" && (
             <TransactionsTab key={txRefreshKey} customerId={customer.id} canCreate={canCreateTransaction} onDataChanged={load} />
@@ -1315,6 +1287,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
         leadId={customer.leadId}
         fullName={customer.fullName}
         phone={customer.phone}
+        canSend={hasPermission("whatsapp.send")}
       />
 
       {canUpdate && (

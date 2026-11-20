@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, Form, Input, Popconfirm, Radio, Select, Table, Typography, message } from "antd";
-import { isAxiosError } from "axios";
 import * as userCommissionApi from "../api/user-commission-api";
 import type { CommissionBasis, PayoutCycle, UserCommission } from "../types/user-commission";
 import { useHasPermission } from "../hooks/use-permission";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -99,11 +99,7 @@ export function UserCommissionSection({ userId }: UserCommissionSectionProps) {
       form.resetFields();
       load();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to add commission arrangement";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to add commission arrangement"));
     } finally {
       setSaving(false);
     }

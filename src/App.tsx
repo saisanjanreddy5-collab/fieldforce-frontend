@@ -1,34 +1,38 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { App as AntApp, ConfigProvider, Result } from "antd";
+import { lazy, Suspense } from "react";
 import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import LeadsPage from "./pages/LeadsPage";
-import OpportunitiesPage from "./pages/OpportunitiesPage";
-import QuotesPage from "./pages/QuotesPage";
-import SalesForceManagementPage from "./pages/SalesForceManagementPage";
-import FofoOnboardingPage from "./pages/FofoOnboardingPage";
-import ReportsPage from "./pages/ReportsPage";
-import LeavePage from "./pages/LeavePage";
-import ExpensesPage from "./pages/ExpensesPage";
-import ActivityCalendarPage from "./pages/ActivityCalendarPage";
-import ApprovalsPage from "./pages/ApprovalsPage";
-import AuditConsentPage from "./pages/AuditConsentPage";
-import TeamDashboardPage from "./pages/TeamDashboardPage";
-import SettingsPage from "./pages/SettingsPage";
-import CustomersPage from "./pages/CustomersPage";
-import CallCenterPage from "./pages/CallCenterPage";
-import QrCapturePage from "./pages/QrCapturePage";
-import ComingSoonPage from "./pages/ComingSoonPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { ALL_NAV_LEAVES } from "./components/nav-config";
 import { appTheme } from "./utils/design-system";
 import { useHasPermission } from "./hooks/use-permission";
+import { PageLoading } from "./components/PageLoading";
+
+// Each page is its own download, fetched the first time it is opened -
+// instead of one 3.4 MB bundle holding every page before anything shows.
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const LeadsPage = lazy(() => import("./pages/LeadsPage"));
+const OpportunitiesPage = lazy(() => import("./pages/OpportunitiesPage"));
+const QuotesPage = lazy(() => import("./pages/QuotesPage"));
+const SalesForceManagementPage = lazy(() => import("./pages/SalesForceManagementPage"));
+const FofoOnboardingPage = lazy(() => import("./pages/FofoOnboardingPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const LeavePage = lazy(() => import("./pages/LeavePage"));
+const ExpensesPage = lazy(() => import("./pages/ExpensesPage"));
+const ActivityCalendarPage = lazy(() => import("./pages/ActivityCalendarPage"));
+const ApprovalsPage = lazy(() => import("./pages/ApprovalsPage"));
+const AuditConsentPage = lazy(() => import("./pages/AuditConsentPage"));
+const TeamDashboardPage = lazy(() => import("./pages/TeamDashboardPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const CustomersPage = lazy(() => import("./pages/CustomersPage"));
+const CallCenterPage = lazy(() => import("./pages/CallCenterPage"));
+const QrCapturePage = lazy(() => import("./pages/QrCapturePage"));
 
 // "/" is also this app's catch-all redirect target (see the final Route
 // below), so a plain permission check here can't just redirect to "/" on
 // failure the way every other permission-based redirect in this app does -
-// that would loop forever. Falls through to whatever other built page this
+// that would loop forever. Falls through to whatever other page this
 // user actually has a real permission for, same OR-across-permissions rule
 // nav-config.tsx already uses to decide what's visible in the sidebar, so
 // this never contradicts what the sidebar itself would offer.
@@ -38,7 +42,9 @@ function DashboardRoute() {
     return <DashboardPage />;
   }
   const fallback = ALL_NAV_LEAVES.find(
-    (item) => item.built && item.path !== "/" && item.permissions?.some((p) => hasPermission(p))
+    // Never an external link (Support tickets opens Helpdesk in a new tab and
+    // has no page here - redirecting to it fell through to "/" and looped).
+    (item) => !item.externalUrl && item.path !== "/" && item.permissions?.some((p) => hasPermission(p))
   );
   if (fallback) {
     return <Navigate to={fallback.path} replace />;
@@ -80,7 +86,14 @@ function App() {
       <AntApp>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/f/:code" element={<QrCapturePage />} />
+          <Route
+            path="/f/:code"
+            element={
+              <Suspense fallback={<PageLoading />}>
+                <QrCapturePage />
+              </Suspense>
+            }
+          />
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/" element={<DashboardRoute />} />
@@ -100,9 +113,6 @@ function App() {
               <Route path="/settings" element={<Gate path="/settings"><SettingsPage /></Gate>} />
               <Route path="/customers" element={<Gate path="/customers"><CustomersPage /></Gate>} />
               <Route path="/call-center" element={<Gate path="/call-center"><CallCenterPage /></Gate>} />
-              {ALL_NAV_LEAVES.filter((item) => !item.built).map((item) => (
-                <Route key={item.path} path={item.path} element={<ComingSoonPage title={item.label} />} />
-              ))}
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

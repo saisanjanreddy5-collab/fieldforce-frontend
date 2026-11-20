@@ -12,7 +12,7 @@ interface LeaveTypesDrawerProps {
 
 export function LeaveTypesDrawer({ open, onClose, balances }: LeaveTypesDrawerProps) {
   return (
-    <Drawer title="Leave types & policy" open={open} onClose={onClose} width={420}>
+    <Drawer title="Leave types & policy" open={open} onClose={onClose} size={420}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {balances.map((b) => (
           <div

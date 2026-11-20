@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, DatePicker, Empty, Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography, message } from "antd";
 import { CheckOutlined, LogoutOutlined, PlusOutlined, SwapOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import * as userApi from "../api/user-api";
 import * as scheduledTransferApi from "../api/scheduled-transfer-api";
@@ -13,6 +12,8 @@ import { useHasPermission } from "../hooks/use-permission";
 import { appTokens } from "../utils/design-system";
 import { reportingSubtreeIds } from "../utils/level-format";
 import { errorMessageFrom } from "../utils/api-error";
+import { usePagination } from "../hooks/use-pagination";
+import { ListPagination } from "./ListPagination";
 
 const { Text } = Typography;
 
@@ -87,6 +88,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
   useEffect(loadDelegations, [showArchivedDelegations]);
 
   const activeUsers = useMemo(() => users.filter((u) => u.isActive), [users]);
+  const reportingPager = usePagination("reporting-lines", 10, activeUsers.length);
   const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? "Unknown" : null);
 
   const handleManagerChange = async (userId: string, managerId: string | undefined) => {
@@ -129,11 +131,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
       transferForm.resetFields();
       loadTransfers();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to schedule transfer";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to schedule transfer"));
     } finally {
       setSavingTransfer(false);
     }
@@ -154,11 +152,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
       delegationForm.resetFields();
       loadDelegations();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to add delegation";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to add delegation"));
     } finally {
       setSavingDelegation(false);
     }
@@ -218,8 +212,8 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
           <Table
             size="small"
             rowKey="id"
-            dataSource={activeUsers}
-            pagination={{ pageSize: 8, size: "small" }}
+            dataSource={reportingPager.slice(activeUsers)}
+            pagination={false}
             columns={[
               { title: "Name", dataIndex: "name" },
               {
@@ -231,8 +225,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
                       size="small"
                       style={{ width: 180 }}
                       allowClear
-                      showSearch
-                      optionFilterProp="label"
+                      showSearch={{ optionFilterProp: "label" }}
                       placeholder="Top of org"
                       value={u.managerId ?? undefined}
                       onChange={(v) => handleManagerChange(u.id, v)}
@@ -252,6 +245,11 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
               },
             ]}
           />
+          {activeUsers.length > 0 && (
+            <div style={{ paddingTop: 12, width: "100%" }}>
+              <ListPagination {...reportingPager.props(activeUsers.length)} />
+            </div>
+          )}
         </div>
 
         <div style={{ flex: "1 1 380px", minWidth: 300 }}>
@@ -400,7 +398,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
             <Select options={TRANSFER_TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item name="fromUserId" label={transferType === "bulk_reassign" ? "Move leads from" : "Person"} rules={[{ required: true, message: "Pick a person" }]}>
-            <Select showSearch optionFilterProp="label" options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
+            <Select showSearch={{ optionFilterProp: "label" }} options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
           </Form.Item>
           {transferType === "territory" && (
             <Form.Item name="newTerritory" label="New territory" rules={[{ required: true, message: "Enter the new territory" }]}>
@@ -409,7 +407,7 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
           )}
           {transferType === "bulk_reassign" && (
             <Form.Item name="toUserId" label="Move leads to" rules={[{ required: true, message: "Pick a person" }]}>
-              <Select showSearch optionFilterProp="label" options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
+              <Select showSearch={{ optionFilterProp: "label" }} options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
             </Form.Item>
           )}
           <Form.Item name="effectiveDate" label="Effective date" rules={[{ required: true, message: "Pick an effective date" }]}>
@@ -433,10 +431,10 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
       >
         <Form<DelegationFormValues> form={delegationForm} layout="vertical" onFinish={submitDelegation}>
           <Form.Item name="userId" label="Person" rules={[{ required: true, message: "Pick a person" }]}>
-            <Select showSearch optionFilterProp="label" options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
+            <Select showSearch={{ optionFilterProp: "label" }} options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
           </Form.Item>
           <Form.Item name="delegateId" label="Delegate" rules={[{ required: true, message: "Pick a delegate" }]}>
-            <Select showSearch optionFilterProp="label" options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
+            <Select showSearch={{ optionFilterProp: "label" }} options={activeUsers.map((u) => ({ value: u.id, label: u.name }))} />
           </Form.Item>
           <Form.Item name="range" label="Cover period" rules={[{ required: true, message: "Pick a date range" }]}>
             <DatePicker.RangePicker style={{ width: "100%" }} />

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLatestRequest } from "../hooks/use-latest-request";
+import { errorMessageFrom } from "../utils/api-error";
 import { Button, DatePicker, Input, Modal, Popconfirm, Select, Space, Spin, Typography, message } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -53,8 +55,6 @@ const DISPOSITION_LABEL: Record<keyof CallCenterPerformanceRow["dispositions"], 
   interested: "Interested",
   notInterested: "Not Interested",
 };
-
-const money = (v: number | null) => (v === null ? "-" : formatCompactCurrency(v));
 
 interface ReportColumn<T> {
   key: string;
@@ -229,14 +229,21 @@ export default function ReportsPage() {
     [dateRange, employeeIds]
   );
 
-  const loadSalesperson = () => {
+  // One report shows at a time: only the newest load may update the screen
+  // or its spinner - switching tabs or filters quickly used to let a slower,
+  // older report land on top, or switch off the new one's spinner.
+  const latestReport = useLatestRequest();
+  const runReport = <T,>(fetch: () => Promise<T>, apply: (value: T) => void) => {
+    const token = latestReport.start();
     setLoading(true);
-    reportApi
-      .getSalespersonPerformance({ month: month ? month.format("YYYY-MM") : undefined, zoneId })
-      .then(setSalesperson)
-      .catch(() => message.error("Failed to load report"))
-      .finally(() => setLoading(false));
+    fetch()
+      .then((value) => latestReport.isCurrent(token) && apply(value))
+      .catch(() => latestReport.isCurrent(token) && message.error("Failed to load report"))
+      .finally(() => latestReport.isCurrent(token) && setLoading(false));
   };
+
+  const loadSalesperson = () =>
+    runReport(() => reportApi.getSalespersonPerformance({ month: month ? month.format("YYYY-MM") : undefined, zoneId }), setSalesperson);
 
   useEffect(() => {
     if (tab !== "salesperson") return;
@@ -244,23 +251,8 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, month, zoneId]);
 
-  const loadCallCenterPerf = () => {
-    setLoading(true);
-    reportApi
-      .getCallCenterPerformance(performanceFilters)
-      .then(setCallCenterPerf)
-      .catch(() => message.error("Failed to load report"))
-      .finally(() => setLoading(false));
-  };
-
-  const loadFieldSalesPerf = () => {
-    setLoading(true);
-    reportApi
-      .getFieldSalesPerformance(performanceFilters)
-      .then(setFieldSalesPerf)
-      .catch(() => message.error("Failed to load report"))
-      .finally(() => setLoading(false));
-  };
+  const loadCallCenterPerf = () => runReport(() => reportApi.getCallCenterPerformance(performanceFilters), setCallCenterPerf);
+  const loadFieldSalesPerf = () => runReport(() => reportApi.getFieldSalesPerformance(performanceFilters), setFieldSalesPerf);
 
   useEffect(() => {
     if (tab === "call_center_performance") loadCallCenterPerf();
@@ -269,23 +261,11 @@ export default function ReportsPage() {
   }, [tab, JSON.stringify(performanceFilters)]);
 
   useEffect(() => {
-    if (tab === "state_wise") {
-      setLoading(true);
-      reportApi.getStateWise().then(setStateWise).catch(() => message.error("Failed to load report")).finally(() => setLoading(false));
-    } else if (tab === "b2b_group") {
-      setLoading(true);
-      reportApi.getB2BGroup().then(setB2bGroup).catch(() => message.error("Failed to load report")).finally(() => setLoading(false));
-    } else if (tab === "lead_source_roi") {
-      setLoading(true);
-      reportApi.getLeadSourceRoi().then(setLeadSource).catch(() => message.error("Failed to load report")).finally(() => setLoading(false));
-    } else if (tab === "fofo_cohort_retention") {
-      setLoading(true);
-      reportApi
-        .getFofoCohortRetention()
-        .then(setCohort)
-        .catch(() => message.error("Failed to load report"))
-        .finally(() => setLoading(false));
-    }
+    if (tab === "state_wise") runReport(reportApi.getStateWise, setStateWise);
+    else if (tab === "b2b_group") runReport(reportApi.getB2BGroup, setB2bGroup);
+    else if (tab === "lead_source_roi") runReport(reportApi.getLeadSourceRoi, setLeadSource);
+    else if (tab === "fofo_cohort_retention") runReport(reportApi.getFofoCohortRetention, setCohort);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   useEffect(() => {
@@ -309,7 +289,7 @@ export default function ReportsPage() {
       await reportApi.createSavedView(tab, savedViewName.trim(), filters);
       message.success("View saved");
       setSavedViewName("");
-      reportApi.listSavedViews(tab).then(setSavedViews);
+      reportApi.listSavedViews(tab).then(setSavedViews).catch(() => undefined);
     } catch {
       message.error("Failed to save view");
     }
@@ -332,11 +312,17 @@ export default function ReportsPage() {
   };
 
   const handleDeleteView = async (id: string) => {
-    await reportApi.deleteSavedView(id);
-    setSavedViews((prev) => prev.filter((v) => v.id !== id));
+    try {
+      await reportApi.deleteSavedView(id);
+      setSavedViews((prev) => prev.filter((v) => v.id !== id));
+    } catch (err) {
+      message.error(errorMessageFrom(err, "Failed to remove this view"));
+    }
   };
 
-  const handleExport = async () => {
+  const handleExport = () => exportReport().catch(() => message.error("Failed to export this report"));
+
+  const exportReport = async () => {
     if (tab === "salesperson") {
       await exportToXlsx(
         "Salesperson performance",
@@ -538,7 +524,7 @@ export default function ReportsPage() {
               { key: "leads", label: "Leads", align: "right", render: (r) => r.leads },
               { key: "converted", label: "Converted", align: "right", render: (r) => r.converted },
               { key: "rate", label: "Conv. %", align: "right", render: (r) => `${r.conversionRate}%` },
-              { key: "revenue", label: "Revenue", align: "right", render: (r) => <Text strong>{money(r.revenue)}</Text> },
+              { key: "revenue", label: "Revenue", align: "right", render: (r) => <Text strong>{formatCompactCurrency(r.revenue)}</Text> },
             ]}
             totalRow={[
               <Text strong key="l">
@@ -554,7 +540,7 @@ export default function ReportsPage() {
                 {salespersonTotals.leads === 0 ? 0 : Math.round((salespersonTotals.converted / salespersonTotals.leads) * 1000) / 10}%
               </Text>,
               <Text strong key="rev" style={{ display: "block", textAlign: "right" }}>
-                {money(salespersonTotals.revenue)}
+                {formatCompactCurrency(salespersonTotals.revenue)}
               </Text>,
             ]}
           />
@@ -592,9 +578,9 @@ export default function ReportsPage() {
             columns={[
               { key: "category", label: "Category", flex: 1.4, render: (r) => <Text strong>{r.category}</Text> },
               { key: "accounts", label: "Accounts", align: "right", render: (r) => r.accounts },
-              { key: "revenue", label: "Revenue", align: "right", render: (r) => <Text strong>{money(r.revenue)}</Text> },
-              { key: "avgOrder", label: "Avg order", align: "right", render: (r) => money(r.avgOrder) },
-              { key: "overdue", label: "Overdue", align: "right", render: (r) => money(r.overdue) },
+              { key: "revenue", label: "Revenue", align: "right", render: (r) => <Text strong>{formatCompactCurrency(r.revenue)}</Text> },
+              { key: "avgOrder", label: "Avg order", align: "right", render: (r) => formatCompactCurrency(r.avgOrder) },
+              { key: "overdue", label: "Overdue", align: "right", render: (r) => formatCompactCurrency(r.overdue) },
             ]}
           />
         </ReportCard>
@@ -614,8 +600,8 @@ export default function ReportsPage() {
               { key: "source", label: "Source", flex: 1.4, render: (r) => <Text strong>{r.source}</Text> },
               { key: "leads", label: "Leads", align: "right", render: (r) => r.leads },
               { key: "qualified", label: "Qualified", align: "right", render: (r) => r.qualified },
-              { key: "cost", label: "Cost", align: "right", render: (r) => money(r.cost) },
-              { key: "cpql", label: "CPQL", align: "right", render: (r) => money(r.cpql) },
+              { key: "cost", label: "Cost", align: "right", render: (r) => formatCompactCurrency(r.cost) },
+              { key: "cpql", label: "CPQL", align: "right", render: (r) => formatCompactCurrency(r.cpql) },
             ]}
           />
         </ReportCard>

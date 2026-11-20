@@ -7,13 +7,12 @@ import type { Opportunity } from "../../types/opportunity";
 import type { Activity } from "../../types/activity";
 import type { FofoHandoff } from "../../types/fofo-onboarding";
 import * as microsoftApi from "../../api/microsoft-api";
-import * as smartfloApi from "../../api/smartflo-api";
 import * as opportunityApi from "../../api/opportunity-api";
 import * as activityApi from "../../api/activity-api";
 import * as fofoOnboardingApi from "../../api/fofo-onboarding-api";
 import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import { useHasPermission } from "../../hooks/use-permission";
-import { useAuth } from "../../context/AuthContext";
+import { useClickToCall } from "../../hooks/use-click-to-call";
 import { errorMessageFrom } from "../../utils/api-error";
 import { ScrollableTabBar } from "../ScrollableTabBar";
 import { LeadSnapshot } from "./LeadSnapshot";
@@ -83,7 +82,6 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   const { message } = App.useApp();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
-  const { user } = useAuth();
   const { connected: microsoftConnected } = useMicrosoftConnection();
 
   // Shared with detailTabs below - the one place that decides whether a tab
@@ -114,7 +112,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   const [whatsAppOpen, setWhatsAppOpen] = useState(initialTab === "whatsapp" && canViewWhatsApp);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [creatingMeeting, setCreatingMeeting] = useState(false);
-  const [calling, setCalling] = useState(false);
+  const { call, callingKey } = useClickToCall();
   const [meetingForm] = Form.useForm<MeetingFormValues>();
 
   // Fetched once here, not inside OpportunitiesTab - needed for the
@@ -123,6 +121,18 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   // list twice for one lead selection.
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(true);
+
+  // Moving quickly between leads (e.g. holding the arrow key) leaves earlier
+  // leads' requests still in flight - a late answer must never land on the
+  // lead now on screen. Each load checks it is still for the current lead.
+  const currentLeadIdRef = useRef(lead.id);
+  currentLeadIdRef.current = lead.id;
+  const forThisLead = <A extends unknown[]>(apply: (...args: A) => void) => {
+    const leadId = lead.id;
+    return (...args: A) => {
+      if (currentLeadIdRef.current === leadId) apply(...args);
+    };
+  };
 
   const canViewOpportunities = hasPermission("opportunities.view");
   const loadOpportunities = () => {
@@ -137,9 +147,9 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
     setOpportunitiesLoading(true);
     opportunityApi
       .listOpportunitiesForLead(lead.id)
-      .then(setOpportunities)
-      .catch(() => staticMessage.error("Failed to load opportunities"))
-      .finally(() => setOpportunitiesLoading(false));
+      .then(forThisLead(setOpportunities))
+      .catch(forThisLead(() => staticMessage.error("Failed to load opportunities")))
+      .finally(forThisLead(() => setOpportunitiesLoading(false)));
   };
 
   // Fetched once here (not inside ApprovalsTab/DocumentsTab) so switching
@@ -156,9 +166,9 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
     setHandoffLoading(true);
     fofoOnboardingApi
       .getHandoff(lead.id)
-      .then(setHandoff)
-      .catch(() => staticMessage.error("Failed to load approvals/documents"))
-      .finally(() => setHandoffLoading(false));
+      .then(forThisLead(setHandoff))
+      .catch(forThisLead(() => staticMessage.error("Failed to load approvals/documents")))
+      .finally(forThisLead(() => setHandoffLoading(false)));
   };
 
   // Fetched once here so the Activity (scheduled) and Logs (history) tabs
@@ -171,9 +181,9 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
     setActivitiesLoading(true);
     activityApi
       .listActivitiesForLead(lead.id)
-      .then(setActivities)
-      .catch(() => staticMessage.error("Failed to load activity"))
-      .finally(() => setActivitiesLoading(false));
+      .then(forThisLead(setActivities))
+      .catch(forThisLead(() => staticMessage.error("Failed to load activity")))
+      .finally(forThisLead(() => setActivitiesLoading(false)));
   };
 
   const isFirstRender = useRef(true);
@@ -190,6 +200,11 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       // its initialTab here too (LeadsPage only passes it for that lead).
       setActiveTabKey(initialTab && isTabAllowed(initialTab) ? initialTab : "overview");
       setWhatsAppOpen(initialTab === "whatsapp" && canViewWhatsApp);
+      // The previous lead's data must not show (or drive this lead's
+      // next-step button) while this lead's own data loads.
+      setOpportunities([]);
+      setActivities([]);
+      setHandoff(null);
     }
     loadOpportunities();
     loadHandoff();
@@ -224,28 +239,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
     }
   };
 
-  const handleCall = () => {
-    if (!user?.smartfloAgentNumber) {
-      message.error("Set your calling number from your profile (top right) first");
-      return;
-    }
-    Modal.confirm({
-      title: `Call ${lead.fullName}?`,
-      content: `Calling from ${user.smartfloAgentNumber} to ${lead.phone}. Your phone rings first - answer it to connect.`,
-      okText: "Call now",
-      onOk: async () => {
-        setCalling(true);
-        try {
-          await smartfloApi.callLead(lead.id);
-          message.success("Call started - answer your phone to connect");
-        } catch (err) {
-          message.error(errorMessageFrom(err, "Failed to start call"));
-        } finally {
-          setCalling(false);
-        }
-      },
-    });
-  };
+  const handleCall = () => call({ leadId: lead.id, name: lead.fullName, phone: lead.phone });
 
   const canOnboard = lead.category === "FOFO" && hasPermission("fofo_onboarding.view");
   const hasOpenOpportunity = opportunities.some((o) => o.stage !== "won" && o.stage !== "lost");
@@ -280,7 +274,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           canCall: Boolean(lead.phone) && lead.inOwnerScope,
           canEditLead: hasPermission("leads.update") && lead.inOwnerScope,
         }}
-        calling={calling}
+        calling={callingKey !== null}
         microsoftConnected={microsoftConnected}
         onCall={handleCall}
         onEmail={() => setEmailOpen(true)}
@@ -327,7 +321,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         leadId={lead.id}
         fullName={lead.fullName}
         phone={lead.phone}
-        canSend={lead.inOwnerScope}
+        canSend={lead.inOwnerScope && hasPermission("whatsapp.send")}
       />
 
       <EmailComposeDrawer

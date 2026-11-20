@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import { Avatar, Button, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import * as microsoftApi from "../../api/microsoft-api";
@@ -12,6 +13,7 @@ const { Text } = Typography;
 export function UsersAccessTab() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { connect: connectMyself } = useMicrosoftConnection();
   const [users, setUsers] = useState<microsoftApi.UserMicrosoftConnection[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,8 +45,7 @@ export function UsersAccessTab() {
   // fake "connect on their behalf" action or no button at all.
   const handleConnectClick = async (targetUserId: string, targetName: string) => {
     if (targetUserId === currentUser?.id) {
-      const url = await microsoftApi.getConnectUrl(window.location.pathname);
-      window.location.href = url;
+      await connectMyself();
       return;
     }
     message.info(`${targetName} needs to connect this themselves, from their own profile`);

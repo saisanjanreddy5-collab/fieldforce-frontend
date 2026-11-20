@@ -160,10 +160,8 @@ export function NewQuoteModal({ open, onClose, onCreated, defaultLeadId, default
               Lead <span style={{ color: appTokens.danger }}>*</span>
             </Text>
             <Select
-              showSearch
+              showSearch={{ filterOption: false, onSearch: handleLeadSearch }}
               placeholder="Search by name, company, or phone"
-              filterOption={false}
-              onSearch={handleLeadSearch}
               loading={searchingLeads}
               notFoundContent={searchingLeads ? "Searching..." : "No matching leads"}
               disabled={Boolean(defaultLeadId)}
