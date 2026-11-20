@@ -7,7 +7,8 @@ import type { Activity } from "../types/activity";
 import { StatsRow } from "../components/StatsRow";
 import { PipelineByStageChart } from "../components/PipelineByStageChart";
 import { MyDayList } from "../components/MyDayList";
-import { formatCompactNumber, formatCurrency, formatPercent } from "../utils/format";
+import { formatCompactNumber, formatPercent } from "../utils/format";
+import { formatCompactCurrency } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
@@ -54,7 +55,7 @@ export default function DashboardPage() {
           loading={loading}
           stats={[
             { label: "Open leads", value: overview ? formatCompactNumber(overview.totalLeads) : "-" },
-            { label: "Pipeline value", value: overview ? formatCurrency(overview.pipelineValue) : "-" },
+            { label: "Pipeline value", value: overview ? formatCompactCurrency(overview.pipelineValue) : "-" },
             { label: "Conversion (30d)", value: overview ? formatPercent(overview.conversionRate30d) : "-" },
             { label: "Active team members", value: overview ? formatCompactNumber(overview.activeTeamMembersCount) : "-" },
           ]}

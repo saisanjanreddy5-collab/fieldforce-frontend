@@ -3,9 +3,3 @@ export interface ApiSuccess<T> {
   data: T;
   message?: string;
 }
-
-export interface ApiErrorBody {
-  success: false;
-  message: string;
-  errors?: unknown;
-}

@@ -1,4 +1,5 @@
 import { apiClient } from "./api-client";
+import { fetchAllPages } from "./fetch-all-pages";
 import type { ApiSuccess } from "../types/api";
 import type { Customer, UpdateCustomerPayload } from "../types/customer";
 import type { TimelineFeedItem, TransactionFeedItem } from "../types/customer-extras";
@@ -13,24 +14,9 @@ export async function listCustomers(filters: { search?: string; status?: string;
   return response.data.data;
 }
 
-// A single listCustomers() call silently capped at its own default limit
-// (200) - anything past that was invisible, not just slow. Same drain-
-// every-real-page pattern as opportunity-api.ts's listAllOpportunities.
-export async function listAllCustomers(onProgress?: (loadedSoFar: Customer[], total: number) => void): Promise<Customer[]> {
-  const PAGE_SIZE = 200;
-  const first = await listCustomers({ page: 1, limit: PAGE_SIZE });
-  let all = first.customers;
-  onProgress?.(all, first.total);
-
-  let page = 2;
-  while (all.length < first.total) {
-    const next = await listCustomers({ page, limit: PAGE_SIZE });
-    if (next.customers.length === 0) break;
-    all = [...all, ...next.customers];
-    onProgress?.(all, first.total);
-    page += 1;
-  }
-  return all;
+// Every customer, not just the first page of 200.
+export function listAllCustomers(onProgress?: (loadedSoFar: Customer[], total: number) => void): Promise<Customer[]> {
+  return fetchAllPages((page, limit) => listCustomers({ page, limit }).then((r) => ({ items: r.customers, total: r.total })), 200, onProgress);
 }
 
 export async function getCustomer(id: string): Promise<Customer> {

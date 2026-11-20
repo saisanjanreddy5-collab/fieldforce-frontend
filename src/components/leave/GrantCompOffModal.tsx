@@ -62,8 +62,7 @@ export function GrantCompOffModal({ open, onClose, onGranted, directReports }: G
         <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Person</Text>
         <Select
           style={{ width: "100%", marginTop: 4 }}
-          showSearch
-          optionFilterProp="label"
+          showSearch={{ optionFilterProp: "label" }}
           placeholder="Select a direct report"
           value={userId}
           onChange={setUserId}

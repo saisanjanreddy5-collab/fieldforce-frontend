@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ScheduleClashNotice, scheduleClashFrom, type ScheduleClash } from "./ScheduleClashNotice";
 import { Button, DatePicker, Input, InputNumber, Modal, Select, Typography, message } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import * as activityApi from "../../api/activity-api";
@@ -11,6 +12,7 @@ import type { MicrosoftConnectionStatus } from "../../types/microsoft";
 import { CREATABLE_ACTIVITY_TYPES, TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shared";
 import { appTokens } from "../../utils/design-system";
 import { errorMessageFrom } from "../../utils/api-error";
+import { useLatestRequest } from "../../hooks/use-latest-request";
 
 const { Text, Title } = Typography;
 
@@ -31,6 +33,8 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
   const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [leadSearch, setLeadSearch] = useState("");
+  const [clash, setClash] = useState<ScheduleClash | null>(null);
+  const latestLeadSearch = useLatestRequest();
   const [leadId, setLeadId] = useState<string | undefined>();
   const [type, setType] = useState<ActivityType>("call");
   const [subject, setSubject] = useState("");
@@ -43,20 +47,26 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
     if (!open) return;
     setLeadId(undefined);
     setLeadSearch("");
+    setClash(null);
     setType("call");
     setSubject("");
     setDueDate(dayjs().add(1, "hour").minute(0));
     setDurationMinutes(30);
-    leadApi.listLeads({}).then((r) => setLeads(r.leads)).catch(() => undefined);
-    microsoftApi.getStatus().then(setMsStatus).catch(() => undefined);
+    const token = latestLeadSearch.start();
+    leadApi
+      .listLeads({})
+      .then((r) => latestLeadSearch.isCurrent(token) && setLeads(r.leads))
+      .catch(() => undefined);
+    microsoftApi.microsoftStatusResource.get().then(setMsStatus).catch(() => undefined);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const handle = setTimeout(() => {
+      const token = latestLeadSearch.start();
       leadApi
         .listLeads({ search: leadSearch || undefined })
-        .then((r) => setLeads(r.leads))
+        .then((r) => latestLeadSearch.isCurrent(token) && setLeads(r.leads))
         .catch(() => undefined);
     }, 250);
     return () => clearTimeout(handle);
@@ -78,6 +88,7 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
 
   const handleSubmit = async () => {
     if (!leadId || !dueDate) return;
+    setClash(null);
     setSubmitting(true);
     try {
       if (isMeeting) {
@@ -99,7 +110,9 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
       }
       onCreated();
     } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to schedule the activity"));
+      const found = scheduleClashFrom(err);
+      if (found) setClash(found);
+      else message.error(errorMessageFrom(err, "Failed to schedule the activity"));
     } finally {
       setSubmitting(false);
     }
@@ -156,11 +169,9 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
         </Text>
         <Select
           style={{ width: "100%", marginTop: 4 }}
-          showSearch
-          filterOption={false}
+          showSearch={{ filterOption: false, onSearch: setLeadSearch }}
           placeholder="Search leads by name"
           value={leadId}
-          onSearch={setLeadSearch}
           onChange={setLeadId}
           options={leads.map((l) => ({ value: l.id, label: l.fullName }))}
         />
@@ -178,7 +189,25 @@ export function NewActivityModal({ open, onClose, onCreated, assignedToId, assig
           <Text style={{ fontSize: 12.5, fontWeight: 500, marginTop: 12, display: "block" }}>
             When <span style={{ color: appTokens.danger }}>*</span>
           </Text>
-          <DatePicker showTime style={{ width: "100%", marginTop: 4 }} value={dueDate} onChange={setDueDate} format="D MMM YYYY, h:mm A" />
+          <DatePicker
+            showTime
+            style={{ width: "100%", marginTop: 4 }}
+            value={dueDate}
+            onChange={(value) => {
+              setDueDate(value);
+              setClash(null);
+            }}
+            format="D MMM YYYY, h:mm A"
+          />
+          {clash && (
+            <ScheduleClashNotice
+              clash={clash}
+              onUseSuggested={(time) => {
+                setDueDate(time);
+                setClash(null);
+              }}
+            />
+          )}
           {/* Real Teams meetings (isMeeting) already get a hard block from
               createTeamsMeetingSchema - you can't invite people to a meeting
               that already happened. A logged activity (call/visit/etc.) has

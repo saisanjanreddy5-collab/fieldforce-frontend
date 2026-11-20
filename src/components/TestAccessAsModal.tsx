@@ -45,8 +45,7 @@ export function TestAccessAsModal({ open, onClose, users }: TestAccessAsModalPro
       <Select
         style={{ width: "100%", marginBottom: 16 }}
         placeholder="Select a person"
-        showSearch
-        optionFilterProp="label"
+        showSearch={{ optionFilterProp: "label" }}
         value={selectedId}
         onChange={handleSelect}
         loading={loading}

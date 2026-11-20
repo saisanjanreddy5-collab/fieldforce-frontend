@@ -10,13 +10,7 @@ const { Text } = Typography;
 
 const REGION_OPTIONS = ["West", "North", "South", "East"].map((r) => ({ value: r, label: r }));
 
-interface SalesTeamsCardProps {
-  /** Bumped by the parent whenever it wants this card to refetch (e.g. after creating a user references a new team). */
-  refreshKey?: number;
-  onChange?: (teams: SalesTeam[]) => void;
-}
-
-export function SalesTeamsCard({ refreshKey, onChange }: SalesTeamsCardProps) {
+export function SalesTeamsCard() {
   const hasPermission = useHasPermission();
   const [teams, setTeams] = useState<SalesTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,15 +22,12 @@ export function SalesTeamsCard({ refreshKey, onChange }: SalesTeamsCardProps) {
     setLoading(true);
     salesTeamApi
       .listSalesTeams()
-      .then((rows) => {
-        setTeams(rows);
-        onChange?.(rows);
-      })
+      .then(setTeams)
       .catch(() => message.error("Failed to load sales teams"))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [refreshKey]);
+  useEffect(load, []);
 
   const handleCreate = async () => {
     if (!name.trim()) return;

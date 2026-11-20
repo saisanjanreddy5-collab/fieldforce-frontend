@@ -1,4 +1,5 @@
 import { apiClient } from "./api-client";
+import { fetchAllPages } from "./fetch-all-pages";
 import type { ApiSuccess } from "../types/api";
 import type { CreateLeadPayload, Lead, LeadConsent, LeadListFilters, LeadListResult } from "../types/lead";
 import type { LeadTimelineEntry } from "../types/lead-timeline";
@@ -12,26 +13,10 @@ export async function listLeads(filters: LeadListFilters): Promise<LeadListResul
 // Drains every real page for one status filter - a caller passing a fixed
 // `limit` (e.g. Call Center's own queue, scoped to one person's work) would
 // otherwise silently truncate once that one status bucket grows past it.
-// Same drain-every-real-page pattern as opportunity-api.ts's
-// listAllOpportunities, just without a progress callback - these queues are
-// small/personal, not a page-wide dataset worth a visible progress banner.
-export async function listAllLeadsForStatus(filters: Omit<LeadListFilters, "page" | "limit">): Promise<Lead[]> {
-  // Unlike quotes/customers/support-tickets, the /leads endpoint's own
-  // validator caps limit at 100 (listLeadsQuerySchema) - 200 here 422s.
-  const PAGE_SIZE = 100;
-  const first = await listLeads({ ...filters, page: 1, limit: PAGE_SIZE });
-  const remainingPages = Math.ceil(first.total / PAGE_SIZE) - 1;
-  if (remainingPages <= 0) return first.leads;
-  // All remaining pages in parallel, not a serial page-by-page loop - this
-  // was the real cause of the multi-second wait on every Call Center stage
-  // action (whose onChanged re-runs this): awaiting one page at a time made
-  // the round-trip latency add up per page instead of overlapping. Safe to
-  // do all at once - each page is an independent, already-known-to-exist
-  // offset from `first.total`, not a cursor that depends on the page before it.
-  const rest = await Promise.all(
-    Array.from({ length: remainingPages }, (_, i) => listLeads({ ...filters, page: i + 2, limit: PAGE_SIZE }))
-  );
-  return [...first.leads, ...rest.flatMap((r) => r.leads)];
+// Every lead for a queue/status (small, personal lists - no progress banner).
+// The /leads endpoint caps limit at 100 (listLeadsQuerySchema).
+export function listAllLeadsForStatus(filters: Omit<LeadListFilters, "page" | "limit">): Promise<Lead[]> {
+  return fetchAllPages((page, limit) => listLeads({ ...filters, page, limit }).then((r) => ({ items: r.leads, total: r.total })), 100);
 }
 
 // Same filters as listLeads, minus page/limit - returns every matching lead

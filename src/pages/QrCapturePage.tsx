@@ -208,8 +208,7 @@ export default function QrCapturePage() {
           <Select
             style={{ width: "100%", marginTop: 4 }}
             size="large"
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             placeholder="Select your state"
             value={stateId}
             onChange={setStateId}

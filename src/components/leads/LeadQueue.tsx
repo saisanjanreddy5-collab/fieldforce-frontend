@@ -1,9 +1,10 @@
-import { Button, Empty, Input, Pagination, Spin, Typography } from "antd";
+import { Button, Empty, Input, Skeleton, Typography } from "antd";
 import { DoubleLeftOutlined, DoubleRightOutlined, SearchOutlined } from "@ant-design/icons";
 import type { Lead } from "../../types/lead";
 import { appTokens } from "../../utils/design-system";
 import { LeadRow } from "./LeadRow";
 import { LeadFilters, type AdvancedFilters } from "./LeadFilters";
+import { ListPagination } from "../ListPagination";
 
 const { Text } = Typography;
 
@@ -13,7 +14,7 @@ interface LeadQueueProps {
   loading: boolean;
   page: number;
   pageSize: number;
-  onPageChange: (page: number) => void;
+  onPageChange: (page: number, pageSize: number) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
   showOwner: boolean;
@@ -89,14 +90,19 @@ export function LeadQueue({
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", margin: `0 -${padding}px`, padding: compact ? 0 : `0 ${padding}px` }}>
-        {loading ? (
-          <div style={{ padding: 24, textAlign: "center" }}>
-            <Spin />
+        {/* First load: placeholder rows in the list's own shape. Later
+            reloads (filter, search, page) keep the current rows on screen,
+            slightly dimmed, until the new ones arrive - no blank flash. */}
+        {loading && leads.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: compact ? "12px" : "12px 0" }}>
+            {Array.from({ length: 8 }, (_, i) => (
+              <Skeleton key={i} active avatar={{ shape: "square", size: 32 }} title={{ width: "60%" }} paragraph={{ rows: 1, width: "40%" }} />
+            ))}
           </div>
         ) : leads.length === 0 ? (
           <Empty description="No leads match this filter" style={{ padding: 24 }} />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", flexDirection: "column", opacity: loading ? 0.55 : 1, transition: "opacity 0.15s", transitionDelay: loading ? "0.2s" : "0s" }}>
             {leads.map((lead) => (
               <LeadRow key={lead.id} lead={lead} selected={lead.id === selectedId} showOwner={showOwner} onClick={() => onSelect(lead.id)} />
             ))}
@@ -104,9 +110,9 @@ export function LeadQueue({
         )}
       </div>
 
-      {!loading && total > pageSize && (
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 12, flexShrink: 0 }}>
-          <Pagination size="small" current={page} pageSize={pageSize} total={total} onChange={onPageChange} showSizeChanger={false} />
+      {total > 0 && (
+        <div style={{ paddingTop: 12, flexShrink: 0, width: "100%" }}>
+          <ListPagination page={page} pageSize={pageSize} total={total} onChange={onPageChange} compact />
         </div>
       )}
     </div>

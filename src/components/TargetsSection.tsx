@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Button, DatePicker, Empty, Form, Input, InputNumber, Popconfirm, Progress, Radio, Space, Table, Typography, message } from "antd";
-import { isAxiosError } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import * as targetApi from "../api/target-api";
 import type { PeriodType, Target } from "../types/target";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { useHasPermission } from "../hooks/use-permission";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -125,11 +125,7 @@ export function TargetsSection({ userId }: TargetsSectionProps) {
       setEditingTargetId(null);
       load();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to save target";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to save target"));
     } finally {
       setSaving(false);
     }

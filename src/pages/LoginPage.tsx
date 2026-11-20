@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from "antd";
 import { LockOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import { useAuth } from "../context/AuthContext";
+import { errorMessageFrom } from "../utils/api-error";
 import { appTokens } from "../utils/design-system";
 
 const { Title, Text } = Typography;
@@ -60,11 +60,7 @@ export default function LoginPage() {
       }
       navigate(from, { replace: true });
     } catch (error) {
-      if (isAxiosError<{ message?: string }>(error) && error.response?.data.message) {
-        setErrorMessage(error.response.data.message);
-      } else {
-        setErrorMessage("Something went wrong. Please try again.");
-      }
+      setErrorMessage(errorMessageFrom(error, "Something went wrong. Please try again."));
     } finally {
       setSubmitting(false);
     }

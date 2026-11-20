@@ -1,19 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
-import { Layout, Menu, Button, Drawer, Grid, Avatar, Modal, message } from "antd";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { Layout, Menu, Button, Drawer, Avatar, Modal, message } from "antd";
 import type { MenuProps } from "antd";
 import { MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { PageLoading } from "./PageLoading";
 import { useHasPermission } from "../hooks/use-permission";
 import { ALL_NAV_LEAVES, NAV_GROUPS } from "./nav-config";
 import { GlobalSearch } from "./GlobalSearch";
 import { ProfileDrawer } from "./ProfileDrawer";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { roleLabel } from "../utils/format";
+import { useIsMobile } from "../hooks/use-is-mobile";
 
 const { Header, Sider, Content } = Layout;
-const { useBreakpoint } = Grid;
-
 function Logo({ collapsed }: { collapsed: boolean }) {
   return (
     <div
@@ -60,16 +60,14 @@ export function AppLayout() {
   const hasPermission = useHasPermission();
   const navigate = useNavigate();
   const location = useLocation();
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Hides a nav item entirely once its role holds none of the permissions
   // behind it - "only what's granted is visible", not just blocked after the
-  // click. Items with no `permissions` listed (the 3 stub pages with nothing
-  // built yet) stay unconditionally visible. A group that ends up with zero
-  // visible items is dropped too, so there's never a bare section header
-  // sitting above nothing.
+  // click. An item with no `permissions` listed would stay unconditionally
+  // visible. A group that ends up with zero visible items is dropped too, so
+  // there's never a bare section header sitting above nothing.
   const menuItems: MenuProps["items"] = useMemo(
     () =>
       NAV_GROUPS.map((group, index) => ({
@@ -248,7 +246,10 @@ export function AppLayout() {
             visible, between the content and the scrollbar. Shared by every
             page, so this one change fixes it everywhere at once. */}
         <Content style={{ padding: "16px 22px 16px 16px", overflowY: "auto", overscrollBehavior: "contain" }}>
-          <Outlet />
+          {/* The sidebar and header stay put while a page's code downloads. */}
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
       <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />

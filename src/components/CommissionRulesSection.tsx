@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button, Checkbox, Form, Input, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import * as commissionRuleApi from "../api/commission-rule-api";
 import type { CommissionRule } from "../types/commission-rule";
 import { useHasPermission } from "../hooks/use-permission";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -99,11 +99,7 @@ export function CommissionRulesSection({ incentivePlanId }: CommissionRulesSecti
       setEditingRuleId(null);
       load();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to save commission rule";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to save commission rule"));
     } finally {
       setSaving(false);
     }

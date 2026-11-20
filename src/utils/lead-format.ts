@@ -26,6 +26,8 @@ export function formatDurationSeconds(totalSeconds: number): string {
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
+// Compact money (₹4.3K, ₹1.2L) - for aggregates (stat cards, totals, chart
+// axes) where the precise figure would be too long to scan at a glance.
 export function formatCompactCurrency(value: number | null): string {
   if (value === null) return "-";
   return new Intl.NumberFormat("en-IN", {
@@ -36,15 +38,10 @@ export function formatCompactCurrency(value: number | null): string {
   }).format(value);
 }
 
-// The full, comma-grouped figure (₹4,284) rather than the compact one
-// (₹4.3K) - used for a single row's exact amount, where compact notation
-// reads as imprecise. Compact stays for aggregates (stat cards, totals)
-// where the precise figure would be too long to scan at a glance.
 // Exact money (paise kept) - for a single claim/invoice/payment amount
 // someone is approving or reconciling, where rounding ₹149.50 to ₹150
-// would misstate it. formatCurrency below stays whole-rupee for summaries.
-// Whole rupees show no decimals (₹4,284); anything with paise always shows
-// both digits (₹149.50, never ₹149.5).
+// would misstate it. Whole rupees show no decimals (₹4,284); anything with
+// paise always shows both digits (₹149.50, never ₹149.5).
 export function formatExactCurrency(value: number | null): string {
   if (value === null) return "-";
   const hasPaise = Math.round(value * 100) % 100 !== 0;
@@ -56,7 +53,10 @@ export function formatExactCurrency(value: number | null): string {
   }).format(value);
 }
 
-export function formatCurrency(value: number | null): string {
+// The full, comma-grouped whole-rupee figure (₹4,284) rather than the
+// compact one (₹4.3K) - used for a single row's amount, where compact
+// notation reads as imprecise.
+export function formatWholeCurrency(value: number | null): string {
   if (value === null) return "-";
   return new Intl.NumberFormat("en-IN", {
     style: "currency",

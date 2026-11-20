@@ -86,9 +86,6 @@ const MODULE_GROUPS: ModuleGroup[] = [
   { label: "Opportunities", scopeHint: "own + below", modules: ["opportunities"] },
   { label: "Quotes", scopeHint: "own + below", modules: ["quotes"] },
   { label: "FOFO onboarding", scopeHint: "own + below", modules: ["fofo_onboarding"] },
-  // Authorization-only for now - the pages behind these 3 are still
-  // "Coming soon" placeholders (see nav-config.tsx), but who will be able to
-  // see them once built is already real and configurable here.
   { label: "Customers", scopeHint: "own + below", modules: ["customers"] },
   { label: "Call center", scopeHint: "own + below", modules: ["call_center"] },
   { label: "Support tickets", scopeHint: "own + team", modules: ["support_tickets"] },

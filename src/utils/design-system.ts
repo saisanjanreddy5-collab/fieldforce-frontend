@@ -74,10 +74,17 @@ const AVATAR_GRADIENTS = [
   "linear-gradient(135deg, #be185d, #ec4899)",
 ];
 
-export function avatarGradient(name: string): string {
+// Deterministically picks one entry of a palette for a string key - the same
+// key always lands on the same entry across renders/sessions, without
+// storing anything. Shared by every decorative per-name/per-category color.
+export function pickByHash<T>(key: string, palette: readonly T[]): T {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
+  for (let i = 0; i < key.length; i++) hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  return palette[Math.abs(hash) % palette.length];
+}
+
+export function avatarGradient(name: string): string {
+  return pickByHash(name, AVATAR_GRADIENTS);
 }
 
 export const appTheme: ThemeConfig = {

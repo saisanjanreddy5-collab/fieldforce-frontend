@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import type { AuthUser } from "../types/auth";
 import * as authApi from "../api/auth-api";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../api/token-storage";
+import { clearAllCachedResources } from "../utils/cached-resource";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // keep minting access tokens elsewhere) and never blocks on it.
     const refreshToken = getRefreshToken();
     clearTokens();
+    clearAllCachedResources();
     setUser(null);
     if (refreshToken) {
       authApi.logout(refreshToken).catch(() => undefined);

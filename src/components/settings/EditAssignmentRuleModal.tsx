@@ -84,8 +84,7 @@ export function EditAssignmentRuleModal({ open, onClose, onSaved, rule }: EditAs
             disabled={!isNew}
             value={stateId}
             onChange={setStateId}
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             options={states.map((s) => ({ value: s.id, label: s.name }))}
           />
           {!isNew && <Text style={{ fontSize: 11, color: appTokens.textTertiary }}>State can't change once a rule exists - delete and recreate instead</Text>}
@@ -107,8 +106,7 @@ export function EditAssignmentRuleModal({ open, onClose, onSaved, rule }: EditAs
           </Text>
           <Select
             style={{ width: "100%", marginTop: 4 }}
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             value={assignedUserId}
             onChange={setAssignedUserId}
             options={users.map((u) => ({ value: u.id, label: u.name }))}

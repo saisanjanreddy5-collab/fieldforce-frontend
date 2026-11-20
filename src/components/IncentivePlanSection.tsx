@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Button, DatePicker, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
-import { isAxiosError } from "axios";
 import type { Dayjs } from "dayjs";
 import * as incentivePlanApi from "../api/incentive-plan-api";
 import * as userIncentivePlanApi from "../api/user-incentive-plan-api";
@@ -9,6 +8,7 @@ import type { IncentivePlan } from "../types/incentive-plan";
 import type { UserIncentivePlan } from "../types/user-incentive-plan";
 import type { CommissionRule } from "../types/commission-rule";
 import { useHasPermission } from "../hooks/use-permission";
+import { errorMessageFrom } from "../utils/api-error";
 
 const { Text } = Typography;
 
@@ -101,21 +101,20 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
       form.resetFields();
       load();
     } catch (err) {
-      const description =
-        isAxiosError<{ message?: string }>(err) && err.response?.data.message
-          ? err.response.data.message
-          : "Failed to assign incentive plan";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to assign incentive plan"));
     } finally {
       setSaving(false);
     }
   };
 
-  const canManage = hasPermission("incentive_plans.view");
+  // Matches the backend: assigning needs .create; archiving/restoring needs
+  // .delete. View-only users used to see these and get "permission denied".
+  const canAssign = hasPermission("incentive_plans.create");
+  const canArchive = hasPermission("incentive_plans.delete");
 
   return (
     <div>
-      {canManage && (
+      {canAssign && (
         <Form<FormValues> form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item name="incentivePlanId" label="Incentive plan" rules={[{ required: true, message: "Pick a plan" }]}>
             <Select
@@ -150,7 +149,7 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <Text strong>{showArchived ? "Archived plan assignments" : "Assigned plans"}</Text>
-        {canManage && (
+        {canArchive && (
           <Button size="small" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Show active" : "Show archived"}
           </Button>
@@ -194,7 +193,7 @@ export function IncentivePlanSection({ userId }: IncentivePlanSectionProps) {
             title: "",
             key: "actions",
             render: (_, a) =>
-              canManage &&
+              canArchive &&
               (showArchived ? (
                 <Popconfirm title="Restore this incentive plan assignment?" onConfirm={() => handleRestore(a.id)}>
                   <Button type="link" size="small">

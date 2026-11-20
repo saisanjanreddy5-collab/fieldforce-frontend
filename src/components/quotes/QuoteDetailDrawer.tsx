@@ -5,7 +5,7 @@ import * as quoteApi from "../../api/quote-api";
 import type { QuoteDetail, QuoteLineItemInput, QuoteStatus, QuoteVersion } from "../../types/quote";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
-import { formatDateTime } from "../../utils/lead-format";
+import { formatDateTime, formatWholeCurrency } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
 import { QUOTE_STATUS_COLORS, QUOTE_STATUS_LABELS, QUOTE_STATUS_OPTIONS } from "./quote-constants";
 import { LineItemsEditor } from "./LineItemsEditor";
@@ -276,7 +276,7 @@ export function QuoteDetailDrawer({ quoteId, onClose, onChanged }: QuoteDetailDr
                     </div>
                   </div>
                   <Text strong style={{ fontSize: 13, color: appTokens.textPrimary, flexShrink: 0 }}>
-                    {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v.grandTotal)}
+                    {formatWholeCurrency(v.grandTotal)}
                   </Text>
                 </div>
               ))}

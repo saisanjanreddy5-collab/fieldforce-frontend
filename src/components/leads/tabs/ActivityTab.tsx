@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ScheduleClashNotice, scheduleClashFrom, type ScheduleClash } from "../../calendar/ScheduleClashNotice";
 import { Button, DatePicker, Form, Input, Modal, Select, Spin, Typography, message } from "antd";
 import dayjs from "dayjs";
 import * as activityApi from "../../../api/activity-api";
@@ -32,6 +33,7 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<NewActionFormValues>();
+  const [clash, setClash] = useState<ScheduleClash | null>(null);
 
   const upcoming = activities
     .filter((a) => a.status !== "completed")
@@ -40,6 +42,7 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
   const next = upcoming[0];
 
   const handleCreate = async (values: NewActionFormValues) => {
+    setClash(null);
     setSubmitting(true);
     try {
       await activityApi.createActivityForLead(leadId, {
@@ -52,7 +55,9 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
       form.resetFields();
       onChanged();
     } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to add action"));
+      const found = scheduleClashFrom(err);
+      if (found) setClash(found);
+      else message.error(errorMessageFrom(err, "Failed to add action"));
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +139,10 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
       <Modal
         title="Add action"
         open={modalOpen}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false);
+          setClash(null);
+        }}
         onOk={() => form.submit()}
         okButtonProps={{ loading: submitting }}
       >
@@ -155,8 +163,19 @@ export function ActivityTab({ leadId, activities, loading, onChanged }: Activity
             <Input placeholder="e.g. Proposal review with RSM" />
           </Form.Item>
           <Form.Item name="dueDate" label="When" rules={[{ required: true }]}>
-            <DatePicker showTime style={{ width: "100%" }} />
+            <DatePicker showTime style={{ width: "100%" }} onChange={() => setClash(null)} />
           </Form.Item>
+          {clash && (
+            <div style={{ marginTop: -12, marginBottom: 16 }}>
+              <ScheduleClashNotice
+                clash={clash}
+                onUseSuggested={(time) => {
+                  form.setFieldValue("dueDate", time);
+                  setClash(null);
+                }}
+              />
+            </div>
+          )}
           <Form.Item noStyle shouldUpdate={(prev, cur) => prev.dueDate !== cur.dueDate}>
             {({ getFieldValue }) => {
               const dueDate = getFieldValue("dueDate") as dayjs.Dayjs | undefined;

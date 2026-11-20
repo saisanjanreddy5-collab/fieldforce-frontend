@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Input, InputNumber, Modal, Switch, Typography, message } from "antd";
+import { Button, Input, InputNumber, Modal, Space, Switch, Typography, message } from "antd";
 import * as leaveApi from "../../api/leave-api";
 import type { LeaveType } from "../../types/leave";
 import { errorMessageFrom } from "../../utils/api-error";
@@ -72,7 +72,10 @@ export function EditLeaveTypeModal({ open, onClose, onSaved, leaveType }: EditLe
   const field = (label: string, value: number | null, onChange: (v: number | null) => void, suffix: string) => (
     <div>
       <Text style={{ fontSize: 12, fontWeight: 500 }}>{label}</Text>
-      <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} value={value} onChange={onChange} placeholder="Not applicable" addonAfter={suffix} />
+      <Space.Compact>
+        <InputNumber style={{ width: "100%", marginTop: 4 }} min={0} value={value} onChange={onChange} placeholder="Not applicable" />
+        <Space.Addon>{suffix}</Space.Addon>
+      </Space.Compact>
     </div>
   );
 

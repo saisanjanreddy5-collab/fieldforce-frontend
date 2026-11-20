@@ -162,8 +162,7 @@ export function GenerateQrCampaignModal({ open, onClose, onSaved, campaign }: Ge
               style={{ width: "100%", marginTop: 4 }}
               value={assignTo}
               onChange={setAssignTo}
-              showSearch
-              optionFilterProp="label"
+              showSearch={{ optionFilterProp: "label" }}
               options={[{ value: AUTO_ASSIGN, label: "Auto — by rule" }, ...users.map((u) => ({ value: u.id, label: u.name }))]}
             />
           </div>

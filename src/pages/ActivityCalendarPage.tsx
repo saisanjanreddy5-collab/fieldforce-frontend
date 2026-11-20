@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Grid, Select, Spin, Tooltip, Typography, message } from "antd";
+import { Avatar, Button, Select, Spin, Tooltip, Typography, message } from "antd";
 import { LeftOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as calendarApi from "../api/calendar-api";
@@ -13,10 +13,9 @@ import { DayTimeline } from "../components/calendar/DayTimeline";
 import { CalendarGrid } from "../components/calendar/CalendarGrid";
 import { NewActivityModal } from "../components/calendar/NewActivityModal";
 import { StatsRow } from "../components/StatsRow";
+import { useIsMobile } from "../hooks/use-is-mobile";
 
 const { Title, Text } = Typography;
-const { useBreakpoint } = Grid;
-
 type ViewMode = "day" | "week" | "month";
 
 // How many "Calendar of" person chips show before the rest fold behind a
@@ -27,8 +26,7 @@ const SELF_OPTION = "__self__";
 
 export default function ActivityCalendarPage() {
   const { user } = useAuth();
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const [showAllPeople, setShowAllPeople] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [viewingUserId, setViewingUserId] = useState<string | undefined>(undefined);
@@ -211,8 +209,7 @@ export default function ActivityCalendarPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <Text style={{ fontSize: 12, fontWeight: 600, color: appTokens.textTertiary, flexShrink: 0 }}>Calendar of</Text>
           <Select
-            showSearch
-            optionFilterProp="label"
+            showSearch={{ optionFilterProp: "label" }}
             style={{ flex: 1, minWidth: 0 }}
             value={viewingUserId ?? SELF_OPTION}
             onChange={(v: string) => setViewingUserId(v === SELF_OPTION ? undefined : v)}

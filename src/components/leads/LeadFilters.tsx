@@ -31,18 +31,21 @@ const activeCount = (value: AdvancedFilters) => Object.values(value).filter((v) 
 // disabled). Only real, server-side-filterable fields are offered - Region/
 // Territory/Salesperson are gone entirely (Decision 3), not just hidden.
 export function LeadFilters({ value, onChange }: LeadFiltersProps) {
-  const { stages } = usePipelineStages();
-  const { categories } = useLeadCategories();
-  const { sources, refetch: refetchSources } = useLeadSources();
   const count = activeCount(value);
   const [open, setOpen] = useState(false);
+  // Nothing is fetched until the popover is first opened (the lists are
+  // shared and cached after that) - they used to load with the Leads page
+  // and compete with the lead list itself.
+  const { stages } = usePipelineStages(open);
+  const { categories } = useLeadCategories(open);
+  const { sources, refetch: refetchSources } = useLeadSources();
 
   const content = (
     <div style={{ width: 260 }}>
       <Text strong style={{ fontSize: 13, display: "block", marginBottom: 12 }}>
         Filter leads
       </Text>
-      <Space direction="vertical" size={14} style={{ width: "100%" }}>
+      <Space orientation="vertical" size={14} style={{ width: "100%" }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: appTokens.textTertiary, letterSpacing: 0.3, marginBottom: 6 }}>CATEGORY</div>
           <Select

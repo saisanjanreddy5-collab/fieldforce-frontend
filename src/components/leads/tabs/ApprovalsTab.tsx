@@ -2,22 +2,20 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, Button, Empty, Space, Spin, Tag, Typography, message } from "antd";
 import { ArrowRightOutlined } from "@ant-design/icons";
-import { isAxiosError } from "axios";
 import * as fofoOnboardingApi from "../../../api/fofo-onboarding-api";
 import type { FofoHandoff } from "../../../types/fofo-onboarding";
 import type { Lead } from "../../../types/lead";
 import { useAuth } from "../../../context/AuthContext";
 import { useHasPermission } from "../../../hooks/use-permission";
 import { initials } from "../../../utils/lead-format";
-import { appTokens } from "../../../utils/design-system";
+import { appTokens, pickByHash } from "../../../utils/design-system";
+import { errorMessageFrom } from "../../../utils/api-error";
 
 const { Text, Title } = Typography;
 
 const AVATAR_COLORS = ["#1677ff", "#722ed1", "#eb2f96", "#0ca30c", "#fa8c16", "#13c2c2", "#eda100", "#2f54eb"];
 function avatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return pickByHash(name, AVATAR_COLORS);
 }
 
 const STEP_STATUS_COLORS: Record<string, string> = {
@@ -88,8 +86,7 @@ export function ApprovalsTab({ lead, canView, loading, handoff, onChanged }: App
       message.success(decision === "approved" ? "Step approved" : "Step rejected");
       onChanged();
     } catch (err) {
-      const description = isAxiosError<{ message?: string }>(err) && err.response?.data.message ? err.response.data.message : "Failed to decide step";
-      message.error(description);
+      message.error(errorMessageFrom(err, "Failed to decide step"));
     } finally {
       setDecidingStepId(null);
     }

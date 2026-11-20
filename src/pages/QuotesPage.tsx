@@ -1,26 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, DatePicker, Empty, Grid, Input, Pagination, Segmented, Select, Table, Tag, Typography } from "antd";
+import { App, Button, DatePicker, Empty, Input, Segmented, Select, Table, Tag, Typography } from "antd";
 import type { SorterResult } from "antd/es/table/interface";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as quoteApi from "../api/quote-api";
 import type { QuoteListItem, QuoteStatus } from "../types/quote";
 import { useHasPermission } from "../hooks/use-permission";
-import { formatDate } from "../utils/lead-format";
+import { formatDate, formatWholeCurrency } from "../utils/lead-format";
 import { appTokens } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 import { QUOTE_STATUS_COLORS, QUOTE_STATUS_LABELS, QUOTE_STATUS_OPTIONS } from "../components/quotes/quote-constants";
 import { NewQuoteModal } from "../components/quotes/NewQuoteModal";
 import { QuoteDetailDrawer } from "../components/quotes/QuoteDetailDrawer";
+import { useIsMobile } from "../hooks/use-is-mobile";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
-const { useBreakpoint } = Grid;
-
 // Same small grey dot the Opportunities page puts in front of each filter.
 const FILTER_DOT = <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#9aa2b1" }} />;
-
-const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 type DatePreset = "any" | "today" | "7d" | "30d" | "month" | "quarter" | "custom";
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -61,19 +60,12 @@ function presetRange(preset: DatePreset, custom: [Dayjs, Dayjs] | null): [Dayjs,
 export default function QuotesPage() {
   const { message } = App.useApp();
   const hasPermission = useHasPermission();
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const [openQuoteId, setOpenQuoteId] = useState<string | null>(null);
-  // Pagination controls used to be antd Table's own internal/uncontrolled
-  // page state - lifted out here so the Pagination control below can be
-  // rendered as its own always-visible footer instead of inline with the
-  // table rows (see the Table wrapper below).
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
 
   // ---- filters (all client-side: every quote is already loaded above) ----
   const [search, setSearch] = useState("");
@@ -165,6 +157,9 @@ export default function QuotesPage() {
       sort.key === "total" ? (a.grandTotal - b.grandTotal) * dir : (dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf()) * dir
     );
   }, [beforeStatus, statusFilter, sort]);
+  // Paged outside antd Table, so the pager is an always-visible footer
+  // instead of inline with the table rows (see the Table wrapper below).
+  const pager = usePagination("quotes", 20, filtered.length);
 
   const filtersActive =
     search.trim() !== "" || statusFilter !== "all" || !!ownerFilter || !!categoryFilter || datePreset !== "any" || valueBand !== "any";
@@ -177,11 +172,11 @@ export default function QuotesPage() {
     setDatePreset("any");
     setCustomRange(null);
     setValueBand("any");
-    setPage(1);
+    pager.setPage(1);
   };
 
   // Any filter change goes back to page 1, so you never land on an empty page.
-  useEffect(() => setPage(1), [search, statusFilter, ownerFilter, categoryFilter, datePreset, customRange, valueBand]);
+  useEffect(() => pager.setPage(1), [pager.setPage, search, statusFilter, ownerFilter, categoryFilter, datePreset, customRange, valueBand]);
 
   // Headline numbers follow what's on screen.
   const stats = useMemo(() => {
@@ -310,8 +305,7 @@ export default function QuotesPage() {
             {canFilterByPerson && (
               <Select
                 prefix={FILTER_DOT}
-                showSearch
-                optionFilterProp="label"
+                showSearch={{ optionFilterProp: "label" }}
                 style={{ minWidth: 150, flexShrink: 0 }}
                 value={ownerFilter ?? "all"}
                 onChange={(v) => setOwnerFilter(v === "all" ? undefined : v)}
@@ -370,7 +364,7 @@ export default function QuotesPage() {
         <Table<QuoteListItem>
           rowKey="id"
           loading={loading}
-          dataSource={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
+          dataSource={pager.slice(filtered)}
           pagination={false}
           // Scrolls sideways on a narrow screen instead of squeezing every
           // column until quote numbers break mid-code and Total is clipped.
@@ -438,7 +432,7 @@ export default function QuotesPage() {
               sortOrder: sort?.key === "total" ? sort.order : null,
               render: (_, q) => (
                 <Text strong style={{ color: appTokens.textPrimary, whiteSpace: "nowrap" }}>
-                  {inr.format(q.grandTotal)}
+                  {formatWholeCurrency(q.grandTotal)}
                 </Text>
               ),
             },
@@ -456,16 +450,8 @@ export default function QuotesPage() {
         </div>
 
         {filtered.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "12px 0",
-              flexShrink: 0,
-              borderTop: `1px solid ${appTokens.borderLight}`,
-            }}
-          >
-            <Pagination current={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} showSizeChanger={false} />
+          <div style={{ padding: "12px 14px", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
+            <ListPagination {...pager.props(filtered.length)} />
           </div>
         )}
       </div>

@@ -1,20 +1,12 @@
-import { useEffect, useState } from "react";
-import * as leadCategoryApi from "../api/lead-category-api";
+import { leadCategoriesResource } from "../api/lead-category-api";
 import type { LeadCategory } from "../types/lead-category";
+import { useCachedResource } from "../utils/cached-resource";
 
-// Replaces the old hardcoded LEAD_CATEGORY_VALUES array - same pattern as
-// usePipelineStages, reading the real, admin-editable lead_categories table.
-export function useLeadCategories() {
-  const [categories, setCategories] = useState<LeadCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+const NONE: LeadCategory[] = [];
 
-  useEffect(() => {
-    leadCategoryApi
-      .listLeadCategories()
-      .then(setCategories)
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
-  }, []);
-
-  return { categories, loading };
+// The admin-editable lead_categories list, fetched once and shared by every
+// screen (see utils/cached-resource.ts). enabled: false waits until needed.
+export function useLeadCategories(enabled = true) {
+  const { data, loading } = useCachedResource(leadCategoriesResource, enabled);
+  return { categories: data ?? NONE, loading };
 }

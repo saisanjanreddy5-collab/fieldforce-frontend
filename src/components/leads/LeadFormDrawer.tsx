@@ -149,8 +149,9 @@ for (const tab of TAB_KEYS) {
 }
 
 export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerProps) {
-  const { categories } = useLeadCategories();
-  const { categoryOptions, sourceOptions, loading: inquiryOptionsLoading } = useLeadInquiryOptions();
+  // Fetched when the drawer first opens, not with the page behind it.
+  const { categories } = useLeadCategories(open);
+  const { categoryOptions, sourceOptions, loading: inquiryOptionsLoading } = useLeadInquiryOptions(open);
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("customer");
@@ -562,9 +563,8 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                       <Form.Item name="ownerId" label="Assign to Call Center Executive" tooltip="Optional - leave blank to auto-assign via round robin. Visible to every Call Center Executive either way.">
                         <Select
                           allowClear
-                          showSearch
+                          showSearch={{ optionFilterProp: "label" }}
                           placeholder="Auto-assign (round robin)"
-                          optionFilterProp="label"
                           options={callCenterUsers.map((u) => ({ value: u.id, label: `${u.name} (${u.email})` }))}
                         />
                       </Form.Item>
@@ -642,8 +642,7 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                     >
                       <Select
                         allowClear
-                        showSearch
-                        optionFilterProp="label"
+                        showSearch={{ optionFilterProp: "label" }}
                         placeholder="Select a state"
                         options={states.map((s) => ({ value: s.id, label: s.name }))}
                       />

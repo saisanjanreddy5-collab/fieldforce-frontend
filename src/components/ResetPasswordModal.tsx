@@ -51,7 +51,7 @@ export function ResetPasswordModal({ user, onClose }: ResetPasswordModalProps) {
       onOk={() => form.submit()}
       okText="Reset password"
       confirmLoading={submitting}
-      destroyOnClose
+      destroyOnHidden
     >
       <Text type="secondary" style={{ fontSize: 12.5 }}>
         {user?.name} will be logged out everywhere and will need to sign in again with this new password. Share it

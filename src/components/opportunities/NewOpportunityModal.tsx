@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { App, Form, Input, InputNumber, Modal, Select } from "antd";
-import { isAxiosError } from "axios";
 import * as leadApi from "../../api/lead-api";
 import * as opportunityApi from "../../api/opportunity-api";
 import type { Lead } from "../../types/lead";
 import type { Opportunity } from "../../types/opportunity";
+import { errorMessageFrom } from "../../utils/api-error";
 
 interface NewOpportunityModalProps {
   open: boolean;
@@ -94,8 +94,7 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
       form.resetFields();
       onCreated(opportunity);
     } catch (error) {
-      const realMessage = isAxiosError<{ message?: string }>(error) && error.response?.data.message;
-      message.error(realMessage || "Failed to create opportunity - something went wrong, please try again");
+      message.error(errorMessageFrom(error, "Failed to create opportunity - something went wrong, please try again"));
     } finally {
       setSubmitting(false);
     }
@@ -114,10 +113,8 @@ export function NewOpportunityModal({ open, onClose, onCreated, defaultLeadId, d
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item name="leadId" label="Lead" rules={[{ required: true, message: "Select the lead this deal belongs to" }]}>
           <Select
-            showSearch
+            showSearch={{ filterOption: false, onSearch: handleSearch }}
             placeholder="Search by name, company, or phone"
-            filterOption={false}
-            onSearch={handleSearch}
             loading={searching}
             onChange={(id: string) => {
               selectedLeadRef.current = leads.find((l) => l.id === id) ?? null;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useMicrosoftConnection } from "../../hooks/use-microsoft-connection";
 import { Button, Drawer, Input, Select, Typography, message } from "antd";
 import { CloseOutlined, PaperClipOutlined } from "@ant-design/icons";
 import { OutlookLogo } from "../icons/BrandIcons";
@@ -78,7 +79,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     // actually had an email on file - the lead fetch had succeeded, its
     // result just never reached state because Promise.all rejects as soon
     // as any one of its promises does).
-    Promise.all([leadApi.getLead(leadId), microsoftApi.getStatus()])
+    Promise.all([leadApi.getLead(leadId), microsoftApi.microsoftStatusResource.get()])
       .then(([leadResult, statusResult]) => {
         setLead(leadResult);
         setMsStatus(statusResult);
@@ -153,10 +154,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleConnect = async () => {
-    const url = await microsoftApi.getConnectUrl(window.location.pathname);
-    window.location.href = url;
-  };
+  const { connect: handleConnect } = useMicrosoftConnection();
 
   const showConnectPrompt = !loading && msStatus !== null && !msStatus.connected;
 
@@ -164,7 +162,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
     <Drawer
       open={open}
       onClose={onClose}
-      width={480}
+      size={480}
       loading={loading}
       styles={{ body: { paddingBottom: 12, display: "flex", flexDirection: "column", overflow: "hidden" } }}
       footer={
@@ -277,7 +275,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
                   tokenSeparators={[",", ";", " "]}
                   placeholder="Add a CC address and press Enter"
                   suffixIcon={null}
-                  dropdownStyle={{ display: "none" }}
+                  styles={{ popup: { root: { display: "none" } } }}
                   status={!ccAllValid ? "error" : undefined}
                 />
                 {!ccAllValid && (

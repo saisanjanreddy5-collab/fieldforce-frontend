@@ -1,26 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
-import * as leadInquiryOptionApi from "../api/lead-inquiry-option-api";
+import { useMemo } from "react";
+import { leadInquiryOptionsResource } from "../api/lead-inquiry-option-api";
 import type { LeadInquiryOption } from "../types/lead-inquiry-option";
+import { useCachedResource } from "../utils/cached-resource";
 
-// Same pattern as useLeadCategories/usePipelineStages - a real admin-editable
-// list backing the Lead form's Inquiry Category/Source fields (for manual-
-// entry leads only - QR/Website leads get these two auto-filled and locked
-// elsewhere, untouched by this). Fetches both lists in one call and splits
-// them client-side since the whole table is tiny.
-export function useLeadInquiryOptions() {
-  const [options, setOptions] = useState<LeadInquiryOption[]>([]);
-  const [loading, setLoading] = useState(true);
+const NONE: LeadInquiryOption[] = [];
 
-  useEffect(() => {
-    leadInquiryOptionApi
-      .listLeadInquiryOptions()
-      .then(setOptions)
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
-  }, []);
+// The admin-editable Inquiry Category/Source lists behind the Lead form
+// (manual-entry leads only - QR/Website leads get these auto-filled and
+// locked). One cached request for both lists, split client-side.
+// enabled: false waits until the form is actually open.
+export function useLeadInquiryOptions(enabled = true) {
+  const { data, loading } = useCachedResource(leadInquiryOptionsResource, enabled);
+  const options = data ?? NONE;
 
   // Memoized so these keep the same identity until the options actually
-  // load. LeadFormDrawer re-applies the lead's saved Inquiry Category/Source
+  // change. LeadFormDrawer re-applies the lead's saved Inquiry Category/Source
   // whenever these change - fresh arrays on every render made that re-run on
   // every re-render (e.g. Save & Next switching tabs) and wipe what the user
   // had just picked before it was ever saved.

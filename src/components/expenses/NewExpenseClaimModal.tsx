@@ -207,8 +207,7 @@ export function NewExpenseClaimModal({ open, onClose, onSubmitted, types, manage
         <Select
           style={{ width: "100%", marginTop: 4 }}
           allowClear
-          showSearch
-          optionFilterProp="label"
+          showSearch={{ optionFilterProp: "label" }}
           placeholder="Select an opportunity (optional)"
           value={linkedOpportunityId}
           onChange={setLinkedOpportunityId}

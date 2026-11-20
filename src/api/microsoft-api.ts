@@ -1,11 +1,15 @@
 import { apiClient } from "./api-client";
 import type { ApiSuccess } from "../types/api";
+import { createCachedResource } from "../utils/cached-resource";
 import type { MicrosoftConnectionStatus } from "../types/microsoft";
 
 export async function getStatus(): Promise<MicrosoftConnectionStatus> {
   const response = await apiClient.get<ApiSuccess<MicrosoftConnectionStatus>>("/integrations/microsoft/status");
   return response.data.data;
 }
+
+/** The signed-in user's Microsoft 365 status, shared by every screen that shows Email/Teams. */
+export const microsoftStatusResource = createCachedResource(getStatus);
 
 // returnTo is the page to land back on once Microsoft's OAuth round-trip
 // completes - without it, the backend has no way to know which module the
@@ -19,6 +23,7 @@ export async function getConnectUrl(returnTo: string): Promise<string> {
 
 export async function disconnect(): Promise<void> {
   await apiClient.delete("/integrations/microsoft/disconnect");
+  microsoftStatusResource.invalidate();
 }
 
 export async function sendLeadEmail(

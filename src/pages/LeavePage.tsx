@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Avatar, Button, Empty, Pagination, Popconfirm, Table, Tag, Typography, message } from "antd";
+import { Avatar, Button, Empty, Popconfirm, Table, Tag, Typography, message } from "antd";
 import { InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as leaveApi from "../api/leave-api";
@@ -15,19 +15,13 @@ import { GrantCompOffModal } from "../components/leave/GrantCompOffModal";
 import { LeaveTypesDrawer } from "../components/leave/LeaveTypesDrawer";
 import { TeamLeaveTimeline } from "../components/leave/TeamLeaveTimeline";
 import { LeaveHistoryBrowser } from "../components/leave/LeaveHistoryBrowser";
+import { LeaveStatusTag } from "../components/leave/LeaveStatusTag";
+import { ListPagination } from "../components/ListPagination";
+import { usePagination } from "../hooks/use-pagination";
 
 const { Title, Text } = Typography;
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: appTokens.warning,
-  approved: appTokens.success,
-  rejected: appTokens.danger,
-  cancelled: appTokens.textTertiary,
-};
-
 type TabKey = "mine" | "team" | "history";
-
-const MINE_PAGE_SIZE = 20;
 
 export default function LeavePage() {
   const { user } = useAuth();
@@ -36,11 +30,11 @@ export default function LeavePage() {
   const canGrantCompOff = hasPermission("comp_off_credits.grant");
 
   const [activeTab, setActiveTab] = useState<TabKey>("mine");
-  const [minePage, setMinePage] = useState(1);
   // Which approval row is mid-request - spinner on that button, blocks double-taps.
   const [deciding, setDeciding] = useState<{ id: string; decision: "approved" | "rejected" } | null>(null);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
+  const minePager = usePagination("leave-mine", 20, myRequests.length);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<LeaveRequest[]>([]);
   const [context, setContext] = useState<LeaveContext | null>(null);
@@ -296,7 +290,7 @@ export default function LeavePage() {
             size="small"
             rowKey="id"
             loading={loading}
-            dataSource={myRequests.slice((minePage - 1) * MINE_PAGE_SIZE, minePage * MINE_PAGE_SIZE)}
+            dataSource={minePager.slice(myRequests)}
             pagination={false}
             scroll={{ x: 720 }}
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No leave requests yet" /> }}
@@ -333,11 +327,7 @@ export default function LeavePage() {
               {
                 title: "Status",
                 key: "status",
-                render: (_, r) => (
-                  <Tag style={{ color: STATUS_COLOR[r.status], background: `${STATUS_COLOR[r.status]}17`, border: "none", fontWeight: 600 }}>
-                    {r.status[0].toUpperCase() + r.status.slice(1)}
-                  </Tag>
-                ),
+                render: (_, r) => <LeaveStatusTag status={r.status} />,
               },
               {
                 title: "",
@@ -356,16 +346,8 @@ export default function LeavePage() {
           </div>
 
           {myRequests.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                padding: "12px 0",
-                flexShrink: 0,
-                borderTop: `1px solid ${appTokens.borderLight}`,
-              }}
-            >
-              <Pagination current={minePage} pageSize={MINE_PAGE_SIZE} total={myRequests.length} onChange={setMinePage} showSizeChanger={false} />
+            <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
+              <ListPagination {...minePager.props(myRequests.length)} />
             </div>
           )}
         </div>
@@ -409,11 +391,7 @@ export default function LeavePage() {
                   {
                     title: "Status",
                     key: "status",
-                    render: (_, r) => (
-                      <Tag style={{ color: STATUS_COLOR[r.status], background: `${STATUS_COLOR[r.status]}17`, border: "none", fontWeight: 600 }}>
-                        {r.status[0].toUpperCase() + r.status.slice(1)}
-                      </Tag>
-                    ),
+                    render: (_, r) => <LeaveStatusTag status={r.status} />,
                   },
                 ]}
               />

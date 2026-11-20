@@ -3,11 +3,12 @@ import { CalendarOutlined } from "@ant-design/icons";
 import type { Opportunity } from "../../types/opportunity";
 import { formatCompactCurrency } from "../../utils/lead-format";
 import { appTokens } from "../../utils/design-system";
-import { CATEGORY_COLORS, STAGES, STAGE_DEFAULT_PROBABILITY } from "./stages";
+import { CATEGORY_COLORS, STAGES, STAGE_DEFAULT_PROBABILITY, STAGE_LABEL } from "./stages";
+import { ListPagination } from "../ListPagination";
+import { usePagination } from "../../hooks/use-pagination";
 
 const { Text } = Typography;
 
-const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]));
 const STAGE_COLOR: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.color]));
 
 interface OpportunityListViewProps {
@@ -37,128 +38,130 @@ export function OpportunityListView({ opportunities, loading, onEdit }: Opportun
     const probability = o.probability ?? STAGE_DEFAULT_PROBABILITY[o.stage] ?? 0;
     return sum + (o.value ?? 0) * (probability / 100);
   }, 0);
+  const pager = usePagination("opportunities-list", 20, opportunities.length);
 
   return (
-    <Table<Opportunity>
-      rowKey="id"
-      loading={loading}
-      dataSource={opportunities}
-      pagination={{
-        pageSize: 20,
-        showSizeChanger: true,
-        pageSizeOptions: [20, 50, 100, 200],
-        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total.toLocaleString()} opportunities`,
-      }}
-      // A fixed pixel value, not a viewport-relative calc() - this component
-      // has no page chrome of its own (OpportunitiesPage.tsx, its caller,
-      // shares one layout across 4 view modes) so there's no reliable "100vh
-      // minus known chrome" to calculate here. antd's own scroll.y already
-      // keeps the pagination footer below outside this bounded region
-      // natively (that part was never the problem) - a fixed, reasonable
-      // body height is what actually needed to stop being a guess.
-      scroll={{ x: 820, y: 480 }}
-      className="thin-scroll-table"
-      onRow={() => ({ className: "table-row-hover" })}
-      columns={[
-        {
-          title: "Opportunity",
-          key: "opportunity",
-          render: (_, o) => (
-            <div>
-              <Text strong>{o.name ?? "Untitled opportunity"}</Text>
-              {/* Always shown, not a fallback for the name above - same fix
-                  as the Kanban card, so the originating lead is never hidden
-                  just because the opportunity has its own name. */}
-              {o.leadFullName && (
-                <div>
-                  <Text style={{ fontSize: 12, color: appTokens.textSecondary }}>Lead: {o.leadFullName}</Text>
-                </div>
-              )}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {[o.leadStoreCity, o.leadStoreState].filter(Boolean).join(", ")}
-                </Text>
-                {o.leadCategory && (
-                  <Tag color={CATEGORY_COLORS[o.leadCategory] ?? "default"} style={{ marginRight: 0, fontSize: 10.5 }}>
-                    {o.leadCategory}
-                  </Tag>
+    <>
+      <Table<Opportunity>
+        rowKey="id"
+        loading={loading}
+        dataSource={pager.slice(opportunities)}
+        pagination={false}
+        // A fixed pixel value, not a viewport-relative calc() - this component
+        // has no page chrome of its own (OpportunitiesPage.tsx, its caller,
+        // shares one layout across 4 view modes) so there's no reliable "100vh
+        // minus known chrome" to calculate here. The pager sits below the table,
+        // outside this bounded region - a fixed, reasonable body height is what
+        // actually needed to stop being a guess.
+        scroll={{ x: 820, y: 480 }}
+        className="thin-scroll-table"
+        onRow={() => ({ className: "table-row-hover" })}
+        columns={[
+          {
+            title: "Opportunity",
+            key: "opportunity",
+            render: (_, o) => (
+              <div>
+                <Text strong>{o.name ?? "Untitled opportunity"}</Text>
+                {/* Always shown, not a fallback for the name above - same fix
+                    as the Kanban card, so the originating lead is never hidden
+                    just because the opportunity has its own name. */}
+                {o.leadFullName && (
+                  <div>
+                    <Text style={{ fontSize: 12, color: appTokens.textSecondary }}>Lead: {o.leadFullName}</Text>
+                  </div>
                 )}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {[o.leadStoreCity, o.leadStoreState].filter(Boolean).join(", ")}
+                  </Text>
+                  {o.leadCategory && (
+                    <Tag color={CATEGORY_COLORS[o.leadCategory] ?? "default"} style={{ marginRight: 0, fontSize: 10.5 }}>
+                      {o.leadCategory}
+                    </Tag>
+                  )}
+                </div>
               </div>
-            </div>
-          ),
-        },
-        {
-          title: "Stage",
-          dataIndex: "stage",
-          render: (stage: string) => (
-            <Tag
-              style={{
-                color: STAGE_COLOR[stage] ?? appTokens.textSecondary,
-                background: `${STAGE_COLOR[stage] ?? appTokens.textTertiary}17`,
-                border: "none",
-                fontWeight: 600,
-              }}
-            >
-              {STAGE_LABEL[stage] ?? stage}
-            </Tag>
-          ),
-        },
-        { title: "Owner", dataIndex: "ownerName", render: (v: string | null) => v ?? "Unassigned" },
-        { title: "Value", dataIndex: "value", render: (v: number | null) => formatCompactCurrency(v) },
-        {
-          title: "Prob.",
-          key: "probability",
-          render: (_, o) => `${o.probability ?? STAGE_DEFAULT_PROBABILITY[o.stage] ?? 0}%`,
-        },
-        {
-          title: "Weighted",
-          key: "weighted",
-          render: (_, o) => {
-            const probability = o.probability ?? STAGE_DEFAULT_PROBABILITY[o.stage] ?? 0;
-            return formatCompactCurrency((o.value ?? 0) * (probability / 100));
+            ),
           },
-        },
-        {
-          title: "Close date",
-          key: "closeDate",
-          render: (_, o) => {
-            const due = dueLabel(o.closeDate);
-            return (
-              <Text style={{ fontSize: 12.5, fontWeight: due.overdue ? 700 : 400, color: due.overdue ? appTokens.danger : appTokens.textSecondary }}>
-                <CalendarOutlined style={{ fontSize: 11, marginRight: 4 }} />
-                {due.text}
-              </Text>
-            );
+          {
+            title: "Stage",
+            dataIndex: "stage",
+            render: (stage: string) => (
+              <Tag
+                style={{
+                  color: STAGE_COLOR[stage] ?? appTokens.textSecondary,
+                  background: `${STAGE_COLOR[stage] ?? appTokens.textTertiary}17`,
+                  border: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {STAGE_LABEL[stage] ?? stage}
+              </Tag>
+            ),
           },
-        },
-        {
-          title: "",
-          key: "action",
-          render: (_, o) => (
-            <Button type="link" size="small" onClick={() => onEdit(o)}>
-              Edit
-            </Button>
-          ),
-        },
-      ]}
-      summary={() =>
-        opportunities.length > 0 ? (
-          <Table.Summary.Row>
-            <Table.Summary.Cell index={0} colSpan={3}>
-              <Text strong>{opportunities.length} opportunities</Text>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={1}>
-              <Text strong>{formatCompactCurrency(totalValue)}</Text>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={2} />
-            <Table.Summary.Cell index={3}>
-              <Text strong>{formatCompactCurrency(totalWeighted)}</Text>
-            </Table.Summary.Cell>
-            <Table.Summary.Cell index={4} />
-            <Table.Summary.Cell index={5} />
-          </Table.Summary.Row>
-        ) : null
-      }
-    />
+          { title: "Owner", dataIndex: "ownerName", render: (v: string | null) => v ?? "Unassigned" },
+          { title: "Value", dataIndex: "value", render: (v: number | null) => formatCompactCurrency(v) },
+          {
+            title: "Prob.",
+            key: "probability",
+            render: (_, o) => `${o.probability ?? STAGE_DEFAULT_PROBABILITY[o.stage] ?? 0}%`,
+          },
+          {
+            title: "Weighted",
+            key: "weighted",
+            render: (_, o) => {
+              const probability = o.probability ?? STAGE_DEFAULT_PROBABILITY[o.stage] ?? 0;
+              return formatCompactCurrency((o.value ?? 0) * (probability / 100));
+            },
+          },
+          {
+            title: "Close date",
+            key: "closeDate",
+            render: (_, o) => {
+              const due = dueLabel(o.closeDate);
+              return (
+                <Text style={{ fontSize: 12.5, fontWeight: due.overdue ? 700 : 400, color: due.overdue ? appTokens.danger : appTokens.textSecondary }}>
+                  <CalendarOutlined style={{ fontSize: 11, marginRight: 4 }} />
+                  {due.text}
+                </Text>
+              );
+            },
+          },
+          {
+            title: "",
+            key: "action",
+            render: (_, o) => (
+              <Button type="link" size="small" onClick={() => onEdit(o)}>
+                Edit
+              </Button>
+            ),
+          },
+        ]}
+        summary={() =>
+          opportunities.length > 0 ? (
+            <Table.Summary.Row>
+              <Table.Summary.Cell index={0} colSpan={3}>
+                <Text strong>{opportunities.length} opportunities</Text>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={1}>
+                <Text strong>{formatCompactCurrency(totalValue)}</Text>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={2} />
+              <Table.Summary.Cell index={3}>
+                <Text strong>{formatCompactCurrency(totalWeighted)}</Text>
+              </Table.Summary.Cell>
+              <Table.Summary.Cell index={4} />
+              <Table.Summary.Cell index={5} />
+            </Table.Summary.Row>
+          ) : null
+        }
+      />
+      {opportunities.length > 0 && (
+        <div style={{ paddingTop: 12, width: "100%" }}>
+          <ListPagination {...pager.props(opportunities.length)} />
+        </div>
+    )}
+    </>
   );
 }

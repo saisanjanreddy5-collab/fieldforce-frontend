@@ -1,19 +1,17 @@
 import { useState } from "react";
-import { Button, Grid, Tag, Typography, message } from "antd";
+import { Button, Tag, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import type { Activity } from "../../types/activity";
 import { TYPE_DOT_COLOR, TYPE_ICON, TYPE_LABEL } from "../../utils/activity-shared";
 import { appTokens } from "../../utils/design-system";
-import { errorMessageFrom } from "../../utils/api-error";
-import * as smartfloApi from "../../api/smartflo-api";
+import { useClickToCall } from "../../hooks/use-click-to-call";
 import * as activityApi from "../../api/activity-api";
 import { EmailComposeDrawer } from "./EmailComposeDrawer";
 import { SiteVisitModal } from "./SiteVisitModal";
+import { useIsMobile } from "../../hooks/use-is-mobile";
 
 const { Text } = Typography;
-const { useBreakpoint } = Grid;
-
 const DEFAULT_SUBLABEL: Record<Activity["type"], string> = {
   call: "Phone",
   email: "Outlook",
@@ -53,10 +51,10 @@ interface ActivityRowProps {
 // composer here - a duplicate one would drift from the real one over time.
 export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
   const navigate = useNavigate();
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const isMobile = useIsMobile();
   const [emailDrawerOpen, setEmailDrawerOpen] = useState(false);
   const [siteVisitModalOpen, setSiteVisitModalOpen] = useState(false);
+  const { call } = useClickToCall();
   const isCompleted = activity.status === "completed";
   const isOverdue = !isCompleted && activity.dueDate !== null && dayjs(activity.dueDate).isBefore(dayjs());
   const statusLabel = isCompleted ? "Done" : isOverdue ? "Overdue" : "Pending";
@@ -87,13 +85,7 @@ export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
         message.error("This activity isn't linked to a lead");
         return;
       }
-      try {
-        await smartfloApi.callLead(activity.leadId);
-        message.success("Calling now");
-        await markThisDone();
-      } catch (err) {
-        message.error(errorMessageFrom(err, "Failed to place the call"));
-      }
+      call({ leadId: activity.leadId, name: activity.subject ?? "this lead", phone: null, onPlaced: () => void markThisDone() });
       return;
     }
     if (activity.type === "email") {
@@ -128,7 +120,9 @@ export function ActivityRow({ activity, isLast, onChanged }: ActivityRowProps) {
       navigate(`/leads?leadId=${activity.leadId}&tab=whatsapp`);
       return;
     }
-    message.info(`${ACTION_LABEL[activity.type]} opens in the next phase of the Activity calendar`);
+    // Only reachable if a type gets an ACTION_LABEL without a branch above
+    // (the button only renders when ACTION_LABEL is set).
+    message.info("This activity type can't be opened from here yet");
   };
 
   const actionLabel = ACTION_LABEL[activity.type];
