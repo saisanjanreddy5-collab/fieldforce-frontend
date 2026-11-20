@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, Button, Dropdown, Input, Tooltip, Typography, message } from "antd";
 import type { MenuProps } from "antd";
 import {
+  ArrowDownOutlined,
   AudioOutlined,
   CheckOutlined,
   FileTextOutlined,
@@ -16,6 +17,7 @@ import type { WhatsappMessage } from "../../../types/whatsapp";
 import { errorMessageFrom } from "../../../utils/api-error";
 import { avatarGradient, appTokens } from "../../../utils/design-system";
 import { initials } from "../../../utils/lead-format";
+import { useFillAvailableHeight } from "../../../hooks/use-fill-available-height";
 
 const { Text } = Typography;
 
@@ -87,15 +89,24 @@ function StatusTicks({ status }: { status: string }) {
 // mediaMimeType alone decides how to render it - no separate "type" column
 // exists or is needed (see model.ts's own comment on why one more column
 // here would just duplicate what the mime type already says).
-function MediaContent({ msg, outbound }: { msg: WhatsappMessage; outbound: boolean }) {
+// onLoad: a photo/video only gets its real height once loaded - the thread
+// uses it to stay pinned to the newest message.
+function MediaContent({ msg, outbound, onLoad }: { msg: WhatsappMessage; outbound: boolean; onLoad: () => void }) {
   if (!msg.mediaUrl) return null;
   const mime = msg.mediaMimeType ?? "";
 
   if (mime.startsWith("image/")) {
-    return <img src={msg.mediaUrl} alt={msg.mediaFileName ?? "photo"} style={{ display: "block", maxWidth: 240, maxHeight: 240, borderRadius: 10, objectFit: "cover" }} />;
+    return (
+      <img
+        src={msg.mediaUrl}
+        alt={msg.mediaFileName ?? "photo"}
+        onLoad={onLoad}
+        style={{ display: "block", maxWidth: 240, maxHeight: 240, borderRadius: 10, objectFit: "cover" }}
+      />
+    );
   }
   if (mime.startsWith("video/")) {
-    return <video src={msg.mediaUrl} controls style={{ display: "block", maxWidth: 240, borderRadius: 10 }} />;
+    return <video src={msg.mediaUrl} controls onLoadedMetadata={onLoad} style={{ display: "block", maxWidth: 240, borderRadius: 10 }} />;
   }
   if (mime.startsWith("audio/")) {
     // Covers both a regular audio file and an actual voice note (K3's own
@@ -125,7 +136,7 @@ function MediaContent({ msg, outbound }: { msg: WhatsappMessage; outbound: boole
   );
 }
 
-function Bubble({ msg }: { msg: WhatsappMessage }) {
+function Bubble({ msg, onMediaLoad }: { msg: WhatsappMessage; onMediaLoad: () => void }) {
   const outbound = msg.direction === "outbound";
   return (
     <div className="message-fade-in" style={{ display: "flex", justifyContent: outbound ? "flex-end" : "flex-start" }}>
@@ -142,7 +153,7 @@ function Bubble({ msg }: { msg: WhatsappMessage }) {
           gap: 6,
         }}
       >
-        <MediaContent msg={msg} outbound={outbound} />
+        <MediaContent msg={msg} outbound={outbound} onLoad={onMediaLoad} />
         {msg.body && (
           <Text style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word", color: outbound ? "#fff" : appTokens.textPrimary, lineHeight: 1.45, padding: msg.mediaUrl ? "0 6px" : 0 }}>
             {msg.body}
@@ -191,7 +202,16 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  // The chat is its own fixed-height window filling the rest of the screen:
+  // only the message list scrolls, while the chat header, the composer and
+  // the lead details above all stay put.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const cardHeight = useFillAvailableHeight(cardRef, 240);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Follow new messages only while the reader is at the bottom - someone
+  // scrolled up reading history isn't yanked down by an incoming reply.
+  const pinnedToBottomRef = useRef(true);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const photoVideoInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
@@ -234,14 +254,43 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
     return () => clearInterval(interval);
   }, [leadId]);
 
+  // Scrolls only the message list - never the page or the lead pane around it
+  // (scrollIntoView did, which pushed the lead details off the top).
+  const scrollToLatest = (behavior: ScrollBehavior = "auto") => {
+    const list = listRef.current;
+    if (!list) return;
+    list.scrollTo({ top: list.scrollHeight, behavior });
+    pinnedToBottomRef.current = true;
+    setShowJumpToLatest(false);
+  };
+
+  const followIfPinned = () => {
+    if (pinnedToBottomRef.current) scrollToLatest();
+  };
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages]);
+    followIfPinned();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, cardHeight]);
+
+  // Opening another lead starts at its newest message.
+  useEffect(() => {
+    pinnedToBottomRef.current = true;
+  }, [leadId]);
+
+  const handleListScroll = () => {
+    const list = listRef.current;
+    if (!list) return;
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    pinnedToBottomRef.current = atBottom;
+    setShowJumpToLatest(!atBottom);
+  };
 
   const handleSend = async () => {
     const body = draft.trim();
     if (!body) return;
     setSending(true);
+    pinnedToBottomRef.current = true;
     try {
       const sent = await whatsappApi.sendMessage(leadId, body);
       setMessages((prev) => [...prev, sent]);
@@ -260,6 +309,7 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
   // being upfront about.
   const handleSendMedia = async (file: File) => {
     setSending(true);
+    pinnedToBottomRef.current = true;
     try {
       const sent = await whatsappApi.sendMedia(leadId, file, draft.trim() || undefined);
       setMessages((prev) => [...prev, sent]);
@@ -279,13 +329,11 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
   let lastDay: string | null = null;
 
   return (
-    // No overflow:"hidden" here on purpose - that would clip to a new box
-    // and break position:sticky for the header/composer below, since sticky
-    // positioning is calculated against the nearest *scrolling* ancestor
-    // (the detail pane around this whole tab), and any overflow other than
-    // visible in between breaks that reference chain.
     <div
+      ref={cardRef}
       style={{
+        height: cardHeight,
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         // No outer cap here - individual message bubbles already self-limit
@@ -300,25 +348,21 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
         border: `1px solid ${appTokens.borderLight}`,
       }}
     >
-      {/* Header - sticky to the top of the scrolling detail pane, so the
-          lead's identity stays visible no matter how far down the
-          conversation the auto-scroll-to-latest lands. */}
+      {/* Header - fixed at the top of the chat window. */}
       <div
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
+          flexShrink: 0,
           display: "flex",
           alignItems: "center",
           gap: 12,
-          padding: "14px 16px",
+          padding: "10px 16px",
           background: appTokens.surface,
           borderBottom: `1px solid ${appTokens.borderLight}`,
           borderTopLeftRadius: appTokens.radiusLg,
           borderTopRightRadius: appTokens.radiusLg,
         }}
       >
-        <Avatar shape="square" size={40} style={{ background: avatarGradient(fullName), borderRadius: appTokens.radiusSm, fontWeight: 600, fontSize: 14 }}>
+        <Avatar shape="square" size={34} style={{ background: avatarGradient(fullName), borderRadius: appTokens.radiusSm, fontWeight: 600, fontSize: 13 }}>
           {initials(fullName)}
         </Avatar>
         <div style={{ minWidth: 0, flex: 1 }}>
@@ -347,69 +391,75 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
         </div>
       </div>
 
-      {/* Thread - the detail pane around this tab is what actually scrolls
-          (same as every other tab), so this just grows with content rather
-          than trying to own its own scroll region. The composer below is
-          sticky, so it stays on screen regardless of how that outer scroll
-          is positioned. */}
-      <div
-        style={{
-          minHeight: 360,
-          background: appTokens.surfaceSunken,
-          padding: "16px 18px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
-        {!loading && messages.length === 0 && <EmptyState />}
-        {messages.map((msg) => {
-          const day = dayLabel(msg.createdAt);
-          const showDivider = day !== lastDay;
-          lastDay = day;
-          return (
-            <div key={msg.id}>
-              {showDivider && (
-                <div style={{ display: "flex", justifyContent: "center", margin: "8px 0 12px" }}>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: appTokens.textSecondary,
-                      background: appTokens.surface,
-                      padding: "4px 12px",
-                      borderRadius: 20,
-                      boxShadow: appTokens.shadowXs,
-                    }}
-                  >
-                    {day}
-                  </Text>
-                </div>
-              )}
-              <Bubble msg={msg} />
-            </div>
-          );
-        })}
-        {/* scrollMarginBottom tells scrollIntoView to leave room below this
-            marker for the composer's own height - without it, the browser
-            scrolls the last message flush to the viewport edge with no
-            regard for the sticky composer sitting on top of that same
-            space, which is exactly what caused the overlap. */}
-        <div ref={bottomRef} style={{ scrollMarginBottom: 76, scrollMarginTop: 76 }} />
+      {/* Thread - the only part that scrolls. overscrollBehavior: contain
+          stops a scroll that reaches the top/bottom from carrying on into
+          the lead pane behind it. */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <div
+          ref={listRef}
+          onScroll={handleListScroll}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            background: appTokens.surfaceSunken,
+            padding: "16px 18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          {!loading && messages.length === 0 && <EmptyState />}
+          {messages.map((msg) => {
+            const day = dayLabel(msg.createdAt);
+            const showDivider = day !== lastDay;
+            lastDay = day;
+            return (
+              <div key={msg.id}>
+                {showDivider && (
+                  <div style={{ display: "flex", justifyContent: "center", margin: "8px 0 12px" }}>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: appTokens.textSecondary,
+                        background: appTokens.surface,
+                        padding: "4px 12px",
+                        borderRadius: 20,
+                        boxShadow: appTokens.shadowXs,
+                      }}
+                    >
+                      {day}
+                    </Text>
+                  </div>
+                )}
+                <Bubble msg={msg} onMediaLoad={followIfPinned} />
+              </div>
+            );
+          })}
+        </div>
+        {showJumpToLatest && (
+          <Tooltip title="Jump to latest">
+            <Button
+              shape="circle"
+              icon={<ArrowDownOutlined />}
+              onClick={() => scrollToLatest("smooth")}
+              aria-label="Jump to latest message"
+              style={{ position: "absolute", right: 16, bottom: 14, boxShadow: appTokens.shadowMd, borderColor: appTokens.borderLight }}
+            />
+          </Tooltip>
+        )}
       </div>
 
-      {/* Composer - sticky to the bottom of the scrolling detail pane, so it
-          stays visible without the user needing to scroll past the thread
-          to find it, however long the conversation gets. */}
+      {/* Composer - fixed at the bottom of the chat window. */}
       <div
         style={{
-          position: "sticky",
-          bottom: 0,
-          zIndex: 1,
+          flexShrink: 0,
           display: "flex",
           gap: 10,
           alignItems: "center",
-          padding: 12,
+          padding: "10px 12px",
           background: appTokens.surface,
           borderTop: `1px solid ${appTokens.borderLight}`,
           borderBottomLeftRadius: appTokens.radiusLg,

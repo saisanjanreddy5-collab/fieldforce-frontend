@@ -24,6 +24,8 @@ import type { State } from "../../types/sales-team";
 import type { TeamMember } from "../../types/user";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
+import { useLeadDuplicateCheck } from "../../hooks/use-lead-duplicate-check";
+import { DuplicateLeadNotice } from "./DuplicateLeadNotice";
 import { errorMessageFrom, fieldErrorsFrom } from "../../utils/api-error";
 import { emailRules, normalizeEmail, suggestEmailDomainFix } from "../../utils/email-typo-check";
 import { FormSection, FormSectionFullWidth } from "./FormSection";
@@ -162,6 +164,15 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   const isEdit = lead !== null;
   const emailValue = Form.useWatch("email", form);
   const emailSuggestion = emailValue ? suggestEmailDomainFix(emailValue) : null;
+  const phoneValue = Form.useWatch("phone", form);
+  const duplicates = useLeadDuplicateCheck({
+    phone: phoneValue,
+    email: emailValue,
+    enabled: open,
+    excludeLeadId: lead?.id,
+    savedPhone: lead?.phone,
+    savedEmail: lead?.email,
+  });
 
   // Flat list, not region-filtered - the state itself (not which zone it's
   // in) is what assignment_rules actually matches a new lead's owner
@@ -400,6 +411,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   };
 
   const handleSaveLead = async (mode: "save" | "saveAndAddAnother") => {
+    // One active lead per mobile number - point at the existing lead instead.
+    if (duplicates.phone) {
+      goToFieldsOwningTab("phone");
+      message.error("This mobile number already has an active lead - open that lead instead");
+      return;
+    }
     let values: FormValues;
     try {
       values = await form.validateFields();
@@ -574,6 +591,8 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                         // phone number added the next time anyone edits it.
                         { required: true, message: "Phone number is required" },
                       ]}
+                      validateStatus={duplicates.phone ? "error" : undefined}
+                      help={duplicates.phone ? <DuplicateLeadNotice match={duplicates.phone} kind="phone" /> : undefined}
                     >
                       <Input maxLength={10} />
                     </Form.Item>
@@ -597,6 +616,8 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                           <Text type="danger" style={{ fontSize: 12 }}>
                             Did you mean <a onClick={() => form.setFieldValue("email", emailSuggestion)}>{emailSuggestion}</a>?
                           </Text>
+                        ) : duplicates.email ? (
+                          <DuplicateLeadNotice match={duplicates.email} kind="email" />
                         ) : undefined
                       }
                     >

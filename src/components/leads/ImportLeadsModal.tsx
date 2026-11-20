@@ -260,8 +260,8 @@ export function ImportLeadsModal({ open, onClose, onImported }: ImportLeadsModal
         <>
           <Text type="secondary">
             Ready to import {parsed.rows.length} lead{parsed.rows.length === 1 ? "" : "s"}. A phone number repeated
-            within this same file is skipped; one that already matches an active lead is still created, just flagged
-            "Possible duplicate" and linked to the original. Every imported lead lands in the shared New/FLC queue
+            within this same file is skipped, and so is one that already belongs to an active lead (the result lists
+            which lead it matched). Every imported lead lands in the shared New/FLC queue
             visible to the whole Call Center floor - the "Call Center Executive" column just sets who it starts out
             assigned to (blank, or an email that doesn't match an active Call Center Executive, falls back to the
             normal round robin).

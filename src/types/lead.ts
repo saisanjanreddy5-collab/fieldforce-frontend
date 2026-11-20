@@ -24,11 +24,9 @@ export interface Lead {
   // subtree" can't be computed correctly on the frontend without the whole
   // org chart loaded.
   inOwnerScope: boolean;
-  // Set when this lead's phone matched an already-active lead at
-  // create/edit time - created and flagged, not blocked, so the duplicate
-  // stays visible and linkable instead of silently vanishing. The name/
-  // number are only present on endpoints that already join owner info
-  // (list/detail), not on a raw mutation response.
+  // Another active lead with the same mobile number (oldest first), worked
+  // out live by the backend. New duplicates are blocked at save time, so this
+  // mostly marks older pairs still to be cleaned up (Leads > Duplicates).
   duplicateOfLeadId: string | null;
   duplicateOfFullName?: string;
   duplicateOfLeadNumber?: number;
@@ -128,6 +126,8 @@ export interface LeadListFilters {
   overdueOnly?: boolean;
   highScoreOnly?: boolean;
   unassignedOnly?: boolean;
+  /** Active leads whose mobile number another active lead also has. */
+  duplicatesOnly?: boolean;
   // When the lead actually came into the CRM (created_at) - plain calendar
   // dates (YYYY-MM-DD), inclusive on both ends.
   createdFrom?: string;

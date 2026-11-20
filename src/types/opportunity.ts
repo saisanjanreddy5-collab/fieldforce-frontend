@@ -19,7 +19,6 @@ export interface Opportunity {
   leadCategory?: string | null;
   leadStoreCity?: string | null;
   leadStoreState?: string | null;
-  leadZoneId?: string | null;
   leadTerritory?: string | null;
   leadSalesTeamId?: string | null;
   ownerId?: string | null;

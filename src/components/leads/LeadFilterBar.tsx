@@ -1,7 +1,7 @@
 import type { LeadQuickFilterCounts } from "../../api/lead-api";
 import { appTokens } from "../../utils/design-system";
 
-export type QuickFilterKey = "all" | "myLeads" | "unassigned" | "overdue" | "fofo" | "highScore";
+export type QuickFilterKey = "all" | "myLeads" | "unassigned" | "overdue" | "fofo" | "highScore" | "duplicates";
 
 interface QuickFilterDef {
   key: QuickFilterKey;
@@ -17,6 +17,9 @@ export const QUICK_FILTERS: QuickFilterDef[] = [
   { key: "overdue", label: "Overdue", dotColor: appTokens.danger, count: (c) => c.overdue },
   { key: "fofo", label: "FOFO", dotColor: appTokens.purple, count: (c) => c.fofo },
   { key: "highScore", label: "High score", dotColor: appTokens.success, count: (c) => c.highScore },
+  // Active leads sharing a mobile number - the clean-up list for duplicates
+  // created before saving a second one was blocked.
+  { key: "duplicates", label: "Duplicates", dotColor: appTokens.warning, count: (c) => c.duplicates },
 ];
 
 interface LeadFilterBarProps {

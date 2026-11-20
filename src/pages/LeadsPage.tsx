@@ -97,6 +97,7 @@ export default function LeadsPage() {
       unassignedOnly: quickFilter === "unassigned" || undefined,
       overdueOnly: quickFilter === "overdue" || undefined,
       highScoreOnly: quickFilter === "highScore" || undefined,
+      duplicatesOnly: quickFilter === "duplicates" || undefined,
       category: quickFilter === "fofo" ? "FOFO" : advancedFilters.category,
       status: advancedFilters.status,
       source: advancedFilters.source,
