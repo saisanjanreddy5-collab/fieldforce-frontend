@@ -67,10 +67,32 @@ export interface LeadQuickFilterCounts {
   overdue: number;
   fofo: number;
   highScore: number;
+  duplicates: number;
 }
 
 export async function getQuickFilterCounts(): Promise<LeadQuickFilterCounts> {
   const response = await apiClient.get<ApiSuccess<LeadQuickFilterCounts>>("/leads/quick-filter-counts");
+  return response.data.data;
+}
+
+/** An existing active lead a new/edited lead would clash with. */
+export interface DuplicateLeadMatch {
+  id: string;
+  fullName: string;
+  leadNumber: number | null;
+  status: string;
+  ownerName: string | null;
+}
+
+export interface DuplicateCheckResult {
+  /** Same mobile number - saving is blocked. */
+  phone: DuplicateLeadMatch | null;
+  /** Same email - only a warning. */
+  email: DuplicateLeadMatch | null;
+}
+
+export async function checkLeadDuplicates(params: { phone?: string; email?: string; excludeLeadId?: string }): Promise<DuplicateCheckResult> {
+  const response = await apiClient.get<ApiSuccess<DuplicateCheckResult>>("/leads/duplicate-check", { params });
   return response.data.data;
 }
 

@@ -8,6 +8,7 @@ import {
   MailOutlined,
   MessageOutlined,
   PlayCircleOutlined,
+  RedoOutlined,
   RiseOutlined,
   SwapOutlined,
   TagsOutlined,
@@ -80,6 +81,7 @@ const AUDIT_ICON: Record<string, React.ReactNode> = {
   quote_created: <FileTextOutlined />,
   quote_revised: <FileTextOutlined />,
   quote_status_changed: <SwapOutlined />,
+  repeat_inquiry: <RedoOutlined />,
 };
 // Reads naturally after an actor's name ("Priya escalated this lead") -
 // built from audit_log's own `action` key rather than parsing its `summary`
@@ -93,6 +95,9 @@ const AUDIT_VERB: Record<string, string> = {
   internal_notes_updated: "updated the internal notes",
   rm_remark_updated: "updated the RM remark",
   lg_remark_updated: "updated the LG remark",
+  // Logged by the website/QR forms (no person behind it) when this lead's
+  // number enquires again - no second lead is created.
+  repeat_inquiry: "logged a repeat enquiry from the same mobile number",
 };
 
 function dayGroupLabel(date: string): string {
@@ -307,7 +312,7 @@ function CommentEntry({ entry }: { entry: NonNullable<LeadTimelineEntry["comment
 // same small Tag-chip treatment every other audit event uses would wrap
 // badly and read poorly, so these three get their own quote-style block
 // instead, same visual language as a remark's own card.
-const NOTE_UPDATE_ACTIONS = new Set(["internal_notes_updated", "rm_remark_updated", "lg_remark_updated"]);
+const NOTE_UPDATE_ACTIONS = new Set(["internal_notes_updated", "rm_remark_updated", "lg_remark_updated", "repeat_inquiry"]);
 
 function AuditEntry({ event }: { event: AuditEvent }) {
   if (NOTE_UPDATE_ACTIONS.has(event.action)) {

@@ -21,6 +21,8 @@ import { formatDate, formatDurationSeconds, formatFollowUpDate, initials } from 
 import { LeadDetail } from "../components/leads/LeadDetail";
 import { LeadFormDrawer } from "../components/leads/LeadFormDrawer";
 import { DuplicateLeadTag } from "../components/leads/DuplicateLeadTag";
+import { DuplicateLeadNotice } from "../components/leads/DuplicateLeadNotice";
+import { useLeadDuplicateCheck } from "../hooks/use-lead-duplicate-check";
 import { ImportLeadsModal } from "../components/leads/ImportLeadsModal";
 import { LeadFilters, type AdvancedFilters } from "../components/leads/LeadFilters";
 
@@ -534,8 +536,15 @@ function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () =
   const { categories } = useLeadCategories();
   const [form] = Form.useForm<AddLeadFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const duplicates = useLeadDuplicateCheck({
+    phone: Form.useWatch("phone", form),
+    email: Form.useWatch("email", form),
+    enabled: open,
+  });
 
   const submit = async (values: AddLeadFormValues) => {
+    // One active lead per mobile number - the notice under Phone links to it.
+    if (duplicates.phone) return;
     setSubmitting(true);
     try {
       await leadApi.createOwnQueueLead(values);
@@ -570,10 +579,18 @@ function AddLeadModal({ open, onClose, onAdded }: { open: boolean; onClose: () =
             { required: true, message: "Phone is required" },
             { pattern: /^\d{10}$/, message: "Enter a 10-digit mobile number" },
           ]}
+          validateStatus={duplicates.phone ? "error" : undefined}
+          help={duplicates.phone ? <DuplicateLeadNotice match={duplicates.phone} kind="phone" /> : undefined}
         >
           <Input placeholder="10-digit mobile number" />
         </Form.Item>
-        <Form.Item name="email" label="Email" normalize={normalizeEmail} rules={emailRules}>
+        <Form.Item
+          name="email"
+          label="Email"
+          normalize={normalizeEmail}
+          rules={emailRules}
+          extra={duplicates.email ? <DuplicateLeadNotice match={duplicates.email} kind="email" /> : undefined}
+        >
           <Input placeholder="Optional" />
         </Form.Item>
         <Form.Item name="pincode" label="Pincode" extra="Needed later to auto-match the right field employee - fine to leave blank for now and add it once you have it.">

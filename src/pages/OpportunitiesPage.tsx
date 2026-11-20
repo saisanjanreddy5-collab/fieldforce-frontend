@@ -5,11 +5,9 @@ import { useSearchParams } from "react-router-dom";
 import * as opportunityApi from "../api/opportunity-api";
 import * as userApi from "../api/user-api";
 import * as leadApi from "../api/lead-api";
-import * as salesTeamApi from "../api/sales-team-api";
 import * as teamRollupApi from "../api/team-rollup-api";
 import type { Opportunity } from "../types/opportunity";
 import type { TeamMember } from "../types/user";
-import type { Zone } from "../types/sales-team";
 import type { TeamRollupGroup } from "../types/team-rollup";
 import { formatCompactCurrency } from "../utils/lead-format";
 import { KanbanBoard } from "../components/opportunities/KanbanBoard";
@@ -42,7 +40,6 @@ export default function OpportunitiesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [streamProgress, setStreamProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [users, setUsers] = useState<TeamMember[]>([]);
-  const [zones, setZones] = useState<Zone[]>([]);
   const [territories, setTerritories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("kanban");
@@ -51,7 +48,6 @@ export default function OpportunitiesPage() {
   const [ownerFilter, setOwnerFilter] = useState<string | undefined>();
   const [managerFilter, setManagerFilter] = useState<string | undefined>();
   const [stageFilter, setStageFilter] = useState<string | undefined>();
-  const [zoneFilter, setZoneFilter] = useState<string | undefined>();
   const [territoryFilter, setTerritoryFilter] = useState<string | undefined>();
 
   const [newModalOpen, setNewModalOpen] = useState(false);
@@ -139,7 +135,6 @@ export default function OpportunitiesPage() {
   const canFilterByPerson = hasPermission("users.view");
   useEffect(() => {
     if (canFilterByPerson) userApi.listUsers().then(setUsers).catch(() => undefined);
-    salesTeamApi.listZones().then(setZones).catch(() => undefined);
     leadApi.listTerritories().then(setTerritories).catch(() => undefined);
   }, []);
 
@@ -150,7 +145,6 @@ export default function OpportunitiesPage() {
       if (categoryFilter && o.leadCategory !== categoryFilter) return false;
       if (ownerFilter && o.ownerId !== ownerFilter) return false;
       if (stageFilter && o.stage !== stageFilter) return false;
-      if (zoneFilter && o.leadZoneId !== zoneFilter) return false;
       if (territoryFilter && o.leadTerritory !== territoryFilter) return false;
       if (managerFilter) {
         const owner = users.find((u) => u.id === o.ownerId);
@@ -158,7 +152,7 @@ export default function OpportunitiesPage() {
       }
       return true;
     });
-  }, [opportunities, categoryFilter, ownerFilter, stageFilter, zoneFilter, territoryFilter, managerFilter, users]);
+  }, [opportunities, categoryFilter, ownerFilter, stageFilter, territoryFilter, managerFilter, users]);
 
   const stats = useMemo(() => {
     const open = filtered.filter((o) => o.stage !== "won" && o.stage !== "lost");
@@ -171,13 +165,12 @@ export default function OpportunitiesPage() {
     return { openCount: open.length, pipelineValue, weightedForecast, avgDealSize };
   }, [filtered]);
 
-  const hasActiveFilters = categoryFilter || ownerFilter || managerFilter || stageFilter || zoneFilter || territoryFilter;
+  const hasActiveFilters = categoryFilter || ownerFilter || managerFilter || stageFilter || territoryFilter;
   const clearFilters = () => {
     setCategoryFilter(undefined);
     setOwnerFilter(undefined);
     setManagerFilter(undefined);
     setStageFilter(undefined);
-    setZoneFilter(undefined);
     setTerritoryFilter(undefined);
   };
 
@@ -299,13 +292,6 @@ export default function OpportunitiesPage() {
             (antd's own default Select sizing), so nothing truncates or
             leaves a gap that doesn't belong there. */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <Select
-            prefix={FILTER_DOT}
-            style={{ minWidth: 110, flexShrink: 0 }}
-            value={zoneFilter ?? "all"}
-            onChange={(v) => setZoneFilter(v === "all" ? undefined : v)}
-            options={[{ value: "all", label: "All regions" }, ...zones.map((z) => ({ value: z.id, label: z.name }))]}
-          />
           <Select
             prefix={FILTER_DOT}
             showSearch
