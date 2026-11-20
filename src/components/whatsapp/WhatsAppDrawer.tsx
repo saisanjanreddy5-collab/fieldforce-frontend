@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Avatar, Button, Dropdown, Input, Tooltip, Typography, message } from "antd";
+import { Avatar, Button, Drawer, Dropdown, Grid, Input, Tooltip, Typography, message } from "antd";
 import type { MenuProps } from "antd";
 import {
   ArrowDownOutlined,
@@ -11,22 +11,19 @@ import {
   SendOutlined,
   WhatsAppOutlined,
 } from "@ant-design/icons";
-import { WhatsAppLogo } from "../../icons/BrandIcons";
-import * as whatsappApi from "../../../api/whatsapp-api";
-import type { WhatsappMessage } from "../../../types/whatsapp";
-import { errorMessageFrom } from "../../../utils/api-error";
-import { avatarGradient, appTokens } from "../../../utils/design-system";
-import { initials } from "../../../utils/lead-format";
-import { useFillAvailableHeight } from "../../../hooks/use-fill-available-height";
+import { WhatsAppLogo } from "../icons/BrandIcons";
+import * as whatsappApi from "../../api/whatsapp-api";
+import type { WhatsappMessage } from "../../types/whatsapp";
+import { errorMessageFrom } from "../../utils/api-error";
+import { avatarGradient, appTokens } from "../../utils/design-system";
+import { initials } from "../../utils/lead-format";
 
 const { Text } = Typography;
 
-interface WhatsAppTabProps {
-  // Primitive props, not a full Lead - WhatsApp is genuinely one-thread-
-  // per-lead (not per-contact, not customer-specific), so this tab is
-  // reused as-is from Customers (every customer traces back to exactly
-  // one lead) without that caller needing to fetch a full Lead object just
-  // to satisfy this component's old prop shape.
+interface WhatsAppThreadProps {
+  // Primitive props, not a full Lead - WhatsApp is one thread per lead, and
+  // Customers opens the same thread (every customer traces back to one lead)
+  // without needing a full Lead object.
   leadId: string;
   fullName: string;
   phone: string | null;
@@ -37,6 +34,11 @@ interface WhatsAppTabProps {
   // owned" concept, so it's left at the default there rather than forcing
   // every caller to reason about a restriction that only applies to Leads.
   canSend?: boolean;
+}
+
+interface WhatsAppDrawerProps extends WhatsAppThreadProps {
+  open: boolean;
+  onClose: () => void;
 }
 
 // The outbound bubble reuses the app's own primary gradient (same one
@@ -197,16 +199,13 @@ function EmptyState() {
   );
 }
 
-export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAppTabProps) {
+// Messages + composer. Lives inside the drawer and is unmounted when it
+// closes, so the 5-second refresh only runs while the chat is open.
+function WhatsAppThread({ leadId, canSend = true }: Omit<WhatsAppThreadProps, "fullName" | "phone">) {
   const [messages, setMessages] = useState<WhatsappMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  // The chat is its own fixed-height window filling the rest of the screen:
-  // only the message list scrolls, while the chat header, the composer and
-  // the lead details above all stay put.
-  const cardRef = useRef<HTMLDivElement>(null);
-  const cardHeight = useFillAvailableHeight(cardRef, 240);
   const listRef = useRef<HTMLDivElement>(null);
   // Follow new messages only while the reader is at the bottom - someone
   // scrolled up reading history isn't yanked down by an incoming reply.
@@ -254,8 +253,7 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
     return () => clearInterval(interval);
   }, [leadId]);
 
-  // Scrolls only the message list - never the page or the lead pane around it
-  // (scrollIntoView did, which pushed the lead details off the top).
+  // Scrolls only the message list, never the page behind the drawer.
   const scrollToLatest = (behavior: ScrollBehavior = "auto") => {
     const list = listRef.current;
     if (!list) return;
@@ -271,7 +269,7 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
   useEffect(() => {
     followIfPinned();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, cardHeight]);
+  }, [messages]);
 
   // Opening another lead starts at its newest message.
   useEffect(() => {
@@ -329,71 +327,10 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
   let lastDay: string | null = null;
 
   return (
-    <div
-      ref={cardRef}
-      style={{
-        height: cardHeight,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        // No outer cap here - individual message bubbles already self-limit
-        // to 66% of this panel's width (see Bubble below), which is what
-        // actually keeps a conversation readable. A second, fixed cap on
-        // top of that just left a large blank gap next to the whole panel
-        // whenever its container got wider (e.g. the list rail collapsed) -
-        // confirmed at a real 1280px screen, this cap alone wasted over
-        // 150px of reclaimed width doing nothing.
-        borderRadius: appTokens.radiusLg,
-        boxShadow: appTokens.shadowMd,
-        border: `1px solid ${appTokens.borderLight}`,
-      }}
-    >
-      {/* Header - fixed at the top of the chat window. */}
-      <div
-        style={{
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "10px 16px",
-          background: appTokens.surface,
-          borderBottom: `1px solid ${appTokens.borderLight}`,
-          borderTopLeftRadius: appTokens.radiusLg,
-          borderTopRightRadius: appTokens.radiusLg,
-        }}
-      >
-        <Avatar shape="square" size={34} style={{ background: avatarGradient(fullName), borderRadius: appTokens.radiusSm, fontWeight: 600, fontSize: 13 }}>
-          {initials(fullName)}
-        </Avatar>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <Text strong style={{ fontSize: 14, color: appTokens.textPrimary }}>
-              {fullName}
-            </Text>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                fontSize: 10.5,
-                fontWeight: 700,
-                color: "#0e9f6e",
-                background: "#e7f9f1",
-                padding: "1px 7px",
-                borderRadius: 20,
-              }}
-            >
-              <WhatsAppLogo size={11} />
-              WhatsApp
-            </span>
-          </div>
-          <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>{formatPhone(phone)}</Text>
-        </div>
-      </div>
-
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Thread - the only part that scrolls. overscrollBehavior: contain
           stops a scroll that reaches the top/bottom from carrying on into
-          the lead pane behind it. */}
+          the page behind the drawer. */}
       <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <div
           ref={listRef}
@@ -452,18 +389,16 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
         )}
       </div>
 
-      {/* Composer - fixed at the bottom of the chat window. */}
+      {/* Composer - fixed at the bottom of the drawer. */}
       <div
         style={{
           flexShrink: 0,
           display: "flex",
           gap: 10,
           alignItems: "center",
-          padding: "10px 12px",
+          padding: "12px 16px",
           background: appTokens.surface,
           borderTop: `1px solid ${appTokens.borderLight}`,
-          borderBottomLeftRadius: appTokens.radiusLg,
-          borderBottomRightRadius: appTokens.radiusLg,
         }}
       >
         <input
@@ -535,5 +470,61 @@ export function WhatsAppTab({ leadId, fullName, phone, canSend = true }: WhatsAp
         />
       </div>
     </div>
+  );
+}
+
+// WhatsApp opens as a full-height panel from the right - the same pattern as
+// the Outlook email composer, and how Salesforce/HubSpot/Zoho show a
+// conversation: the record stays where it is on the left, and the chat gets
+// the whole screen height instead of the few lines left under the lead's
+// details.
+export function WhatsAppDrawer({ open, onClose, leadId, fullName, phone, canSend = true }: WhatsAppDrawerProps) {
+  const screens = Grid.useBreakpoint();
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      size={screens.md === false ? "100%" : 480}
+      destroyOnHidden
+      styles={{
+        header: { padding: "12px 16px" },
+        title: { minWidth: 0, overflow: "hidden" },
+        body: { padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" },
+      }}
+      title={
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <Avatar shape="square" size={38} style={{ background: avatarGradient(fullName), borderRadius: appTokens.radiusSm, fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
+            {initials(fullName)}
+          </Avatar>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+              <Text strong ellipsis style={{ fontSize: 15, color: appTokens.textPrimary, minWidth: 0 }}>
+                {fullName}
+              </Text>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  flexShrink: 0,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  color: "#0e9f6e",
+                  background: "#e7f9f1",
+                  padding: "1px 7px",
+                  borderRadius: 20,
+                }}
+              >
+                <WhatsAppLogo size={11} />
+                WhatsApp
+              </span>
+            </div>
+            <Text style={{ fontSize: 12, fontWeight: 400, color: appTokens.textTertiary }}>{formatPhone(phone)}</Text>
+          </div>
+        </div>
+      }
+    >
+      <WhatsAppThread leadId={leadId} canSend={canSend} />
+    </Drawer>
   );
 }
