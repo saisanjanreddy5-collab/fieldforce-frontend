@@ -57,7 +57,7 @@ import type {
   TransactionFeedItem,
 } from "../../types/customer-extras";
 import { OutlookLogo, TeamsLogo, WhatsAppLogo } from "../icons/BrandIcons";
-import { WhatsAppTab } from "../leads/tabs/WhatsAppTab";
+import { WhatsAppDrawer } from "../whatsapp/WhatsAppDrawer";
 import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { avatarGradient, appTokens } from "../../utils/design-system";
@@ -1039,6 +1039,8 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
   const [txRefreshKey, setTxRefreshKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("overview");
+  // WhatsApp opens as a side panel (same as on a lead), not a tab.
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const [calling, setCalling] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
 
@@ -1242,7 +1244,7 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
               Email
             </Button>
           </Tooltip>
-          <Button size="small" icon={<WhatsAppLogo size={13} />} onClick={() => setTab("whatsapp")}>
+          <Button size="small" icon={<WhatsAppLogo size={13} />} onClick={() => setWhatsAppOpen(true)}>
             WhatsApp
           </Button>
           <Tooltip
@@ -1290,7 +1292,6 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
             { key: "overview", label: "Overview" },
             { key: "contacts", label: "Contacts" },
             { key: "transactions", label: "Transactions" },
-            { key: "whatsapp", label: "WhatsApp" },
             { key: "activity", label: "Activity" },
           ]}
         />
@@ -1299,15 +1300,22 @@ export function CustomerDetailPanel({ customerId, onChanged }: CustomerDetailPan
             <OverviewTab customer={customer} canUpdate={canUpdate} canEditCredit={user?.role === "admin"} users={users} stateName={stateName} saving={saving} onUpdate={applyUpdate} />
           )}
           {tab === "contacts" && (
-            <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={() => setTab("whatsapp")} />
+            <ContactsTab customerId={customer.id} leadId={customer.leadId} canUpdate={canUpdate} onOpenWhatsApp={() => setWhatsAppOpen(true)} />
           )}
           {tab === "transactions" && (
             <TransactionsTab key={txRefreshKey} customerId={customer.id} canCreate={canCreateTransaction} onDataChanged={load} />
           )}
-          {tab === "whatsapp" && <WhatsAppTab leadId={customer.leadId} fullName={customer.fullName} phone={customer.phone} />}
           {tab === "activity" && <ActivityTimelineTab customerId={customer.id} />}
         </div>
       </div>
+
+      <WhatsAppDrawer
+        open={whatsAppOpen}
+        onClose={() => setWhatsAppOpen(false)}
+        leadId={customer.leadId}
+        fullName={customer.fullName}
+        phone={customer.phone}
+      />
 
       {canUpdate && (
         <div style={{ padding: "12px 20px", borderTop: `1px solid ${appTokens.borderLight}`, display: "flex", justifyContent: "flex-end" }}>

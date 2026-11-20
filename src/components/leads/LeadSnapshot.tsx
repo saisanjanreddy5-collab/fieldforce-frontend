@@ -47,7 +47,9 @@ interface LeadSnapshotProps {
   onEdit: () => void;
   onOnboard: () => void;
   onAddActivity: () => void;
-  onWhatsApp: () => void;
+  // Opens the WhatsApp side panel; omitted when the viewer can't see
+  // WhatsApp at all (no whatsapp.view), which hides the button.
+  onWhatsApp?: () => void;
 }
 
 // The top-of-detail identity/value/status/owner strip, plus a *computed*
@@ -164,11 +166,18 @@ export function LeadSnapshot({
       />
     </Tooltip>
   );
-  actionButtons.push(
-    <Tooltip key="whatsapp" title={!lead.inOwnerScope ? notOwnedTitle : !lead.phone ? "This lead has no phone number on file" : "WhatsApp"}>
-      <Button shape="circle" size="large" icon={<WhatsAppLogo size={20} />} disabled={!lead.phone || !lead.inOwnerScope} onClick={onWhatsApp} />
-    </Tooltip>
-  );
+  // Still opens for a lead handed off to someone else - the thread is
+  // readable there, just not sendable (the panel says so).
+  if (onWhatsApp) {
+    actionButtons.push(
+      <Tooltip
+        key="whatsapp"
+        title={!lead.phone ? "This lead has no phone number on file" : !lead.inOwnerScope ? "WhatsApp - view only, this lead has been handed off" : "WhatsApp"}
+      >
+        <Button shape="circle" size="large" icon={<WhatsAppLogo size={20} />} disabled={!lead.phone} onClick={onWhatsApp} aria-label="WhatsApp" />
+      </Tooltip>
+    );
+  }
   if (primaryAction !== "editLead" && availability.canEditLead) {
     actionButtons.push(
       <Tooltip key="edit" title="Edit lead">

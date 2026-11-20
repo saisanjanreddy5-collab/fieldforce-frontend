@@ -23,12 +23,12 @@ import { CallCenterStageActions } from "./CallCenterStageActions";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
-import { WhatsAppTab } from "./tabs/WhatsAppTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { ConsentTab } from "./tabs/ConsentTab";
 import { ApprovalsTab } from "./tabs/ApprovalsTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { EmailComposeDrawer } from "../calendar/EmailComposeDrawer";
+import { WhatsAppDrawer } from "../whatsapp/WhatsAppDrawer";
 
 const { Text } = Typography;
 
@@ -52,7 +52,6 @@ const BASE_DETAIL_TABS = [
   { key: "opportunities", label: "Opportunities" },
   { key: "history", label: "History" },
   { key: "activity", label: "Activity" },
-  { key: "whatsapp", label: "WhatsApp" },
   { key: "consent", label: "Consent" },
   { key: "approvals", label: "Approvals" },
   { key: "documents", label: "Documents" },
@@ -71,7 +70,6 @@ const BASE_DETAIL_TABS = [
 // backs.
 const TAB_PERMISSION: Partial<Record<string, string>> = {
   opportunities: "opportunities.view",
-  whatsapp: "whatsapp.view",
   consent: "leads.view",
 };
 
@@ -96,19 +94,24 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
   // content fetches and 403s on mount - exactly what that filtering exists
   // to prevent.
   const isTabAllowed = (key: string): boolean => {
+    if (!BASE_DETAIL_TABS.some((tab) => tab.key === key)) return false;
     const required = TAB_PERMISSION[key];
     return !required || hasPermission(required);
   };
 
   // A lazy initializer, not a prop read directly in the effect below - this
-  // only ever seeds the very first mount (e.g. a fresh deep link from the
-  // Activity calendar's WhatsApp button landing straight on that tab).
+  // only ever seeds the very first mount (a fresh ?tab= deep link; the
+  // calendar's ?tab=whatsapp opens the WhatsApp panel instead).
   // Every subsequent lead switch after that goes through the effect below,
   // which always resets to "overview" regardless of this prop's value -
   // otherwise a stale initialTab would keep pulling every later lead
   // selection back to the same tab instead of behaving normally.
   const [activeTabKey, setActiveTabKey] = useState(initialTab && isTabAllowed(initialTab) ? initialTab : "overview");
   const [emailOpen, setEmailOpen] = useState(false);
+  // WhatsApp is a side panel, not a tab (see WhatsAppDrawer). ?tab=whatsapp
+  // deep links (Activity calendar) open it straight away.
+  const canViewWhatsApp = hasPermission("whatsapp.view");
+  const [whatsAppOpen, setWhatsAppOpen] = useState(initialTab === "whatsapp" && canViewWhatsApp);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [creatingMeeting, setCreatingMeeting] = useState(false);
   const [calling, setCalling] = useState(false);
@@ -182,7 +185,11 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
     if (isFirstRender.current) {
       isFirstRender.current = false;
     } else {
-      setActiveTabKey("overview");
+      // The Leads page usually shows its first lead before a deep-linked one
+      // finishes loading, so a deep link arrives as a lead switch - honour
+      // its initialTab here too (LeadsPage only passes it for that lead).
+      setActiveTabKey(initialTab && isTabAllowed(initialTab) ? initialTab : "overview");
+      setWhatsAppOpen(initialTab === "whatsapp" && canViewWhatsApp);
     }
     loadOpportunities();
     loadHandoff();
@@ -281,7 +288,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
         onEdit={onEdit}
         onOnboard={() => navigate(`/fofo-onboarding/${lead.id}`)}
         onAddActivity={() => setActiveTabKey("activity")}
-        onWhatsApp={() => setActiveTabKey("whatsapp")}
+        onWhatsApp={canViewWhatsApp ? () => setWhatsAppOpen(true) : undefined}
       />
 
       <div style={{ marginTop: 16 }}>
@@ -301,9 +308,6 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           {activeTabKey === "activity" && (
             <ActivityTab leadId={lead.id} activities={activities} loading={activitiesLoading} onChanged={loadActivities} />
           )}
-          {activeTabKey === "whatsapp" && (
-            <WhatsAppTab leadId={lead.id} fullName={lead.fullName} phone={lead.phone} canSend={lead.inOwnerScope} />
-          )}
           {activeTabKey === "history" && (
             <HistoryTab leadId={lead.id} onComposeEmail={() => setEmailOpen(true)} />
           )}
@@ -316,6 +320,15 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
           )}
         </div>
       </div>
+
+      <WhatsAppDrawer
+        open={whatsAppOpen}
+        onClose={() => setWhatsAppOpen(false)}
+        leadId={lead.id}
+        fullName={lead.fullName}
+        phone={lead.phone}
+        canSend={lead.inOwnerScope}
+      />
 
       <EmailComposeDrawer
         open={emailOpen}
