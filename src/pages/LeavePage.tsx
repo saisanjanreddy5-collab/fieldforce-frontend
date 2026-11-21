@@ -22,7 +22,7 @@ import { RequestDetailsModal, type ApprovalStep } from "../components/approvals/
 
 const { Title, Text } = Typography;
 
-type TabKey = "mine" | "team" | "history";
+type TabKey = "mine" | "approvals" | "team" | "history";
 
 export default function LeavePage() {
   const { user } = useAuth();
@@ -109,7 +109,12 @@ export default function LeavePage() {
   };
 
   return (
-    <div>
+    // Same layout as Expenses: the page fills the screen and "My requests"
+    // takes the remaining height, its rows scrolling inside it with the pager
+    // always visible at its foot. Its minHeight means the sections above can
+    // never squeeze it to nothing - if they are taller than the screen, the
+    // page itself scrolls instead.
+    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -131,54 +136,31 @@ export default function LeavePage() {
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexShrink: 0, flexWrap: "wrap" }}>
-        <Button
-          size="small"
-          shape="round"
-          onClick={() => setActiveTab("mine")}
-          style={{
-            background: appTokens.surface,
-            borderWidth: activeTab === "mine" ? 1.5 : 1,
-            borderColor: activeTab === "mine" ? appTokens.primary : appTokens.border,
-            color: activeTab === "mine" ? appTokens.primary : appTokens.textSecondary,
-            fontWeight: activeTab === "mine" ? 600 : 500,
-          }}
-        >
+        <TabButton active={activeTab === "mine"} onClick={() => setActiveTab("mine")}>
           My leave {myRequests.length}
-        </Button>
-        {canSeeTeam && (
-          <Button
-            size="small"
-            shape="round"
-            onClick={() => setActiveTab("team")}
-            style={{
-              background: appTokens.surface,
-              borderWidth: activeTab === "team" ? 1.5 : 1,
-              borderColor: activeTab === "team" ? appTokens.primary : appTokens.border,
-              color: activeTab === "team" ? appTokens.primary : appTokens.textSecondary,
-              fontWeight: activeTab === "team" ? 600 : 500,
-            }}
-          >
-            Team leave — next 30 days {teamRequests.length}
-          </Button>
+        </TabButton>
+        {/* Approvals get their own tab, so My leave always has the full
+            screen for its own list (with the pager in view) - the count keeps
+            anything waiting impossible to miss. */}
+        {(canSeeTeam || canViewAll) && (
+          <TabButton active={activeTab === "approvals"} onClick={() => setActiveTab("approvals")}>
+            Approvals{" "}
+            <span style={{ color: pendingApprovals.length > 0 ? appTokens.warning : undefined, fontWeight: 700 }}>{pendingApprovals.length}</span>
+          </TabButton>
         )}
         {canSeeTeam && (
-          <Button
-            size="small"
-            shape="round"
-            onClick={() => setActiveTab("history")}
-            style={{
-              background: appTokens.surface,
-              borderWidth: activeTab === "history" ? 1.5 : 1,
-              borderColor: activeTab === "history" ? appTokens.primary : appTokens.border,
-              color: activeTab === "history" ? appTokens.primary : appTokens.textSecondary,
-              fontWeight: activeTab === "history" ? 600 : 500,
-            }}
-          >
+          <TabButton active={activeTab === "team"} onClick={() => setActiveTab("team")}>
+            Team leave — next 30 days {teamRequests.length}
+          </TabButton>
+        )}
+        {(canSeeTeam || canViewAll) && (
+          <TabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
             History
-          </Button>
+          </TabButton>
         )}
       </div>
 
+      {activeTab === "mine" && (
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 12, flexShrink: 0 }}>
         {balances.map((b) => (
             <div
@@ -207,7 +189,13 @@ export default function LeavePage() {
           ))}
       </div>
 
-      {canSeeTeam && pendingApprovals.length > 0 && (
+      )}
+
+      {activeTab === "approvals" && pendingApprovals.length === 0 && !(canViewAll && oversight.length > 0) && (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={canViewAll ? "Nothing waiting on anyone right now" : "Nothing waiting on your decision"} style={{ padding: 32 }} />
+      )}
+
+      {activeTab === "approvals" && canSeeTeam && pendingApprovals.length > 0 && (
         <div
           style={{
             border: `1px solid ${appTokens.border}`,
@@ -267,7 +255,7 @@ export default function LeavePage() {
         </div>
       )}
 
-      {canViewAll && oversight.length > 0 && (
+      {activeTab === "approvals" && canViewAll && oversight.length > 0 && (
         <div
           style={{
             border: `1px solid ${appTokens.border}`,
@@ -276,6 +264,7 @@ export default function LeavePage() {
             boxShadow: appTokens.shadowSm,
             padding: 16,
             marginBottom: 16,
+            flexShrink: 0,
           }}
         >
           <Text strong style={{ fontSize: 14, display: "block" }}>
@@ -324,6 +313,13 @@ export default function LeavePage() {
             background: appTokens.surface,
             boxShadow: appTokens.shadowSm,
             overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            // Fills what's left of the screen; never shorter than ~6 rows +
+            // pager. With nothing to list it just hugs its empty state.
+            flex: !loading && myRequests.length === 0 ? "0 0 auto" : "1 0 auto",
+            height: !loading && myRequests.length === 0 ? undefined : 0,
+            minHeight: !loading && myRequests.length === 0 ? undefined : 300,
           }}
         >
           <div style={{ padding: "16px 16px 0", flexShrink: 0 }}>
@@ -335,7 +331,7 @@ export default function LeavePage() {
             </div>
           </div>
 
-          <div style={{ padding: "12px 16px 16px" }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px 16px" }}>
           <Table<LeaveRequest>
             className="thin-scroll-table"
             size="small"
@@ -406,7 +402,7 @@ export default function LeavePage() {
         <div>
           <LeaveHistoryBrowser balances={balances} directReports={context?.directReports ?? []} />
         </div>
-      ) : (
+      ) : activeTab === "team" ? (
         <div>
           {recentlyDecided.length > 0 && (
             <div
@@ -450,7 +446,7 @@ export default function LeavePage() {
           )}
           <TeamLeaveTimeline requests={teamRequests} />
         </div>
-      )}
+      ) : null}
 
       {viewing && (
         <RequestDetailsModal
@@ -511,4 +507,23 @@ function leaveSteps(r: LeaveRequest): ApprovalStep[] {
     steps.push({ label: "Second approval", person: r.secondApproverName, decision: r.secondApproverDecision, decidedAt: r.secondApproverDecidedAt });
   }
   return steps;
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      size="small"
+      shape="round"
+      onClick={onClick}
+      style={{
+        background: appTokens.surface,
+        borderWidth: active ? 1.5 : 1,
+        borderColor: active ? appTokens.primary : appTokens.border,
+        color: active ? appTokens.primary : appTokens.textSecondary,
+        fontWeight: active ? 600 : 500,
+      }}
+    >
+      {children}
+    </Button>
+  );
 }
