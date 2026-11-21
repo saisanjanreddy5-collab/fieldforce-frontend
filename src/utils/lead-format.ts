@@ -30,6 +30,11 @@ export function formatDurationSeconds(totalSeconds: number): string {
 // axes) where the precise figure would be too long to scan at a glance.
 export function formatCompactCurrency(value: number | null): string {
   if (value === null) return "-";
+  // From a crore up, always crores with Indian digit grouping (₹1,25,208.2Cr) -
+  // Intl's own compact form turns huge totals into "₹1.3LCr".
+  if (Math.abs(value) >= 1e7) {
+    return `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 }).format(value / 1e7)}Cr`;
+  }
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",

@@ -1,4 +1,3 @@
-import { appTokens } from "../../utils/design-system";
 import type { QuoteStatus } from "../../types/quote";
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
@@ -8,11 +7,12 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   rejected: "Rejected",
 };
 
+// antd tag colours - the same soft status tags as the other list pages.
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
-  draft: appTokens.textTertiary,
-  sent: appTokens.primary,
-  accepted: appTokens.success,
-  rejected: appTokens.danger,
+  draft: "default",
+  sent: "blue",
+  accepted: "green",
+  rejected: "red",
 };
 
 export const QUOTE_STATUS_OPTIONS = (Object.keys(QUOTE_STATUS_LABELS) as QuoteStatus[]).map((value) => ({
