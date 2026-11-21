@@ -40,9 +40,11 @@ export interface LeaveRequest {
   coverUserName: string | null;
   status: LeaveRequestStatus;
   approverId: string | null;
+  approverName: string | null;
   approverDecision: LeaveDecision | null;
   approverDecidedAt: string | null;
   secondApproverId: string | null;
+  secondApproverName: string | null;
   secondApproverDecision: LeaveDecision | null;
   secondApproverDecidedAt: string | null;
   createdAt: string;

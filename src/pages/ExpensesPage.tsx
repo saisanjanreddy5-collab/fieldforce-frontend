@@ -16,6 +16,7 @@ import { formatExpenseDate, limitUnitSuffix } from "../utils/expense-format";
 import { EXPENSE_TYPE_ICON } from "../utils/expense-icons";
 import { errorMessageFrom } from "../utils/api-error";
 import { NewExpenseClaimModal } from "../components/expenses/NewExpenseClaimModal";
+import { RequestDetailsModal, type ApprovalStep } from "../components/approvals/RequestDetailsModal";
 
 const { Title, Text } = Typography;
 
@@ -33,6 +34,10 @@ export default function ExpensesPage() {
   const hasPermission = useHasPermission();
   const canApprove = hasPermission("expense_claims.approve");
   const canMarkPaid = hasPermission("expense_claims.mark_paid");
+  // Admins see every claim in the company (view only) - approving stays with
+  // each claim's own approver, so their rows show no Approve/Reject.
+  const canViewAll = hasPermission("expense_claims.view_all");
+  const [viewing, setViewing] = useState<ExpenseClaim | null>(null);
 
   const [types, setTypes] = useState<ExpenseType[]>([]);
   const [myClaims, setMyClaims] = useState<ExpenseClaim[]>([]);
@@ -72,7 +77,7 @@ export default function ExpensesPage() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([expenseApi.listExpenseTypes(), expenseApi.listMyClaims(), canApprove ? expenseApi.listTeamClaims() : Promise.resolve([])])
+    Promise.all([expenseApi.listExpenseTypes(), expenseApi.listMyClaims(), canApprove || canViewAll ? expenseApi.listTeamClaims() : Promise.resolve([])])
       .then(([typesResult, mineResult, teamResult]) => {
         setTypes(typesResult);
         setMyClaims(mineResult);
@@ -278,7 +283,7 @@ export default function ExpensesPage() {
         pagination={false}
         // Scrolls sideways on a narrow screen instead of overflowing the card.
         scroll={{ x: 860 }}
-        onRow={() => ({ className: "table-row-hover" })}
+        onRow={(c) => ({ className: "table-row-hover", onClick: () => setViewing(c), style: { cursor: "pointer" } })}
         locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No expense claims yet" /> }}
         columns={[
           {
@@ -361,7 +366,7 @@ export default function ExpensesPage() {
                   (c.approverId === null && user?.role === "admin" && c.userId !== user?.id && c.approverDecision === null) ||
                   (c.secondApproverId === user?.id && c.approverDecision === "approved" && c.secondApproverDecision === null));
               return (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
                   {c.hasReceipt && (
                     <Button size="small" type="link" onClick={() => handleDownloadReceipt(c)}>
                       Receipt
@@ -408,6 +413,39 @@ export default function ExpensesPage() {
         </div>
       )}
       </div>
+
+      {viewing && (
+        <RequestDetailsModal
+          open
+          onClose={() => setViewing(null)}
+          title={`EXP-${viewing.claimNumber} - ${viewing.title}`}
+          status={
+            <Tag style={{ color: STATUS_COLOR[viewing.status], background: `${STATUS_COLOR[viewing.status]}17`, border: "none", fontWeight: 600, margin: 0 }}>
+              {viewing.status[0].toUpperCase() + viewing.status.slice(1)}
+            </Tag>
+          }
+          fields={[
+            { label: "Person", value: viewing.userName ?? "-" },
+            { label: "Type", value: types.find((t) => t.key === viewing.expenseTypeKey)?.label ?? viewing.expenseTypeKey },
+            { label: "Date", value: formatExpenseDate(viewing.expenseDate) },
+            {
+              label: "Amount",
+              value: (
+                <Text strong style={{ color: viewing.isPolicyBreach ? appTokens.danger : undefined }}>
+                  {formatExactCurrency(viewing.amount)}
+                  {viewing.isPolicyBreach && viewing.policyLimitAtSubmission !== null ? ` (over the ${formatExactCurrency(viewing.policyLimitAtSubmission)} limit)` : ""}
+                </Text>
+              ),
+            },
+            { label: "Linked to", value: viewing.linkedOpportunityLabel ?? viewing.linkedLeadLabel ?? "-" },
+            { label: "Receipt", value: viewing.hasReceipt ? viewing.receiptOriginalFilename ?? "Attached" : "None" },
+            ...(viewing.decisionNote ? [{ label: "Decision note", value: viewing.decisionNote }] : []),
+            ...(viewing.paidAt ? [{ label: "Paid", value: dayjs(viewing.paidAt).format("D MMM YYYY") }] : []),
+            { label: "Submitted", value: dayjs(viewing.createdAt).format("D MMM YYYY, h:mm A") },
+          ]}
+          steps={expenseSteps(viewing)}
+        />
+      )}
 
       <Drawer
         title="Expense types & policy"
@@ -468,4 +506,14 @@ export default function ExpensesPage() {
       />
     </div>
   );
+}
+
+function expenseSteps(c: ExpenseClaim): ApprovalStep[] {
+  const steps: ApprovalStep[] = [
+    { label: "Reporting manager", person: c.approverName ?? (c.approverId ? null : "Any Admin"), decision: c.approverDecision, decidedAt: c.approverDecidedAt },
+  ];
+  if (c.secondApproverId) {
+    steps.push({ label: "Second approval", person: c.secondApproverName, decision: c.secondApproverDecision, decidedAt: c.secondApproverDecidedAt });
+  }
+  return steps;
 }

@@ -18,6 +18,7 @@ import { LeaveHistoryBrowser } from "../components/leave/LeaveHistoryBrowser";
 import { LeaveStatusTag } from "../components/leave/LeaveStatusTag";
 import { ListPagination } from "../components/ListPagination";
 import { usePagination } from "../hooks/use-pagination";
+import { RequestDetailsModal, type ApprovalStep } from "../components/approvals/RequestDetailsModal";
 
 const { Title, Text } = Typography;
 
@@ -28,6 +29,9 @@ export default function LeavePage() {
   const hasPermission = useHasPermission();
   const canSeeTeam = hasPermission("leave_requests.approve");
   const canGrantCompOff = hasPermission("comp_off_credits.grant");
+  // Admins see every request (view only); deciding stays with each person's
+  // reporting manager.
+  const canViewAll = hasPermission("leave_requests.view_all");
 
   const [activeTab, setActiveTab] = useState<TabKey>("mine");
   // Which approval row is mid-request - spinner on that button, blocks double-taps.
@@ -37,6 +41,9 @@ export default function LeavePage() {
   const minePager = usePagination("leave-mine", 20, myRequests.length);
   const [teamRequests, setTeamRequests] = useState<LeaveRequest[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<LeaveRequest[]>([]);
+  const [oversight, setOversight] = useState<LeaveRequest[]>([]);
+  const oversightPager = usePagination("leave-oversight", 10, oversight.length);
+  const [viewing, setViewing] = useState<LeaveRequest | null>(null);
   const [context, setContext] = useState<LeaveContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -61,13 +68,15 @@ export default function LeavePage() {
       leaveApi.getLeaveContext(),
       canSeeTeam ? leaveApi.listTeamRequests() : Promise.resolve([]),
       canSeeTeam ? leaveApi.listPendingApprovals() : Promise.resolve([]),
+      canViewAll ? leaveApi.listPendingOversight() : Promise.resolve([]),
     ])
-      .then(([balancesResult, mineResult, contextResult, teamResult, pendingResult]) => {
+      .then(([balancesResult, mineResult, contextResult, teamResult, pendingResult, oversightResult]) => {
         setBalances(balancesResult);
         setMyRequests(mineResult);
         setContext(contextResult);
         setTeamRequests(teamResult);
         setPendingApprovals(pendingResult);
+        setOversight(oversightResult);
       })
       .catch(() => message.error("Failed to load leave data"))
       .finally(() => setLoading(false));
@@ -100,7 +109,7 @@ export default function LeavePage() {
   };
 
   return (
-    <div className="page-fill-height" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
@@ -258,7 +267,55 @@ export default function LeavePage() {
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      {canViewAll && oversight.length > 0 && (
+        <div
+          style={{
+            border: `1px solid ${appTokens.border}`,
+            borderRadius: appTokens.radius,
+            background: appTokens.surface,
+            boxShadow: appTokens.shadowSm,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <Text strong style={{ fontSize: 14, display: "block" }}>
+            Pending with other managers
+          </Text>
+          <Text style={{ fontSize: 12.5, color: appTokens.textTertiary, display: "block", marginBottom: 8 }}>
+            View only - each request is approved or rejected by the person's reporting manager
+          </Text>
+          <Table<LeaveRequest>
+            size="small"
+            rowKey="id"
+            dataSource={oversightPager.slice(oversight)}
+            pagination={false}
+            scroll={{ x: 760 }}
+            onRow={(r) => ({ onClick: () => setViewing(r), className: "table-row-hover", style: { cursor: "pointer" } })}
+            columns={[
+              { title: "Person", key: "person", render: (_, r) => r.userName },
+              { title: "Type", key: "type", render: (_, r) => kindLabel(r.kind, balances) },
+              { title: "Dates", key: "dates", render: (_, r) => formatDateRange(r.startDate, r.endDate) },
+              { title: "Days", key: "days", render: (_, r) => daysLabel(r.daysCount) },
+              { title: "Reason", dataIndex: "reason", ellipsis: true },
+              { title: "Waiting on", key: "waiting", render: (_, r) => leaveWaitingOn(r) },
+              {
+                title: "",
+                key: "view",
+                width: 70,
+                render: (_, r) => (
+                  <Button size="small" type="link" onClick={() => setViewing(r)}>
+                    View
+                  </Button>
+                ),
+              },
+            ]}
+          />
+          <div style={{ paddingTop: 12 }}>
+            <ListPagination {...oversightPager.props(oversight.length)} />
+          </div>
+        </div>
+      )}
+
       {activeTab === "mine" ? (
         <div
           style={{
@@ -266,12 +323,6 @@ export default function LeavePage() {
             borderRadius: appTokens.radius,
             background: appTokens.surface,
             boxShadow: appTokens.shadowSm,
-            // Doesn't stretch to fill the page while there's nothing to list -
-            // an empty state followed by a tall blank card read as broken.
-            flex: !loading && myRequests.length === 0 ? "0 0 auto" : 1,
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "column",
             overflow: "hidden",
           }}
         >
@@ -284,7 +335,7 @@ export default function LeavePage() {
             </div>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px 16px" }}>
+          <div style={{ padding: "12px 16px 16px" }}>
           <Table<LeaveRequest>
             className="thin-scroll-table"
             size="small"
@@ -352,11 +403,11 @@ export default function LeavePage() {
           )}
         </div>
       ) : activeTab === "history" ? (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <div>
           <LeaveHistoryBrowser balances={balances} directReports={context?.directReports ?? []} />
         </div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        <div>
           {recentlyDecided.length > 0 && (
             <div
               style={{
@@ -400,7 +451,25 @@ export default function LeavePage() {
           <TeamLeaveTimeline requests={teamRequests} />
         </div>
       )}
-      </div>
+
+      {viewing && (
+        <RequestDetailsModal
+          open
+          onClose={() => setViewing(null)}
+          title={`${viewing.userName ?? "Leave request"} - ${kindLabel(viewing.kind, balances)}`}
+          status={<LeaveStatusTag status={viewing.status} />}
+          fields={[
+            { label: "Person", value: viewing.userName ?? "-" },
+            { label: "Type", value: kindLabel(viewing.kind, balances) },
+            { label: "Dates", value: formatDateRange(viewing.startDate, viewing.endDate) },
+            { label: "Days", value: daysLabel(viewing.daysCount) },
+            { label: "Reason", value: viewing.reason || "-" },
+            { label: "Cover", value: viewing.coverUserName ?? "-" },
+            { label: "Applied", value: dayjs(viewing.createdAt).format("D MMM YYYY, h:mm A") },
+          ]}
+          steps={leaveSteps(viewing)}
+        />
+      )}
 
       <ApplyForLeaveModal
         open={applyOpen}
@@ -425,4 +494,21 @@ export default function LeavePage() {
       <LeaveTypesDrawer open={typesDrawerOpen} onClose={() => setTypesDrawerOpen(false)} balances={balances} />
     </div>
   );
+}
+
+// Who a pending request is waiting on right now: the reporting manager, or -
+// for leave that needs a second sign-off - the next manager up.
+function leaveWaitingOn(r: LeaveRequest): string {
+  if (r.approverDecision === "approved" && r.secondApproverId) return r.secondApproverName ?? "Second approver";
+  return r.approverName ?? "No manager set";
+}
+
+function leaveSteps(r: LeaveRequest): ApprovalStep[] {
+  const steps: ApprovalStep[] = [
+    { label: "Reporting manager", person: r.approverName, decision: r.approverDecision, decidedAt: r.approverDecidedAt },
+  ];
+  if (r.secondApproverId) {
+    steps.push({ label: "Second approval", person: r.secondApproverName, decision: r.secondApproverDecision, decidedAt: r.secondApproverDecidedAt });
+  }
+  return steps;
 }
