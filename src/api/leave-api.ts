@@ -43,6 +43,12 @@ export async function listTeamRequests(): Promise<LeaveRequest[]> {
   return response.data.data;
 }
 
+/** Admins: every pending request waiting on someone else (view only). */
+export async function listPendingOversight(): Promise<LeaveRequest[]> {
+  const response = await apiClient.get<ApiSuccess<LeaveRequest[]>>("/leave/pending-oversight");
+  return response.data.data;
+}
+
 export async function listPendingApprovals(): Promise<LeaveRequest[]> {
   const response = await apiClient.get<ApiSuccess<LeaveRequest[]>>("/leave/pending-approvals");
   return response.data.data;
