@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, DatePicker, Empty, Input, Segmented, Select, Table, Tag, Typography } from "antd";
+import { App, Avatar, Button, DatePicker, Empty, Input, Select, Space, Table, Tag, Typography } from "antd";
 import type { SorterResult } from "antd/es/table/interface";
-import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import * as quoteApi from "../api/quote-api";
 import type { QuoteListItem, QuoteStatus } from "../types/quote";
 import { useHasPermission } from "../hooks/use-permission";
-import { formatDate, formatWholeCurrency } from "../utils/lead-format";
-import { appTokens } from "../utils/design-system";
+import { formatCompactCurrency, formatDate, formatWholeCurrency, initials } from "../utils/lead-format";
+import { appTokens, avatarGradient } from "../utils/design-system";
 import { StatsRow } from "../components/StatsRow";
 import { ListPagination } from "../components/ListPagination";
 import { usePagination } from "../hooks/use-pagination";
@@ -19,7 +19,6 @@ import { useIsMobile } from "../hooks/use-is-mobile";
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 // Same small grey dot the Opportunities page puts in front of each filter.
-const FILTER_DOT = <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#9aa2b1" }} />;
 
 type DatePreset = "any" | "today" | "7d" | "30d" | "month" | "quarter" | "custom";
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -253,115 +252,90 @@ export default function QuotesPage() {
         </div>
       )}
 
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 12, flexShrink: 0 }}>
         <StatsRow
           stats={[
             { label: "Total quotes", value: String(stats.total), subtitle: scope },
-            { label: "Awaiting response", value: String(stats.sent), subtitle: "sent, not yet answered" },
-            { label: "Accepted value", value: `₹${(stats.acceptedValue / 100000).toFixed(1)}L`, subtitle: "won quotes" },
-            { label: "Total quoted", value: `₹${(stats.totalValue / 100000).toFixed(1)}L`, subtitle: filtersActive ? "in this view" : "across every quote" },
+            { label: "Awaiting response", value: String(stats.sent), subtitle: "sent, not yet answered", valueColor: appTokens.warning },
+            { label: "Accepted value", value: formatCompactCurrency(stats.acceptedValue), subtitle: "won quotes", valueColor: appTokens.success },
+            { label: "Total quoted", value: formatCompactCurrency(stats.totalValue), subtitle: filtersActive ? "in this view" : "across every quote" },
           ]}
         />
       </div>
 
-      <div
-        style={{
-          border: `1px solid ${appTokens.border}`,
-          borderRadius: appTokens.radius,
-          background: appTokens.surface,
-          boxShadow: appTokens.shadowXs,
-          overflow: "hidden",
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div style={{ padding: 14, borderBottom: `1px solid ${appTokens.borderLight}`, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* Status: one click, with how many quotes each would show. */}
-          <div className="scrollbar-hidden" style={{ maxWidth: "100%", overflowX: "auto" }}>
-            <Segmented
-              value={statusFilter}
-              onChange={(v) => setStatusFilter(v as QuoteStatus | "all")}
-              options={[
-                { value: "all", label: <StatusTab label="All" count={statusCounts.all ?? 0} /> },
-                ...QUOTE_STATUS_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: <StatusTab label={o.label} count={statusCounts[o.value] ?? 0} color={QUOTE_STATUS_COLORS[o.value]} />,
-                })),
-              ]}
-            />
-          </div>
+      {/* Same toolbar as the other list pages: search, status chips, then filters. */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center", flexShrink: 0 }}>
+        <Input.Search
+          placeholder="Search quote, lead, opportunity or person"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          style={{ width: isMobile ? "100%" : 320 }}
+        />
+        <Space size={6} wrap>
+          <Tag.CheckableTag checked={statusFilter === "all"} onChange={() => setStatusFilter("all")}>
+            All {statusCounts.all ?? 0}
+          </Tag.CheckableTag>
+          {QUOTE_STATUS_OPTIONS.map((o) => (
+            <Tag.CheckableTag
+              key={o.value}
+              checked={statusFilter === o.value}
+              onChange={(checked) => setStatusFilter(checked ? o.value : "all")}
+            >
+              {o.label} {statusCounts[o.value] ?? 0}
+            </Tag.CheckableTag>
+          ))}
+        </Space>
+      </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <Input
-              placeholder="Search quote, lead, opportunity or person"
-              prefix={<SearchOutlined style={{ color: appTokens.textTertiary }} />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-              style={{ width: isMobile ? "100%" : 300 }}
-            />
-            {canFilterByPerson && (
-              <Select
-                prefix={FILTER_DOT}
-                showSearch={{ optionFilterProp: "label" }}
-                style={{ minWidth: 150, flexShrink: 0 }}
-                value={ownerFilter ?? "all"}
-                onChange={(v) => setOwnerFilter(v === "all" ? undefined : v)}
-                options={[{ value: "all", label: "All salespersons" }, ...ownerOptions]}
-              />
-            )}
-            {(categoryOptions.length > 0 || categoryFilter) && (
-              <Select
-                prefix={FILTER_DOT}
-                style={{ minWidth: 130, flexShrink: 0 }}
-                value={categoryFilter ?? "all"}
-                onChange={(v) => setCategoryFilter(v === "all" ? undefined : v)}
-                options={[{ value: "all", label: "All categories" }, ...categoryOptions]}
-              />
-            )}
-            <Select
-              prefix={FILTER_DOT}
-              style={{ minWidth: 130, flexShrink: 0 }}
-              value={datePreset}
-              onChange={(v) => {
-                setDatePreset(v);
-                if (v !== "custom") setCustomRange(null);
-              }}
-              options={DATE_PRESETS}
-            />
-            {datePreset === "custom" && (
-              <RangePicker
-                value={customRange}
-                onChange={(v) => setCustomRange(v && v[0] && v[1] ? [v[0], v[1]] : null)}
-                format="DD MMM YYYY"
-                disabledDate={(d) => d.isAfter(dayjs().endOf("day"))}
-                allowClear
-              />
-            )}
-            <Select
-              prefix={FILTER_DOT}
-              style={{ minWidth: 125, flexShrink: 0 }}
-              value={valueBand}
-              onChange={setValueBand}
-              options={VALUE_BANDS.map(({ value, label }) => ({ value, label }))}
-            />
-            {filtersActive && (
-              <Button type="link" onClick={clearFilters} style={{ paddingInline: 4 }}>
-                Clear all
-              </Button>
-            )}
-            {filtersActive && !loading && (
-              <Text style={{ color: appTokens.textTertiary, fontSize: 12.5, marginLeft: isMobile ? 0 : "auto" }}>
-                Showing {filtered.length} of {quotes.length}
-              </Text>
-            )}
-          </div>
-        </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center", flexShrink: 0 }}>
+        {canFilterByPerson && (
+          <Select
+            showSearch={{ optionFilterProp: "label" }}
+            style={{ minWidth: 170 }}
+            value={ownerFilter ?? "all"}
+            onChange={(v) => setOwnerFilter(v === "all" ? undefined : v)}
+            options={[{ value: "all", label: "All salespersons" }, ...ownerOptions]}
+          />
+        )}
+        {(categoryOptions.length > 0 || categoryFilter) && (
+          <Select
+            style={{ minWidth: 140 }}
+            value={categoryFilter ?? "all"}
+            onChange={(v) => setCategoryFilter(v === "all" ? undefined : v)}
+            options={[{ value: "all", label: "All categories" }, ...categoryOptions]}
+          />
+        )}
+        <Select
+          style={{ minWidth: 140 }}
+          value={datePreset}
+          onChange={(v) => {
+            setDatePreset(v);
+            if (v !== "custom") setCustomRange(null);
+          }}
+          options={DATE_PRESETS}
+        />
+        {datePreset === "custom" && (
+          <RangePicker
+            value={customRange}
+            onChange={(v) => setCustomRange(v && v[0] && v[1] ? [v[0], v[1]] : null)}
+            format="DD MMM YYYY"
+            disabledDate={(d) => d.isAfter(dayjs().endOf("day"))}
+            allowClear
+          />
+        )}
+        <Select style={{ minWidth: 130 }} value={valueBand} onChange={setValueBand} options={VALUE_BANDS.map(({ value, label }) => ({ value, label }))} />
+        {filtersActive && (
+          <Button type="link" onClick={clearFilters} style={{ paddingInline: 4 }}>
+            Clear all
+          </Button>
+        )}
+      </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
         <Table<QuoteListItem>
+          className="thin-scroll-table"
+          size="small"
           rowKey="id"
           loading={loading}
           dataSource={pager.slice(filtered)}
@@ -369,12 +343,11 @@ export default function QuotesPage() {
           // Scrolls sideways on a narrow screen instead of squeezing every
           // column until quote numbers break mid-code and Total is clipped.
           scroll={{ x: 900 }}
-          onRow={(record) => ({ onClick: () => setOpenQuoteId(record.id), style: { cursor: "pointer" } })}
+          onRow={(record) => ({ onClick: () => setOpenQuoteId(record.id), className: "table-row-hover", style: { cursor: "pointer" } })}
           onChange={(_p, _f, sorter) => {
             const s = sorter as SorterResult<QuoteListItem>;
             setSort(s.order && (s.columnKey === "total" || s.columnKey === "date") ? { key: s.columnKey, order: s.order } : null);
           }}
-          className="thin-scroll-table table-row-hover"
           locale={{
             emptyText: loading ? (
               " "
@@ -390,71 +363,68 @@ export default function QuotesPage() {
             {
               title: "Quote",
               key: "quote",
-              render: (_, q) => (
-                <Text strong style={{ color: appTokens.textPrimary, whiteSpace: "nowrap" }}>
-                  {q.quoteLabel}
-                </Text>
-              ),
+              width: 110,
+              render: (_, q) => <Text style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{q.quoteLabel}</Text>,
             },
             {
-              title: "Lead",
+              title: "Lead / opportunity",
               key: "lead",
-              render: (_, q) => (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  {q.leadFullName}
-                  {q.leadCategory && (
-                    <Tag color="blue" style={{ margin: 0, fontSize: 10.5, lineHeight: "16px", paddingInline: 5 }}>
-                      {q.leadCategory}
-                    </Tag>
-                  )}
-                </span>
-              ),
-            },
-            {
-              title: "Opportunity",
-              key: "opportunity",
-              render: (_, q) => q.opportunityName ?? <Text type="secondary">—</Text>,
+              width: 320,
+              render: (_, q) => {
+                const detail = [q.leadCategory, q.opportunityName].filter(Boolean).join(" · ");
+                return (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", overflow: "hidden" }}>
+                    <Avatar size={28} style={{ background: avatarGradient(q.leadFullName), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
+                      {initials(q.leadFullName)}
+                    </Avatar>
+                    <div style={{ minWidth: 0, overflow: "hidden" }}>
+                      <Text strong ellipsis style={{ display: "block" }}>
+                        {q.leadFullName}
+                      </Text>
+                      {detail && (
+                        <Text type="secondary" ellipsis={{ tooltip: detail }} style={{ display: "block", fontSize: 12 }}>
+                          {detail}
+                        </Text>
+                      )}
+                    </div>
+                  </div>
+                );
+              },
             },
             {
               title: "Status",
               key: "status",
-              render: (_, q) => (
-                <Tag color={QUOTE_STATUS_COLORS[q.status]} style={{ margin: 0 }}>
-                  {QUOTE_STATUS_LABELS[q.status]}
-                </Tag>
-              ),
+              width: 110,
+              render: (_, q) => <Tag color={QUOTE_STATUS_COLORS[q.status]}>{QUOTE_STATUS_LABELS[q.status]}</Tag>,
             },
             {
               title: "Total",
               key: "total",
+              width: 130,
               align: "right" as const,
               sorter: true,
               sortOrder: sort?.key === "total" ? sort.order : null,
-              render: (_, q) => (
-                <Text strong style={{ color: appTokens.textPrimary, whiteSpace: "nowrap" }}>
-                  {formatWholeCurrency(q.grandTotal)}
-                </Text>
-              ),
+              render: (_, q) => <Text style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{formatWholeCurrency(q.grandTotal)}</Text>,
             },
             {
               title: "Date",
               key: "date",
+              width: 120,
               sorter: true,
               sortOrder: sort?.key === "date" ? sort.order : null,
               render: (_, q) => <span style={{ whiteSpace: "nowrap" }}>{formatDate(q.createdAt)}</span>,
             },
-            { title: "Salesperson", key: "owner", render: (_, q) => q.ownerName ?? <Text type="secondary">Unassigned</Text> },
-            { title: "Created by", key: "createdBy", render: (_, q) => q.createdByName ?? "—" },
+            { title: "Salesperson", key: "owner", ellipsis: true, render: (_, q) => q.ownerName ?? <Text type="secondary">Unassigned</Text> },
+            { title: "Created by", key: "createdBy", ellipsis: true, render: (_, q) => q.createdByName ?? "-" },
           ]}
         />
-        </div>
-
-        {filtered.length > 0 && (
-          <div style={{ padding: "12px 14px", flexShrink: 0, borderTop: `1px solid ${appTokens.borderLight}` }}>
-            <ListPagination {...pager.props(filtered.length)} />
-          </div>
-        )}
       </div>
+
+      {filtered.length > 0 && (
+        <div style={{ padding: "12px 0", flexShrink: 0, width: "100%" }}>
+          <ListPagination {...pager.props(filtered.length)} />
+        </div>
+      )}
 
       <NewQuoteModal
         open={newQuoteOpen}
@@ -471,12 +441,3 @@ export default function QuotesPage() {
   );
 }
 
-function StatusTab({ label, count, color }: { label: string; count: number; color?: string }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, paddingInline: 2 }}>
-      {color && <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />}
-      {label}
-      <span style={{ fontSize: 11.5, color: appTokens.textTertiary, fontVariantNumeric: "tabular-nums" }}>{count}</span>
-    </span>
-  );
-}
