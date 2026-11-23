@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useMemo, useState } from "react";
 import { Card, Input, Modal, Popconfirm, Switch, Table, Tag, Tooltip, Typography, message } from "antd";
-import { CheckOutlined, CloseOutlined, MinusOutlined, PlusOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseOutlined, PlusOutlined } from "@ant-design/icons";
 import * as rolePermissionApi from "../api/role-permission-api";
 import * as overrideApi from "../api/user-permission-override-api";
 import * as levelApi from "../api/level-api";
@@ -185,24 +185,36 @@ type CellState = "na" | "granted" | "not-granted" | "extra-grant" | "revoked" | 
 // comparing against the "Reset role to default" Popconfirm on this same
 // page, which wraps a real antd <Tag> (ref-forwarding) and has always
 // positioned correctly.
-// An empty tick box: "off, and you can turn it on". A grey dash read as
-// locked, so Admins didn't realise the cell could be ticked at all.
-function EmptyTickBox() {
+// The ONE look for every permission cell, in every role and view: a ticked
+// box = on, an empty box = off. Read-only views show the same boxes greyed.
+// (Mixed symbols - plain ticks, purple ticks, red crosses, dashes - read as
+// different kinds of control.) The finer detail lives in the hover tooltip.
+function TickBox({ checked, editable = true }: { checked: boolean; editable?: boolean }) {
+  const color = editable ? appTokens.primary : "#bfbfbf";
   return (
     <span
-      className="perm-empty-box"
+      className="perm-tick-box"
       style={{
-        display: "inline-block",
-        width: 14,
-        height: 14,
-        border: "1.5px solid #bfbfbf",
-        borderRadius: 3,
-        verticalAlign: "-2px",
-        background: appTokens.surface,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 16,
+        height: 16,
+        border: `1.5px solid ${checked ? color : "#bfbfbf"}`,
+        borderRadius: 4,
+        verticalAlign: "-3px",
+        background: checked ? color : editable ? appTokens.surface : "#f5f5f5",
       }}
-    />
+    >
+      {checked && <CheckOutlined style={{ color: "#fff", fontSize: 10 }} />}
+    </span>
   );
 }
+
+const STATE_TOOLTIP: Partial<Record<CellState, string>> = {
+  "extra-grant": "On - turned on here (off by default)",
+  revoked: "Off - switched off here (on by default)",
+};
 
 const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => void; tooltip?: string; editable?: boolean }>(function Cell(
   { state, onClick, tooltip, editable },
@@ -225,19 +237,8 @@ const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => voi
   if (state === "na") {
     return <span ref={ref} style={{ display: "inline-block", padding: 0 }} />;
   }
-  const icon =
-    state === "granted" || state === "extra-grant" ? (
-      <CheckOutlined style={{ color: state === "extra-grant" ? appTokens.purple : appTokens.success }} />
-    ) : state === "revoked" ? (
-      <CloseOutlined style={{ color: appTokens.danger }} />
-    ) : canToggle ? (
-      // Off but tickable: an empty box, so it's obvious it can be ticked.
-      // Read-only views keep the dash - a box there would promise a click
-      // that does nothing.
-      <EmptyTickBox />
-    ) : (
-      <MinusOutlined style={{ color: "#bfbfbf" }} />
-    );
+  const icon = <TickBox checked={state === "granted" || state === "extra-grant"} editable={canToggle} />;
+  tooltip = tooltip ?? STATE_TOOLTIP[state];
   const content = (
     <span
       ref={ref}
@@ -735,9 +736,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                 />
                 <div style={{ marginTop: 8 }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    <CheckOutlined style={{ color: appTokens.success }} /> On (from role) &nbsp; <EmptyTickBox /> Off - click to turn on &nbsp;
-                    <CheckOutlined style={{ color: appTokens.purple }} /> Edited &nbsp;
-                    <CloseOutlined style={{ color: appTokens.danger }} /> Turned off
+                    <TickBox checked /> On &nbsp; <TickBox checked={false} /> Off - click a box to change it, hover for details
                   </Text>
                 </div>
 
@@ -879,9 +878,8 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
 
               <div style={{ marginTop: 8 }}>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                  <CheckOutlined style={{ color: appTokens.success }} /> From role &nbsp; <MinusOutlined /> Not allowed &nbsp;
-                  <PlusOutlined style={{ color: appTokens.purple }} /> Extra grant &nbsp;
-                  <CloseOutlined style={{ color: appTokens.danger }} /> Revoked
+                  <TickBox checked editable={canManageOverrides} /> On &nbsp; <TickBox checked={false} editable={canManageOverrides} /> Off
+                  {canManageOverrides ? " - click a box to change it for this person, hover for details" : " - hover a box for details"}
                 </Text>
               </div>
 

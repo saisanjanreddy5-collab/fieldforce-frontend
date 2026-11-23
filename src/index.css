@@ -173,7 +173,7 @@ body {
 
 /* Permissions grid: an empty tick box lights up on hover, so it's clear
    the cell can be clicked to turn that permission on. */
-.perm-cell-toggle:hover .perm-empty-box {
+.perm-cell-toggle:hover .perm-tick-box {
   border-color: #1354e0 !important;
 }
 
