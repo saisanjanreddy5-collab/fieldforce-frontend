@@ -1,10 +1,9 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { Spin } from "antd";
 import { useAuth } from "../context/AuthContext";
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) {
     return (
@@ -15,7 +14,9 @@ export function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    // No "return to this page" memory: after login everyone starts on the
+    // dashboard (see LoginPage).
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;
