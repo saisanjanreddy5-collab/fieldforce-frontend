@@ -604,11 +604,10 @@ function MyQueueTab() {
   // Permissions screen, so this button must only show when its own specific
   // permission is actually granted.
   const canAddToQueue = hasPermission("leads.queue_create");
-  // leads.bulk_import is Call Center's own scoped version of the Leads
-  // page's bulk-import (executive-matched by email/employee code) -
-  // leads.create (Admin/Manager) also works, matching the backend route's
-  // own requireAnyPermission.
-  const canBulkImport = hasPermission("leads.create") || hasPermission("leads.bulk_import");
+  // Exactly the backend route's own check (requirePermission
+  // "leads.bulk_import") - Create alone (e.g. Call Center given Leads Create)
+  // must not show an import button that the server would refuse.
+  const canBulkImport = hasPermission("leads.bulk_import");
   // Client-confirmed, explicit: every Call Center Executive sees and can
   // work every lead at New, FLC, or SLC - there's no team split any more
   // (see lead-service.ts's TIER_TEAMMATE_CLAUSE). A freshly imported or

@@ -185,10 +185,30 @@ type CellState = "na" | "granted" | "not-granted" | "extra-grant" | "revoked" | 
 // comparing against the "Reset role to default" Popconfirm on this same
 // page, which wraps a real antd <Tag> (ref-forwarding) and has always
 // positioned correctly.
-const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => void; tooltip?: string }>(function Cell(
-  { state, onClick, tooltip },
+// An empty tick box: "off, and you can turn it on". A grey dash read as
+// locked, so Admins didn't realise the cell could be ticked at all.
+function EmptyTickBox() {
+  return (
+    <span
+      className="perm-empty-box"
+      style={{
+        display: "inline-block",
+        width: 14,
+        height: 14,
+        border: "1.5px solid #bfbfbf",
+        borderRadius: 3,
+        verticalAlign: "-2px",
+        background: appTokens.surface,
+      }}
+    />
+  );
+}
+
+const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => void; tooltip?: string; editable?: boolean }>(function Cell(
+  { state, onClick, tooltip, editable },
   ref
 ) {
+  const canToggle = editable || !!onClick;
   // Binary only, by design - "granted" means every real permission in this
   // row is on, anything less (including "mixed", where a merged row's bundled
   // modules genuinely disagree per role) reads as the same plain dash as
@@ -210,13 +230,19 @@ const Cell = forwardRef<HTMLSpanElement, { state: CellState; onClick?: () => voi
       <CheckOutlined style={{ color: state === "extra-grant" ? appTokens.purple : appTokens.success }} />
     ) : state === "revoked" ? (
       <CloseOutlined style={{ color: appTokens.danger }} />
+    ) : canToggle ? (
+      // Off but tickable: an empty box, so it's obvious it can be ticked.
+      // Read-only views keep the dash - a box there would promise a click
+      // that does nothing.
+      <EmptyTickBox />
     ) : (
       <MinusOutlined style={{ color: "#bfbfbf" }} />
     );
   const content = (
     <span
       ref={ref}
-      style={{ display: "inline-block", cursor: onClick ? "pointer" : "default", padding: onClick ? "0 6px" : 0 }}
+      className={canToggle ? "perm-cell-toggle" : undefined}
+      style={{ display: "inline-block", cursor: canToggle ? "pointer" : "default", padding: canToggle ? "0 6px" : 0 }}
       onClick={onClick}
     >
       {icon}
@@ -265,9 +291,19 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
 
   useEffect(loadMatrix, []);
 
+  // Archived roles are hidden here like everywhere else. The one exception:
+  // an archived role that is the ONLY role left on its access tier stays
+  // (marked "archived"), since it's then the only way to manage the access
+  // of the people still on that tier.
+  const visibleLevels = useMemo(
+    () => levels.filter((l) => !l.isArchived || !levels.some((o) => !o.isArchived && o.securityTier === l.securityTier)),
+    [levels]
+  );
+
   useEffect(() => {
-    if (!selectedLevelId && levels.length > 0) setSelectedLevelId(levels[0].id);
-  }, [levels, selectedLevelId]);
+    const stillVisible = visibleLevels.some((l) => l.id === selectedLevelId);
+    if (!stillVisible && visibleLevels.length > 0) setSelectedLevelId(visibleLevels[0].id);
+  }, [visibleLevels, selectedLevelId]);
 
   const loadOverrides = (userId: string) => {
     overrideApi
@@ -295,7 +331,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
 
   const isOwnTier = Boolean(currentUser && selectedLevel && selectedLevel.securityTier === currentUser.role);
   const grantsForSelectedTier = selectedLevel ? matrix?.grants[selectedLevel.securityTier] ?? [] : [];
-  const levelsSharingTier = selectedLevel ? levels.filter((l) => l.id !== selectedLevel.id && l.securityTier === selectedLevel.securityTier) : [];
+  const levelsSharingTier = selectedLevel ? visibleLevels.filter((l) => l.id !== selectedLevel.id && l.securityTier === selectedLevel.securityTier) : [];
   const topLadderSortOrder = useMemo(() => {
     const ladder = levels.filter((l) => !l.isCrossCutting).map((l) => l.sortOrder);
     return ladder.length === 0 ? null : Math.min(...ladder);
@@ -476,7 +512,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
               description={description}
               onConfirm={() => toggleGroupPermission(group, perms, shouldGrant)}
             >
-              <Cell state={state} tooltip={mixedTooltip(state, perms, perms.filter((p) => grantsForSelectedTier.includes(p)).length)} />
+              <Cell editable state={state} tooltip={mixedTooltip(state, perms, perms.filter((p) => grantsForSelectedTier.includes(p)).length)} />
             </Popconfirm>
           );
         }
@@ -601,7 +637,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
         <div style={{ flex: "0 0 200px" }}>
           {mode === "role" ? (
             <div style={{ maxHeight: 400, overflowY: "auto" }}>
-              {levels.map((l) => (
+              {visibleLevels.map((l) => (
                 <div
                   key={l.id}
                   onClick={() => setSelectedLevelId(l.id)}
@@ -616,6 +652,7 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                   <Text style={{ fontSize: 13, fontWeight: selectedLevelId === l.id ? 600 : 400, display: "block" }}>{l.name}</Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     L{ladderIndex(l, levels)} · {seesLabel(l, l.sortOrder === topLadderSortOrder)}
+                    {l.isArchived && " · archived"}
                   </Text>
                 </div>
               ))}
@@ -698,9 +735,9 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                 />
                 <div style={{ marginTop: 8 }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    <CheckOutlined style={{ color: appTokens.success }} /> From role &nbsp; <MinusOutlined /> Not allowed &nbsp;
+                    <CheckOutlined style={{ color: appTokens.success }} /> On (from role) &nbsp; <EmptyTickBox /> Off - click to turn on &nbsp;
                     <CheckOutlined style={{ color: appTokens.purple }} /> Edited &nbsp;
-                    <MinusOutlined style={{ color: appTokens.danger }} /> Turned off
+                    <CloseOutlined style={{ color: appTokens.danger }} /> Turned off
                   </Text>
                 </div>
 

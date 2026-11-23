@@ -220,7 +220,10 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
                 title: "Reports to",
                 key: "managerId",
                 render: (_, u) =>
-                  hasPermission("users.update") ? (
+                  // Admins sit at the top of the org - they don't report to anyone.
+                  u.role === "admin" ? (
+                    <Text type="secondary">Top of org</Text>
+                  ) : hasPermission("users.update") ? (
                     <Select
                       size="small"
                       style={{ width: 180 }}
@@ -231,7 +234,21 @@ export function ReportingLinesCard({ users, onUsersChange }: ReportingLinesCardP
                       onChange={(v) => handleManagerChange(u.id, v)}
                       options={(() => {
                         const ownTeam = reportingSubtreeIds(users, u.id);
-                        return activeUsers.filter((cand) => !ownTeam.has(cand.id)).map((cand) => ({ value: cand.id, label: cand.name }));
+                        const options: { value: string; label: string; disabled?: boolean }[] = activeUsers
+                          .filter((cand) => !ownTeam.has(cand.id))
+                          .map((cand) => ({ value: cand.id, label: cand.name }));
+                        // The current manager is always listed by name, even when
+                        // they can't be picked again (login disabled) - otherwise
+                        // the box falls back to showing their raw id.
+                        if (u.managerId && !options.some((o) => o.value === u.managerId)) {
+                          const current = users.find((cand) => cand.id === u.managerId);
+                          options.unshift({
+                            value: u.managerId,
+                            label: current ? `${current.name}${current.isActive ? "" : " (inactive)"}` : "Removed user",
+                            disabled: true,
+                          });
+                        }
+                        return options;
                       })()}
                     />
                   ) : (

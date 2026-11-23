@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button, Checkbox, Input, InputNumber, Select, Spin, Typography, Upload, message } from "antd";
-import { CheckCircleFilled, InboxOutlined, ThunderboltFilled } from "@ant-design/icons";
+import { CheckCircleFilled, InboxOutlined } from "@ant-design/icons";
+import { APP_NAME, BrandMark } from "../components/BrandMark";
 import type { UploadFile } from "antd/es/upload/interface";
 import * as publicQrApi from "../api/public-qr-api";
 import type { PublicQrCampaignInfo } from "../types/qr-campaign";
@@ -26,23 +27,11 @@ function Shell({ children }: { children: React.ReactNode }) {
     >
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: `linear-gradient(135deg, ${appTokens.primary}, #3f6fef)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 10px",
-              boxShadow: "0 10px 28px rgba(19,84,224,0.3)",
-            }}
-          >
-            <ThunderboltFilled style={{ color: "#fff", fontSize: 20 }} />
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+            <BrandMark size={44} />
           </div>
           <Title level={4} style={{ margin: 0, letterSpacing: -0.3 }}>
-            FieldForce
+            {APP_NAME}
           </Title>
         </div>
         <div

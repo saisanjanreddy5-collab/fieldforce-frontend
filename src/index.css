@@ -171,6 +171,12 @@ body {
   background: #f7f8fa !important;
 }
 
+/* Permissions grid: an empty tick box lights up on hover, so it's clear
+   the cell can be clicked to turn that permission on. */
+.perm-cell-toggle:hover .perm-empty-box {
+  border-color: #1354e0 !important;
+}
+
 /* WhatsApp tab: a small entrance animation for each message bubble, so a
    just-sent or just-arrived message doesn't just pop into place. */
 @keyframes message-fade-in {

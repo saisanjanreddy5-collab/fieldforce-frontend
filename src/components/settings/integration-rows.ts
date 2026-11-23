@@ -43,7 +43,7 @@ export function buildIntegrationRows(microsoft: MicrosoftConnectionStatus, org: 
       key: "fofo_push",
       name: "FOFO onboarding app",
       scope: "Internal",
-      description: "Store onboarding payload and push status, tracked inside FieldForce.",
+      description: "Store onboarding payload and push status, tracked inside the CRM.",
       status: "not_connected",
     },
     {

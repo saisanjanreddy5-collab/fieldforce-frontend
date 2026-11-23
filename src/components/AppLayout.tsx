@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Layout, Menu, Button, Drawer, Avatar, Modal, message } from "antd";
 import type { MenuProps } from "antd";
-import { MenuOutlined, SearchOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
+import { MenuOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { PageLoading } from "./PageLoading";
@@ -12,6 +12,7 @@ import { ProfileDrawer } from "./ProfileDrawer";
 import { appTokens, avatarGradient } from "../utils/design-system";
 import { roleLabel } from "../utils/format";
 import { useIsMobile } from "../hooks/use-is-mobile";
+import { APP_NAME, BrandMark } from "./BrandMark";
 
 const { Header, Sider, Content } = Layout;
 function Logo({ collapsed }: { collapsed: boolean }) {
@@ -31,22 +32,8 @@ function Logo({ collapsed }: { collapsed: boolean }) {
         borderBottom: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 8,
-          background: `linear-gradient(135deg, ${appTokens.primary}, #3f6fef)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          boxShadow: "0 2px 8px rgba(19,84,224,0.4)",
-        }}
-      >
-        <ThunderboltFilled style={{ color: "#fff", fontSize: 14 }} />
-      </div>
-      {!collapsed && <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.2 }}>FieldForce</span>}
+      <BrandMark size={28} />
+      {!collapsed && <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.2 }}>{APP_NAME}</span>}
     </div>
   );
 }

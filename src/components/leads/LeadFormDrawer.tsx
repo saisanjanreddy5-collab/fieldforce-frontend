@@ -25,6 +25,7 @@ import type { TeamMember } from "../../types/user";
 import { useLeadCategories } from "../../hooks/use-lead-categories";
 import { useLeadInquiryOptions } from "../../hooks/use-lead-inquiry-options";
 import { useLeadDuplicateCheck } from "../../hooks/use-lead-duplicate-check";
+import { useAuth } from "../../context/AuthContext";
 import { DuplicateLeadNotice } from "./DuplicateLeadNotice";
 import { errorMessageFrom, fieldErrorsFrom } from "../../utils/api-error";
 import { emailRules, normalizeEmail, suggestEmailDomainFix } from "../../utils/email-typo-check";
@@ -152,6 +153,10 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   // Fetched when the drawer first opens, not with the page behind it.
   const { categories } = useLeadCategories(open);
   const { categoryOptions, sourceOptions, loading: inquiryOptionsLoading } = useLeadInquiryOptions(open);
+  // A Call Center Executive's new lead always lands in their own queue (the
+  // server sets that), so they get no "assign to" picker.
+  const { user } = useAuth();
+  const isCallCenter = user?.role === "call_center";
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState<"save" | "saveAndAddAnother" | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("customer");
@@ -189,12 +194,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
   // not worth fetching on every open of an edit drawer, where it's unused.
   const [callCenterUsers, setCallCenterUsers] = useState<TeamMember[]>([]);
   useEffect(() => {
-    if (!open || isEdit) return;
+    if (!open || isEdit || isCallCenter) return;
     userApi
       .listUsers()
       .then((users) => setCallCenterUsers(users.filter((u) => u.role === "call_center" && u.isActive)))
       .catch(() => setCallCenterUsers([]));
-  }, [open, isEdit]);
+  }, [open, isEdit, isCallCenter]);
 
   useEffect(() => {
     if (!open) return;
@@ -559,7 +564,12 @@ export function LeadFormDrawer({ open, lead, onClose, onSaved }: LeadFormDrawerP
                         Left blank, it falls back to the normal round robin.
                         Not shown on edit - reassigning an existing lead goes
                         through Reassign/Pick up this lead instead. */}
-                    {!isEdit && (
+                    {!isEdit && isCallCenter && (
+                      <Typography.Text type="secondary" style={{ fontSize: 12.5, display: "block", marginBottom: 12 }}>
+                        This lead goes into your own call queue.
+                      </Typography.Text>
+                    )}
+                    {!isEdit && !isCallCenter && (
                       <Form.Item name="ownerId" label="Assign to Call Center Executive" tooltip="Optional - leave blank to auto-assign via round robin. Visible to every Call Center Executive either way.">
                         <Select
                           allowClear
