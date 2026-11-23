@@ -237,7 +237,11 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
   // Editing an existing person: nobody already in their own reporting
   // team (or themselves) can become their manager - that would be a loop.
   const ownTeam = user ? reportingSubtreeIds(users, user.id) : new Set<string>();
-  const managerCandidates = selectedLevel
+  // Admins sit at the top of the org - nobody to pick.
+  const isAdminLevel = selectedLevel?.securityTier === "admin";
+  const managerCandidates = isAdminLevel
+    ? []
+    : selectedLevel
     ? users.filter((u) => {
         if (ownTeam.has(u.id)) return false;
         if (!u.isActive) return false;
@@ -269,7 +273,7 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
     try {
       const shared = {
         name: values.name,
-        managerId: values.managerId,
+        managerId: isAdminLevel ? "" : values.managerId,
         smartfloAgentNumber: values.smartfloAgentNumber,
         mobile: values.mobile,
         territory: values.territory,
@@ -449,7 +453,7 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                     color={appTokens.primary}
                     background={appTokens.primarySoft}
                   >
-                    <OrgChartPreview managerId={managerId} users={users} levels={levels} name={nameWatch} levelId={levelId} />
+                    <OrgChartPreview managerId={isAdminLevel ? undefined : managerId} users={users} levels={levels} name={nameWatch} levelId={levelId} />
                   </SectionCard>
 
                   <SectionCard
@@ -459,12 +463,18 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                     color={appTokens.primary}
                     background={appTokens.primarySoft}
                     extra={
-                      <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setManagerPickerExpanded((v) => !v)}>
-                        {managerPickerExpanded ? "Done" : "Change"}
-                      </Button>
+                      isAdminLevel ? undefined : (
+                        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setManagerPickerExpanded((v) => !v)}>
+                          {managerPickerExpanded ? "Done" : "Change"}
+                        </Button>
+                      )
                     }
                   >
-                    {managerPickerExpanded ? (
+                    {isAdminLevel ? (
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        Admins sit at the top of the org - they don't report to anyone.
+                      </Text>
+                    ) : managerPickerExpanded ? (
                       managerCandidates.length === 0 ? (
                         <Text type="secondary" style={{ fontSize: 12 }}>
                           No one above this level yet - pick a Level first, or leave blank for the top of the hierarchy.

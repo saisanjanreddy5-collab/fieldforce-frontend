@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from "antd";
-import { LockOutlined, ThunderboltFilled, UserOutlined } from "@ant-design/icons";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../context/AuthContext";
+import { APP_NAME, BrandMark } from "../components/BrandMark";
 import { errorMessageFrom } from "../utils/api-error";
 import { appTokens } from "../utils/design-system";
 
@@ -79,23 +80,11 @@ export default function LoginPage() {
     >
       <Col xs={24} sm={20} md={14} lg={8} xl={6}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              background: `linear-gradient(135deg, ${appTokens.primary}, #3f6fef)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-              boxShadow: "0 10px 28px rgba(19,84,224,0.45)",
-            }}
-          >
-            <ThunderboltFilled style={{ color: "#fff", fontSize: 24 }} />
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+            <BrandMark size={52} />
           </div>
           <Title level={3} style={{ margin: 0, color: "#fff", letterSpacing: -0.3 }}>
-            FieldForce
+            {APP_NAME}
           </Title>
           <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13.5 }}>Sign in to your account</Text>
         </div>

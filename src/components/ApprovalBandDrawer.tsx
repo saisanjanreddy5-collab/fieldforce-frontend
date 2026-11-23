@@ -35,7 +35,11 @@ export function ApprovalBandDrawer({ open, band, defaultRequestType, nextSortOrd
   const [slaHours, setSlaHours] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const levelOptions = levels.map((l) => ({ value: l.id, label: l.name }));
+  // Archived roles can't be picked as a new approver; a band that already
+  // points at one still shows it (marked), so editing it doesn't lose it.
+  const levelOptions = levels
+    .filter((l) => !l.isArchived || l.id === band?.approverLevelId || l.id === band?.countersignedByLevelId)
+    .map((l) => ({ value: l.id, label: l.isArchived ? `${l.name} (archived)` : l.name }));
 
   useEffect(() => {
     if (!open) return;

@@ -205,7 +205,7 @@ export function EmailComposeDrawer({ open, onClose, leadId, activityDueDate, onS
       {showConnectPrompt ? (
         <div style={{ textAlign: "center", padding: "40px 16px" }}>
           <Text style={{ color: appTokens.textSecondary, display: "block", marginBottom: 16 }}>
-            Connect your Microsoft 365 account to send email from FieldForce.
+            Connect your Microsoft 365 account to send email from the CRM.
           </Text>
           <Button type="primary" onClick={handleConnect}>
             Connect Microsoft 365

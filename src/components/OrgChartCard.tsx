@@ -59,7 +59,10 @@ export function OrgChartCard({ users, levels }: OrgChartCardProps) {
     // drag-arranged sequence from the Levels & axes tab) - not re-sorted by
     // sortOrder here, since a cross-cutting level's sortOrder (e.g.
     // Administrator's -1) doesn't reflect where it's meant to visually sit.
-    return levels.map((level) => ({ level, people: activeUsers.filter((u) => u.levelId === level.id) }));
+    // An archived role only shows while people are still on it.
+    return levels
+      .map((level) => ({ level, people: activeUsers.filter((u) => u.levelId === level.id) }))
+      .filter(({ level, people }) => !level.isArchived || people.length > 0);
   }, [levels, activeUsers]);
 
   const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? "Unknown" : null);
