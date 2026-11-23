@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../context/AuthContext";
@@ -37,12 +37,10 @@ function safeSsoContinue(raw: string | null): string | null {
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const from = (location.state as { from?: string } | null)?.from ?? "/";
   // Set by the backend's GET /sso/authorize when it bounced a not-yet-
   // logged-in browser here (Frappe Helpdesk's own "Login with..." button) -
   // once login succeeds we send the browser straight back there with a real
@@ -59,7 +57,10 @@ export default function LoginPage() {
         window.location.href = ssoContinue;
         return;
       }
-      navigate(from, { replace: true });
+      // Every login opens the dashboard - never the page the previous person
+      // was on (logging out on Leave and signing in as someone else used to
+      // land the new person on Leave).
+      navigate("/", { replace: true });
     } catch (error) {
       setErrorMessage(errorMessageFrom(error, "Something went wrong. Please try again."));
     } finally {
