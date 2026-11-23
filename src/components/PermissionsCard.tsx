@@ -11,7 +11,6 @@ import type { Level } from "../types/level";
 import { useHasPermission } from "../hooks/use-permission";
 import { useAuth } from "../context/AuthContext";
 import { errorMessageFrom } from "../utils/api-error";
-import { verbOf } from "../utils/permission-format";
 import { RECORD_SCOPE_OPTIONS, ladderIndex, seesLabel } from "../utils/level-format";
 import { appTokens } from "../utils/design-system";
 
@@ -55,7 +54,18 @@ interface ModuleGroup {
   label: string;
   scopeHint: string;
   modules: string[];
+  // Optional: the exact permissions behind a column, for a row whose actions
+  // don't follow the "<module>.<verb>" naming (Call center's queue actions).
+  verbs?: Partial<Record<string, string[]>>;
+  // Permissions this row leaves to another row (shown there instead).
+  exclude?: string[];
 }
+
+// Call center's own actions - they live under the leads.* names, but they're
+// what the Call center page actually does, so they're managed on its row.
+const CALL_CENTER_VIEW = ["call_center.view", "leads.queue_view"];
+const CALL_CENTER_CREATE = ["leads.queue_create"];
+const CALL_CENTER_EDIT = ["leads.call_log", "leads.qualify", "leads.send_to_field", "leads.escalate", "leads.claim"];
 
 // One row per real nav item (see nav-config.tsx's NAV_GROUPS) - not a
 // logical regrouping, a literal 1:1 mirror of the 17 things in the sidebar,
@@ -82,12 +92,24 @@ interface ModuleGroup {
 // owner column at all.
 const MODULE_GROUPS: ModuleGroup[] = [
   { label: "Dashboard", scopeHint: "own + below", modules: ["dashboard"] },
-  { label: "Leads", scopeHint: "own + below", modules: ["leads", "whatsapp"] },
+  {
+    label: "Leads",
+    scopeHint: "own + below",
+    modules: ["leads", "whatsapp"],
+    exclude: [...CALL_CENTER_VIEW, ...CALL_CENTER_CREATE, ...CALL_CENTER_EDIT],
+  },
   { label: "Opportunities", scopeHint: "own + below", modules: ["opportunities"] },
   { label: "Quotes", scopeHint: "own + below", modules: ["quotes"] },
   { label: "FOFO onboarding", scopeHint: "own + below", modules: ["fofo_onboarding"] },
   { label: "Customers", scopeHint: "own + below", modules: ["customers"] },
-  { label: "Call center", scopeHint: "own + below", modules: ["call_center"] },
+  {
+    label: "Call center",
+    scopeHint: "own + below",
+    modules: ["call_center"],
+    // View = the page and its queue, Create = "Add lead" into the queue,
+    // Edit = work the queue (log calls, qualify, send to field, escalate, claim).
+    verbs: { view: CALL_CENTER_VIEW, create: CALL_CENTER_CREATE, update: CALL_CENTER_EDIT },
+  },
   { label: "Support tickets", scopeHint: "own + team", modules: ["support_tickets"] },
   { label: "Team dashboard", scopeHint: "own + below", modules: ["team_dashboard", "attendance"] },
   { label: "Activity calendar", scopeHint: "own + below", modules: ["activities"] },
@@ -121,7 +143,8 @@ const MODULE_GROUPS: ModuleGroup[] = [
 
 function permsFor(group: ModuleGroup, verb: string, catalog: string[]): string[] {
   const set = new Set(catalog);
-  return group.modules.map((m) => `${m}.${verb}`).filter((p) => set.has(p));
+  const candidates = group.verbs ? group.verbs[verb] ?? [] : group.modules.map((m) => `${m}.${verb}`);
+  return candidates.filter((p) => set.has(p) && !group.exclude?.includes(p));
 }
 
 // Generalizes the old single-permission granted-vs-default comparison to a
@@ -160,9 +183,9 @@ function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
+// Only the columns at least one row actually uses - no empty columns.
 function allVerbsIn(catalog: string[]): string[] {
-  const found = new Set(catalog.map(verbOf));
-  return VERB_ORDER.filter((v) => found.has(v));
+  return VERB_ORDER.filter((v) => MODULE_GROUPS.some((g) => permsFor(g, v, catalog).length > 0));
 }
 
 interface PermissionsCardProps {
@@ -292,14 +315,8 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
 
   useEffect(loadMatrix, []);
 
-  // Archived roles are hidden here like everywhere else. The one exception:
-  // an archived role that is the ONLY role left on its access tier stays
-  // (marked "archived"), since it's then the only way to manage the access
-  // of the people still on that tier.
-  const visibleLevels = useMemo(
-    () => levels.filter((l) => !l.isArchived || !levels.some((o) => !o.isArchived && o.securityTier === l.securityTier)),
-    [levels]
-  );
+  // Archived roles are hidden until restored (Levels & axes → Restore).
+  const visibleLevels = useMemo(() => levels.filter((l) => !l.isArchived), [levels]);
 
   useEffect(() => {
     const stillVisible = visibleLevels.some((l) => l.id === selectedLevelId);
@@ -653,7 +670,6 @@ export function PermissionsCard({ users, levels, onLevelsChange }: PermissionsCa
                   <Text style={{ fontSize: 13, fontWeight: selectedLevelId === l.id ? 600 : 400, display: "block" }}>{l.name}</Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     L{ladderIndex(l, levels)} · {seesLabel(l, l.sortOrder === topLadderSortOrder)}
-                    {l.isArchived && " · archived"}
                   </Text>
                 </div>
               ))}

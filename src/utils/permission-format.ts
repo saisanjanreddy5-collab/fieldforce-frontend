@@ -46,10 +46,6 @@ function moduleOf(permission: string): string {
   return permission.split(".")[0];
 }
 
-export function verbOf(permission: string): string {
-  return permission.split(".").slice(1).join(".");
-}
-
 export function modulesOf(catalog: string[]): string[] {
   return Array.from(new Set(catalog.map(moduleOf)));
 }
