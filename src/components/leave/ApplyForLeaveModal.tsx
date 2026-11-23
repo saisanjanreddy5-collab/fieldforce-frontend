@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, DatePicker, Input, Modal, Select, Typography, message } from "antd";
 import {
   ClockCircleOutlined,
@@ -18,7 +18,10 @@ import { useAuth } from "../../context/AuthContext";
 
 const { Text, Title } = Typography;
 
-const KINDS: LeaveRequestKind[] = ["casual", "sick", "earned", "comp_off", "half_day", "wfh"];
+// Height of the "Cover during absence" list (about 6 names, then it scrolls).
+const COVER_LIST_HEIGHT = 224;
+
+const KINDS: LeaveRequestKind[] =["casual", "sick", "earned", "comp_off", "half_day", "wfh"];
 
 const KIND_ICON: Record<LeaveRequestKind, ReactNode> = {
   casual: <ClockCircleOutlined />,
@@ -67,6 +70,15 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
   const [reason, setReason] = useState("");
   const [coverUserId, setCoverUserId] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const coverRef = useRef<HTMLDivElement>(null);
+  const [coverOpen, setCoverOpen] = useState(false);
+  // Once the room below the field exists, bring the field and its whole
+  // list into view inside the form.
+  useEffect(() => {
+    if (!coverOpen) return;
+    const frame = window.requestAnimationFrame(() => coverRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [coverOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -237,16 +249,31 @@ export function ApplyForLeaveModal({ open, onClose, onSubmitted, balances, manag
         <Input style={{ marginTop: 4 }} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Family function out of station" />
       </div>
 
-      <div style={{ marginTop: 12 }}>
+      <div
+        ref={coverRef}
+        // While the list is open this block reserves room for it below the
+        // field, so the form can scroll the whole list into view.
+        style={{ marginTop: 12, position: "relative", paddingBottom: coverOpen ? COVER_LIST_HEIGHT + 12 : 0 }}
+      >
         <Text style={{ fontSize: 12.5, fontWeight: 500 }}>Cover during absence</Text>
+        {/* Always opens downward: the list lives inside the form (not floating
+            over the page), never flips upward, and the form scrolls so the
+            whole list is in view. */}
         <Select
           style={{ width: "100%", marginTop: 4 }}
           allowClear
           showSearch={{ optionFilterProp: "label" }}
-          placeholder="Select a colleague (optional)"
+          placeholder={peers.length > 0 ? "Select a colleague (optional)" : "No colleagues in your role yet"}
+          disabled={peers.length === 0}
           value={coverUserId}
           onChange={setCoverUserId}
           options={peers.map((p) => ({ value: p.id, label: p.name }))}
+          placement="bottomLeft"
+          popupAlign={{ overflow: { adjustX: false, adjustY: false } }}
+          getPopupContainer={() => coverRef.current ?? document.body}
+          listHeight={COVER_LIST_HEIGHT}
+          open={coverOpen}
+          onOpenChange={setCoverOpen}
         />
       </div>
 
