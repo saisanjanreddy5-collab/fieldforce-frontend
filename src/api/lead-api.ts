@@ -138,6 +138,7 @@ export interface SwapCandidate {
   id: string;
   name: string;
   email: string;
+  operationType?: string | null;
 }
 
 export async function logCallDisposition(

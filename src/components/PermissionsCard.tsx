@@ -111,7 +111,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
     verbs: { view: CALL_CENTER_VIEW, create: CALL_CENTER_CREATE, update: CALL_CENTER_EDIT },
   },
   { label: "Support tickets", scopeHint: "own + team", modules: ["support_tickets"] },
-  { label: "Team dashboard", scopeHint: "own + below", modules: ["team_dashboard", "attendance"] },
+  { label: "Team", scopeHint: "own + below", modules: ["team_dashboard", "attendance"] },
   { label: "Activity calendar", scopeHint: "own + below", modules: ["activities"] },
   { label: "Expenses", scopeHint: "own + team", modules: ["expense_claims", "expense_types"] },
   { label: "Leave", scopeHint: "own + team", modules: ["leave_requests", "leave_types", "comp_off_credits"] },

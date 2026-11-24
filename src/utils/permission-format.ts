@@ -33,7 +33,7 @@ export const MODULE_LABELS: Record<string, string> = {
   pipeline_stages: "Pipeline stages",
   qr_campaigns: "QR campaigns",
   reports: "Reports",
-  team_dashboard: "Team dashboard",
+  team_dashboard: "Team",
   website_lead_sources: "Website lead sources",
   whatsapp: "WhatsApp",
   user_commissions: "User commissions",

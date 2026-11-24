@@ -5,6 +5,7 @@ import { SendOutlined } from "@ant-design/icons";
 import * as leadApi from "../../api/lead-api";
 import type { Lead } from "../../types/lead";
 import { errorMessageFrom } from "../../utils/api-error";
+import { candidateOptions, renderCandidateOption } from "./candidate-options";
 
 const { Text } = Typography;
 
@@ -28,6 +29,7 @@ export function SendToFieldAction({ leadId, size = "middle", onDone }: SendToFie
   const [sending, setSending] = useState(false);
   const [open, setOpen] = useState(false);
   const [candidates, setCandidates] = useState<leadApi.SwapCandidate[]>([]);
+  const [pincode, setPincode] = useState<string | null>(null);
   const [chosenId, setChosenId] = useState<string | undefined>(undefined);
 
   const attempt = async (ownerId?: string) => {
@@ -38,8 +40,9 @@ export function SendToFieldAction({ leadId, size = "middle", onDone }: SendToFie
       setOpen(false);
       onDone(updated);
     } catch (err) {
-      if (isAxiosError<{ errors?: { candidates?: leadApi.SwapCandidate[] } }>(err) && err.response?.data.errors?.candidates) {
+      if (isAxiosError<{ errors?: { candidates?: leadApi.SwapCandidate[]; pincode?: string | null } }>(err) && err.response?.data.errors?.candidates) {
         setCandidates(err.response.data.errors.candidates);
+        setPincode(err.response.data.errors.pincode ?? null);
         setChosenId(undefined);
         setOpen(true);
       } else {
@@ -51,17 +54,19 @@ export function SendToFieldAction({ leadId, size = "middle", onDone }: SendToFie
   };
 
   const popoverContent = (
-    <div style={{ width: 260, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ width: 340, maxWidth: "calc(100vw - 32px)", display: "flex", flexDirection: "column", gap: 8 }}>
       <Text type="secondary" style={{ fontSize: 12 }}>
-        More than one field employee covers this pincode - pick one.
+        {candidates.length} field employees cover {pincode ? `pincode ${pincode}` : "this pincode"} - pick one.
       </Text>
       <Select
-        size="small"
-        placeholder="Choose a person"
+        placeholder="Choose a field employee"
         value={chosenId}
         onChange={setChosenId}
+        showSearch={{ optionFilterProp: "searchText" }}
         notFoundContent={<Skeleton.Input active size="small" />}
-        options={candidates.map((c) => ({ value: c.id, label: `${c.name} (${c.email})` }))}
+        options={candidateOptions(candidates)}
+        optionRender={renderCandidateOption}
+        listHeight={280}
       />
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Button size="small" onClick={() => setOpen(false)}>
