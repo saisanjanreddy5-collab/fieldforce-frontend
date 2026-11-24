@@ -72,8 +72,8 @@ export default function TeamDashboardPage() {
   if (!hasPermission("team_dashboard.view")) {
     return (
       <div>
-        <Title level={3}>Team availability</Title>
-        <Text type="secondary">You do not have permission to view the team dashboard.</Text>
+        <Title level={3}>Team</Title>
+        <Text type="secondary">You do not have permission to view Team.</Text>
       </div>
     );
   }
@@ -88,7 +88,7 @@ export default function TeamDashboardPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20, flexShrink: 0 }}>
         <div>
           <Title level={3} style={{ margin: 0, letterSpacing: -0.3, color: appTokens.textPrimary }}>
-            Team availability
+            Team
           </Title>
           <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
             {weekDates.length > 0

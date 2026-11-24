@@ -8,6 +8,7 @@ import { useHasPermission } from "../../hooks/use-permission";
 import { errorMessageFrom } from "../../utils/api-error";
 import { SendToFieldAction } from "./SendToFieldAction";
 import { NextStepSlot } from "./NextStepSlot";
+import { candidateOptions, renderCandidateOption } from "./candidate-options";
 import { FLC_STAGE, NEW_STAGE, SLC_STAGE } from "../../utils/lead-constants";
 
 const CALLING_TIER_STAGES: Record<string, true> = { [NEW_STAGE]: true, [FLC_STAGE]: true, [SLC_STAGE]: true };
@@ -114,20 +115,22 @@ export function LeadAssignmentPanel({ lead, onChanged, variant }: LeadAssignment
   };
 
   const reassignContent = (
-    <div style={{ width: 280, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ width: 340, maxWidth: "calc(100vw - 32px)", display: "flex", flexDirection: "column", gap: 8 }}>
       <Text type="secondary" style={{ fontSize: 12 }}>
         {CALLING_TIER_STAGES[lead.status]
           ? "Any active Call Center Executive can take this lead."
           : "Only field employees who cover this lead's pincode are listed."}
       </Text>
       <Select
-        size="small"
         loading={candidatesLoading}
         placeholder="Choose a person"
         value={chosenId}
         onChange={setChosenId}
+        showSearch={{ optionFilterProp: "searchText" }}
         notFoundContent={candidatesLoading ? <Skeleton.Input active size="small" /> : "No one eligible"}
-        options={(candidates ?? []).map((c) => ({ value: c.id, label: `${c.name} (${c.email})` }))}
+        options={candidateOptions(candidates ?? [])}
+        optionRender={renderCandidateOption}
+        listHeight={280}
       />
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Button size="small" onClick={() => setReassignOpen(false)}>
