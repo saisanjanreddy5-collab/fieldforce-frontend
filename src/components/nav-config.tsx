@@ -113,8 +113,8 @@ export const NAV_GROUPS: NavGroup[] = [
         path: "/approvals",
         label: "Approvals",
         icon: <CheckCircleOutlined />,
-        // The 3 real approval queues the page lists: expense, leave, FOFO onboarding push.
-        permissions: ["expense_claims.approve", "leave_requests.approve", "fofo_onboarding.manage"],
+        // The 2 real approval queues the page lists: expense and leave.
+        permissions: ["expense_claims.approve", "leave_requests.approve"],
       },
       { path: "/reports", label: "Reports", icon: <FileTextOutlined />, permissions: ["reports.view"] },
       { path: "/audit-consent", label: "Audit & consent", icon: <SafetyCertificateOutlined />, permissions: ["audit_log.view"] },

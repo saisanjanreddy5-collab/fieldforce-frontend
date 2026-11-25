@@ -14,6 +14,7 @@ const ACTION_TAG: Record<string, { label: string; color: string }> = {
   owner_reassigned: { label: "OWN", color: appTokens.purple },
   status_changed: { label: "STG", color: appTokens.warning },
   approval_decided: { label: "APR", color: appTokens.success },
+  pushed_to_onboarding: { label: "PSH", color: appTokens.primary },
   consent_granted: { label: "CON", color: appTokens.success },
   deleted: { label: "DEL", color: appTokens.danger },
   assignment_rule_edited: { label: "RUL", color: appTokens.textSecondary },

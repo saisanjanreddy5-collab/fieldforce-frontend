@@ -25,11 +25,6 @@ export async function getHandoff(leadId: string): Promise<FofoHandoff> {
   return response.data.data;
 }
 
-export async function decideStep(stepId: string, decision: "approved" | "rejected"): Promise<FofoHandoff> {
-  const response = await apiClient.patch<ApiSuccess<FofoHandoff>>(`/fofo-onboarding/steps/${stepId}/decide`, { decision });
-  return response.data.data;
-}
-
 export async function pushToOnboardingApp(leadId: string): Promise<{ handoff: FofoHandoff; message: string }> {
   const response = await apiClient.post<ApiSuccess<FofoHandoff>>(`/fofo-onboarding/${leadId}/push`);
   return { handoff: response.data.data, message: response.data.message ?? "Pushed to onboarding app" };

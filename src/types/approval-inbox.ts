@@ -1,4 +1,4 @@
-export type ApprovalItemType = "onboarding_push" | "leave" | "expense";
+export type ApprovalItemType = "leave" | "expense";
 
 export interface ApprovalQueueItem {
   id: string;

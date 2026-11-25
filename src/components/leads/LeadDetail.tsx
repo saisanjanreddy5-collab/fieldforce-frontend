@@ -24,7 +24,6 @@ import { OpportunitiesTab } from "./tabs/OpportunitiesTab";
 import { ActivityTab } from "./tabs/ActivityTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { ConsentTab } from "./tabs/ConsentTab";
-import { ApprovalsTab } from "./tabs/ApprovalsTab";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { EmailComposeDrawer } from "../calendar/EmailComposeDrawer";
 import { WhatsAppDrawer } from "../whatsapp/WhatsAppDrawer";
@@ -52,7 +51,6 @@ const BASE_DETAIL_TABS = [
   { key: "history", label: "History" },
   { key: "activity", label: "Activity" },
   { key: "consent", label: "Consent" },
-  { key: "approvals", label: "Approvals" },
   { key: "documents", label: "Documents" },
 ];
 
@@ -63,10 +61,9 @@ const BASE_DETAIL_TABS = [
 // role-permission-service.ts) would still see the tab, click it, and get a
 // 403 toast instead of the tab just not being there. History deliberately
 // has no entry here - every call center/field/admin person who can open
-// this lead at all needs to see its full history. Approvals/Documents
-// aren't listed here either - they're already gated inline via
-// canViewOnboarding below, which the same fofo_onboarding.view permission
-// backs.
+// this lead at all needs to see its full history. Documents isn't listed
+// here either - it's already gated inline via canViewOnboarding below,
+// which the same fofo_onboarding.view permission backs.
 const TAB_PERMISSION: Partial<Record<string, string>> = {
   opportunities: "opportunities.view",
   consent: "leads.view",
@@ -152,11 +149,9 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
       .finally(forThisLead(() => setOpportunitiesLoading(false)));
   };
 
-  // Fetched once here (not inside ApprovalsTab/DocumentsTab) so switching
-  // between those two tabs doesn't re-fetch the same handoff twice - same
-  // "lift the fetch" pattern already used for opportunities above. Only
-  // fetched for FOFO leads the user is actually permitted to see, since the
-  // backend route itself is gated behind fofo_onboarding.view.
+  // The Documents tab's data. Only fetched for FOFO leads the user is
+  // actually permitted to see, since the backend route itself is gated
+  // behind fofo_onboarding.view.
   const canViewOnboarding = lead.category === "FOFO" && hasPermission("fofo_onboarding.view");
   const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
   const [handoffLoading, setHandoffLoading] = useState(canViewOnboarding);
@@ -167,7 +162,7 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
     fofoOnboardingApi
       .getHandoff(lead.id)
       .then(forThisLead(setHandoff))
-      .catch(forThisLead(() => staticMessage.error("Failed to load approvals/documents")))
+      .catch(forThisLead(() => staticMessage.error("Failed to load documents")))
       .finally(forThisLead(() => setHandoffLoading(false)));
   };
 
@@ -306,9 +301,6 @@ export function LeadDetail({ lead, showOwner, onEdit, initialTab, onLeadUpdated 
             <HistoryTab leadId={lead.id} onComposeEmail={() => setEmailOpen(true)} />
           )}
           {activeTabKey === "consent" && <ConsentTab leadId={lead.id} />}
-          {activeTabKey === "approvals" && (
-            <ApprovalsTab lead={lead} canView={canViewOnboarding} loading={handoffLoading} handoff={handoff} onChanged={loadHandoff} />
-          )}
           {activeTabKey === "documents" && (
             <DocumentsTab lead={lead} canView={canViewOnboarding} loading={handoffLoading} handoff={handoff} onChanged={loadHandoff} />
           )}

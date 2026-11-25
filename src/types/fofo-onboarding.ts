@@ -1,21 +1,5 @@
 import type { Lead, LeadConsent } from "./lead";
 
-export type ApprovalStepStatus = "pending" | "approved" | "rejected" | "not_applicable";
-
-export interface ApprovalStep {
-  id: string;
-  leadId: string;
-  stepOrder: number;
-  roleLabel: string;
-  approverUserId: string | null;
-  approverName: string | null;
-  status: ApprovalStepStatus;
-  conditionNote: string | null;
-  decidedBy: string | null;
-  decidedAt: string | null;
-  isCurrentTurn: boolean;
-}
-
 export type DocumentStatus = "not_uploaded" | "in_review" | "verified" | "missing";
 
 export interface LeadDocument {
@@ -45,7 +29,6 @@ export interface DocumentArchiveEntry {
 
 export interface FofoHandoff {
   lead: Lead;
-  approvalSteps: ApprovalStep[];
   documents: LeadDocument[];
   consent: LeadConsent | null;
 }

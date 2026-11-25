@@ -67,6 +67,14 @@ const CALL_CENTER_VIEW = ["call_center.view", "leads.queue_view"];
 const CALL_CENTER_CREATE = ["leads.queue_create"];
 const CALL_CENTER_EDIT = ["leads.call_log", "leads.qualify", "leads.send_to_field", "leads.escalate", "leads.claim"];
 
+// FOFO onboarding's own actions: Edit = upload documents and push the client
+// to the SKIA FOFO app, Approve = verify/flag uploaded documents.
+const FOFO_VERBS = {
+  view: ["fofo_onboarding.view"],
+  update: ["fofo_onboarding.upload_document", "fofo_onboarding.push"],
+  approve: ["fofo_onboarding.manage"],
+};
+
 // One row per real nav item (see nav-config.tsx's NAV_GROUPS) - not a
 // logical regrouping, a literal 1:1 mirror of the 17 things in the sidebar,
 // so "what can this role see in the CRM" and "what's configurable here"
@@ -100,7 +108,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   },
   { label: "Opportunities", scopeHint: "own + below", modules: ["opportunities"] },
   { label: "Quotes", scopeHint: "own + below", modules: ["quotes"] },
-  { label: "FOFO onboarding", scopeHint: "own + below", modules: ["fofo_onboarding"] },
+  { label: "FOFO onboarding", scopeHint: "own + below", modules: ["fofo_onboarding"], verbs: FOFO_VERBS },
   { label: "Customers", scopeHint: "own + below", modules: ["customers"] },
   {
     label: "Call center",
@@ -127,7 +135,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     label: "Approvals",
     scopeHint: "own + team",
-    modules: ["expense_claims", "leave_requests", "fofo_onboarding"],
+    modules: ["expense_claims", "leave_requests"],
   },
   { label: "Reports", scopeHint: "own tree", modules: ["reports"] },
   { label: "Audit & consent", scopeHint: "read-only", modules: ["audit_log"] },

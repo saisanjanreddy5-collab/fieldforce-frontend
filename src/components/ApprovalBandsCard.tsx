@@ -26,9 +26,7 @@ interface ApprovalBandsCardProps {
 // expense-service.ts) - the first real consumer of this table. Discount and
 // credit-limit bands are still configuration only, since there's no
 // discount/credit-limit request flow anywhere in FieldForce yet to hit
-// them; customer-creation approval is real too, but through a separate
-// mechanism (the lead approval chain in Settings > Approvals), not these
-// bands. This screen records what each ladder should be regardless of
+// them. This screen records what each ladder should be regardless of
 // whether something reads it yet, same honesty convention as
 // levels.approval_ceiling. The approver is a role/level (e.g. "Regional
 // Sales Manager"), not a specific person - an escalation ladder names a
