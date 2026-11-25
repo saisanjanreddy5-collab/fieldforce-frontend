@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Badge, Button, Checkbox, Dropdown, Empty, Input, Modal, Popover, Segmented, Skeleton, Tag, Tooltip, Typography, message } from "antd";
 import {
+  CloudUploadOutlined,
   DeleteOutlined,
   DownOutlined,
   EditOutlined,
+  FileProtectOutlined,
   FileTextOutlined,
+  FundOutlined,
+  PlusCircleOutlined,
+  SafetyCertificateOutlined,
+  SendOutlined,
+  ShareAltOutlined,
+  UndoOutlined,
   MailOutlined,
   MessageOutlined,
   PlayCircleOutlined,
@@ -82,6 +90,20 @@ const AUDIT_ICON: Record<string, React.ReactNode> = {
   quote_revised: <FileTextOutlined />,
   quote_status_changed: <SwapOutlined />,
   repeat_inquiry: <RedoOutlined />,
+  created: <PlusCircleOutlined />,
+  restored: <UndoOutlined />,
+  lead_field_updated: <EditOutlined />,
+  consent_granted: <SafetyCertificateOutlined />,
+  shared: <ShareAltOutlined />,
+  unshared: <ShareAltOutlined />,
+  opportunity_created: <FundOutlined />,
+  opportunity_stage_changed: <FundOutlined />,
+  pushed_to_onboarding: <SendOutlined />,
+  document_uploaded: <CloudUploadOutlined />,
+  document_replaced: <CloudUploadOutlined />,
+  document_restored: <UndoOutlined />,
+  document_removed: <DeleteOutlined />,
+  document_status_changed: <FileProtectOutlined />,
 };
 // Reads naturally after an actor's name ("Priya escalated this lead") -
 // built from audit_log's own `action` key rather than parsing its `summary`
@@ -98,7 +120,25 @@ const AUDIT_VERB: Record<string, string> = {
   // Logged by the website/QR forms (no person behind it) when this lead's
   // number enquires again - no second lead is created.
   repeat_inquiry: "logged a repeat enquiry from the same mobile number",
+  restored: "restored this lead",
+  consent_granted: "recorded the client's consent",
+  // Fixed wording (the stored summary of the first live push read
+  // differently) - the reference code and login sit in the tag below.
+  pushed_to_onboarding: "pushed this lead to the SKIA FOFO app",
 };
+
+// Events that carry one value, not a before -> after change - shown as a
+// single tag instead of "— → value".
+const SINGLE_VALUE_ACTIONS = new Set([
+  "created",
+  "consent_granted",
+  "shared",
+  "unshared",
+  "opportunity_created",
+  "pushed_to_onboarding",
+  "document_uploaded",
+  "document_removed",
+]);
 
 function dayGroupLabel(date: string): string {
   const d = dayjs(date);
@@ -344,7 +384,15 @@ function AuditEntry({ event }: { event: AuditEvent }) {
   return (
     <EntryShell node={AUDIT_ICON[event.action] ?? <SwapOutlined />} nodeBg={FILTER_DOT_COLOR.audit} time={formatDateTime(event.createdAt)}>
       <Actor name={event.actorName} trailing={AUDIT_VERB[event.action] ?? event.summary} />
-      {(event.oldValue || event.newValue) && (
+      {SINGLE_VALUE_ACTIONS.has(event.action) ? (
+        (event.newValue || event.oldValue) && (
+          <div style={{ marginTop: 8 }}>
+            <Tag color="purple" style={{ margin: 0 }}>
+              {event.newValue ?? event.oldValue}
+            </Tag>
+          </div>
+        )
+      ) : (event.oldValue || event.newValue) && (
         <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <Tag style={{ margin: 0 }}>{event.oldValue ?? "—"}</Tag>
           <Text type="secondary">→</Text>
