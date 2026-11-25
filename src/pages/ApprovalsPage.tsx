@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Input, Spin, Tag, Typography, message } from "antd";
-import { CheckCircleFilled, ClockCircleOutlined, SearchOutlined, WarningOutlined } from "@ant-design/icons";
+import { CheckCircleFilled, SearchOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import * as approvalsInboxApi from "../api/approvals-inbox-api";
-import * as fofoApi from "../api/fofo-onboarding-api";
 import * as leaveApi from "../api/leave-api";
 import * as expenseApi from "../api/expense-api";
 import type { ApprovalHistoryItem, ApprovalItemType, ApprovalInbox, ApprovalQueueItem } from "../types/approval-inbox";
 import type { LeaveRequest } from "../types/leave";
 import type { ExpenseClaim } from "../types/expense";
-import type { FofoHandoff } from "../types/fofo-onboarding";
 import { errorMessageFrom } from "../utils/api-error";
 import { appTokens } from "../utils/design-system";
 import { formatCompactCurrency } from "../utils/lead-format";
@@ -22,7 +20,6 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 const TYPE_FILTERS: { key: ApprovalItemType | "all"; label: string }[] = [
-  { key: "onboarding_push", label: "Onboarding push" },
   { key: "leave", label: "Leave" },
   { key: "expense", label: "Expense" },
 ];
@@ -133,8 +130,8 @@ export default function ApprovalsPage() {
         </Title>
         <Text style={{ color: appTokens.textSecondary, fontSize: 13.5 }}>
           {view === "pending"
-            ? "Everything waiting on your decision, across leave, expenses and FOFO onboarding handoffs."
-            : "Every decision you've personally made, across leave, expenses and FOFO onboarding handoffs."}
+            ? "Everything waiting on your decision, across leave and expenses."
+            : "Every decision you've personally made, across leave and expenses."}
         </Text>
       </div>
 
@@ -451,8 +448,7 @@ function DecidedSummary({ decision, decidedAt }: { decision: "approved" | "rejec
 
 function ApprovalDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
   if (item.type === "leave") return <LeaveDetail item={item} onDecided={onDecided} />;
-  if (item.type === "expense") return <ExpenseDetail item={item} onDecided={onDecided} />;
-  return <FofoDetail item={item} onDecided={onDecided} />;
+  return <ExpenseDetail item={item} onDecided={onDecided} />;
 }
 
 function LeaveDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
@@ -544,157 +540,6 @@ function ExpenseDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: ()
       </div>
       {onDecided ? (
         <DecisionPanel loading={saving} note={note} onNoteChange={setNote} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
-      ) : (
-        "decision" in item && <DecidedSummary decision={item.decision} decidedAt={item.decidedAt} />
-      )}
-    </DetailCard>
-  );
-}
-
-const CHECK_COLOR: Record<string, string> = {
-  verified: appTokens.success,
-  in_review: appTokens.warning,
-  missing: appTokens.danger,
-  not_uploaded: appTokens.textTertiary,
-};
-
-function FofoDetail({ item, onDecided }: { item: ApprovalItem; onDecided?: () => void }) {
-  const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    setLoadError(null);
-    fofoApi
-      .getHandoff(item.refId)
-      .then(setHandoff)
-      .catch((err) => {
-        const msg = errorMessageFrom(err, "Failed to load this handoff");
-        setLoadError(msg);
-        message.error(msg);
-      })
-      .finally(() => setLoading(false));
-  }, [item.refId]);
-
-  const currentStep = handoff?.approvalSteps.find((s) => s.isCurrentTurn);
-
-  const decide = async (decision: "approved" | "rejected") => {
-    if (!currentStep) return;
-    setSaving(true);
-    try {
-      await fofoApi.decideStep(currentStep.id, decision);
-      onDecided?.();
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to record decision"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <DetailCard>
-        <div style={{ textAlign: "center", padding: 40 }}>
-          <Spin />
-        </div>
-      </DetailCard>
-    );
-  }
-
-  if (loadError || !handoff) {
-    return (
-      <DetailCard>
-        <div style={{ textAlign: "center", padding: 40 }}>
-          <Text type="danger">{loadError ?? "Failed to load this handoff"}</Text>
-        </div>
-      </DetailCard>
-    );
-  }
-
-  const { lead } = handoff;
-
-  return (
-    <DetailCard>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <Title level={5} style={{ margin: 0 }}>
-            {lead.storeName ?? lead.fullName}
-          </Title>
-          <Text style={{ fontSize: 12, color: appTokens.textTertiary }}>
-            FOFO · Lead #{lead.leadNumber} · raised by {lead.ownerName ?? "Unknown"}
-          </Text>
-        </div>
-        <Text strong style={{ fontSize: 18 }}>
-          {lead.expectedValue !== null ? formatCompactCurrency(lead.expectedValue) : "—"}
-        </Text>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
-        <Field label="Store location" value={[lead.storeCity, lead.storeState].filter(Boolean).join(", ") || null} />
-        <Field label="GST" value={lead.gstNumber} />
-        <Field label="Investment" value={lead.investmentCapacity !== null ? `₹${lead.investmentCapacity.toLocaleString("en-IN")}` : null} />
-        <Field label="Credit category" value={lead.creditCategory} />
-        <Field label="Target go-live" value={lead.targetGoLive} />
-        <Field label="Onboarding app ID" value={lead.onboardingAppId} />
-      </div>
-
-      <div style={{ marginTop: 20 }}>
-        <Text style={{ fontSize: 11, color: appTokens.textTertiary, letterSpacing: 0.4 }}>CHECKS</Text>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-          {handoff.documents.map((doc) => (
-            <div key={doc.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-              <Text style={{ fontSize: 12.5 }}>
-                {doc.status === "verified" ? (
-                  <CheckCircleFilled style={{ color: CHECK_COLOR.verified, marginRight: 6 }} />
-                ) : (
-                  <ClockCircleOutlined style={{ color: CHECK_COLOR[doc.status], marginRight: 6 }} />
-                )}
-                {doc.label}
-              </Text>
-              <Text style={{ fontSize: 11.5, color: CHECK_COLOR[doc.status] }}>{doc.status.replace("_", " ")}</Text>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 20 }}>
-        <Text style={{ fontSize: 11, color: appTokens.textTertiary, letterSpacing: 0.4 }}>APPROVAL CHAIN</Text>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-          {handoff.approvalSteps.map((step) => (
-            <div key={step.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-              <div>
-                <Text style={{ fontSize: 12.5 }}>{step.approverName ?? "Unassigned"}</Text>
-                <Text style={{ fontSize: 11, color: appTokens.textTertiary, display: "block" }}>{step.roleLabel}</Text>
-              </div>
-              <Tag
-                style={{
-                  margin: 0,
-                  height: "fit-content",
-                  border: "none",
-                  fontWeight: 600,
-                  color:
-                    step.status === "approved" ? appTokens.success : step.status === "rejected" ? appTokens.danger : step.isCurrentTurn ? appTokens.warning : appTokens.textTertiary,
-                  background:
-                    step.status === "approved"
-                      ? `${appTokens.success}17`
-                      : step.status === "rejected"
-                        ? `${appTokens.danger}17`
-                        : step.isCurrentTurn
-                          ? `${appTokens.warning}17`
-                          : appTokens.surfaceMuted,
-                }}
-              >
-                {step.status === "pending" ? (step.isCurrentTurn ? "Pending" : "Waiting") : step.status.replace("_", " ")}
-              </Tag>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {onDecided && currentStep ? (
-        <DecisionPanel loading={saving} onApprove={() => decide("approved")} onReject={() => decide("rejected")} />
       ) : (
         "decision" in item && <DecidedSummary decision={item.decision} decidedAt={item.decidedAt} />
       )}

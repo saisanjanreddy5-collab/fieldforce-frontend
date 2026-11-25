@@ -95,7 +95,7 @@ function FofoOnboardingList() {
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12, alignItems: "center", flexShrink: 0 }}>
         <Input.Search
-          placeholder="Search store, applicant, owner, location"
+          placeholder="Search lead, store, owner, location"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -189,24 +189,30 @@ function FofoOnboardingList() {
         }}
         columns={[
           {
-            title: "Store / applicant",
+            // The lead's own name always leads - the store name (Store
+            // information step, optional) is only a secondary detail under it.
+            title: "Lead",
             key: "name",
             width: 220,
             render: (_, r) => (
               <div style={{ display: "flex", gap: 8, alignItems: "center", overflow: "hidden" }}>
-                <Avatar size={28} style={{ background: avatarGradient(r.storeName || r.fullName), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
-                  {initials(r.storeName || r.fullName)}
+                <Avatar size={28} style={{ background: avatarGradient(r.fullName), flexShrink: 0, fontSize: 12, fontWeight: 600 }}>
+                  {initials(r.fullName)}
                 </Avatar>
                 <div style={{ minWidth: 0, overflow: "hidden" }}>
                   <Text
                     strong
                     style={{ fontSize: 13, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-                    title={r.storeName || r.fullName}
+                    title={r.fullName}
                   >
-                    {r.storeName || r.fullName}
+                    {r.fullName}
                   </Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {r.leadNumber ? `L-${r.leadNumber}` : ""}
+                  <Text
+                    type="secondary"
+                    style={{ fontSize: 11, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                    title={r.storeName ?? undefined}
+                  >
+                    {[r.leadNumber ? `L-${r.leadNumber}` : null, r.storeName].filter(Boolean).join(" · ")}
                   </Text>
                 </div>
               </div>

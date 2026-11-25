@@ -13,6 +13,7 @@ import {
   Spin,
   Steps,
   Tag,
+  Tooltip,
   Typography,
   Upload,
   message,
@@ -22,9 +23,8 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import * as fofoApi from "../../api/fofo-onboarding-api";
 import * as leadApi from "../../api/lead-api";
-import type { ApprovalStep, FofoHandoff, LeadDocument } from "../../types/fofo-onboarding";
+import type { FofoHandoff, LeadDocument } from "../../types/fofo-onboarding";
 import type { LeadConsent } from "../../types/lead";
-import { useAuth } from "../../context/AuthContext";
 import { useHasPermission } from "../../hooks/use-permission";
 import { formatDate, initials } from "../../utils/lead-format";
 import { appTokens, avatarGradient } from "../../utils/design-system";
@@ -33,20 +33,10 @@ import { errorMessageFrom } from "../../utils/api-error";
 
 const { Text, Title } = Typography;
 
-const STEP_LABELS = ["Applicant", "Store information", "Documents & KYC", "Commercials", "Approval & push"];
-
-const STEP_STATUS_COLORS: Record<string, string> = {
-  pending: "orange",
-  approved: "green",
-  rejected: "red",
-  not_applicable: "default",
-};
-const STEP_STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  not_applicable: "Not required",
-};
+// Every step is optional (client decision 2026-11-25) - the field person can
+// push an interested client straight away with just the lead's own details,
+// and fill these in whenever they have them.
+const STEP_LABELS = ["Applicant", "Store information", "Documents & KYC", "Commercials", "Go-live & push"];
 
 const DOC_STATUS_COLORS: Record<string, string> = {
   not_uploaded: "default",
@@ -75,7 +65,6 @@ interface FofoHandoffDetailProps {
 }
 
 export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
   const [handoff, setHandoff] = useState<FofoHandoff | null>(null);
@@ -83,9 +72,6 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [pushing, setPushing] = useState(false);
-  // The step being approved/rejected right now - its buttons are busy, so a
-  // double click can't send the decision twice.
-  const [decidingStepId, setDecidingStepId] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -109,18 +95,18 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
     );
   }
 
-  const { lead, approvalSteps, documents } = handoff;
+  const { lead, documents } = handoff;
   const canManage = hasPermission("fofo_onboarding.manage");
+  const canPush = hasPermission("fofo_onboarding.push");
+  // The lead's mobile number becomes the store owner's SKIA FOFO app login,
+  // so it's the one thing a push can't go without.
+  const hasMobile = Boolean(lead.phone);
 
-  const allResolved = approvalSteps.every((s) => s.status === "approved" || s.status === "not_applicable");
-  const anyRejected = approvalSteps.some((s) => s.status === "rejected");
   const statusTag = lead.pushStatus === "pushed"
     ? { color: "blue", label: "Pushed" }
-    : anyRejected
-      ? { color: "red", label: "Rejected" }
-      : allResolved
-        ? { color: "green", label: "Ready to push" }
-        : { color: "orange", label: "Handoff pending" };
+    : hasMobile
+      ? { color: "green", label: "Ready to push" }
+      : { color: "orange", label: "Mobile number needed" };
 
   const handlePush = async () => {
     setPushing(true);
@@ -135,20 +121,6 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
       message.error(errorMessageFrom(err, "Failed to push"));
     } finally {
       setPushing(false);
-    }
-  };
-
-  const handleDecide = async (stepId: string, decision: "approved" | "rejected") => {
-    if (decidingStepId) return;
-    setDecidingStepId(stepId);
-    try {
-      const updated = await fofoApi.decideStep(stepId, decision);
-      setHandoff(updated);
-      message.success(decision === "approved" ? "Step approved" : "Step rejected");
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to decide step"));
-    } finally {
-      setDecidingStepId(null);
     }
   };
 
@@ -168,10 +140,20 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
             the same person owning several franchises (several separate
             leads) is completely fine; it's specifically re-pushing this one
             lead a second time that's never valid. */}
-        {canManage && lead.pushStatus !== "pushed" && (
-          <Button type="primary" loading={pushing} onClick={handlePush}>
-            Push to onboarding app
-          </Button>
+        {canPush && lead.pushStatus !== "pushed" && (
+          <Tooltip title={hasMobile ? undefined : "Add the client's mobile number first - it becomes their SKIA FOFO app login"}>
+            <Popconfirm
+              title="Push to SKIA FOFO?"
+              description={`${lead.fullName} gets a SKIA FOFO app login on ${lead.phone}. This can't be undone.`}
+              okText="Push"
+              onConfirm={handlePush}
+              disabled={!hasMobile}
+            >
+              <Button type="primary" loading={pushing} disabled={!hasMobile}>
+                Push to onboarding app
+              </Button>
+            </Popconfirm>
+          </Tooltip>
         )}
       </div>
 
@@ -189,16 +171,17 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div style={{ display: "flex", gap: 10 }}>
-                <Avatar size={40} style={{ background: avatarGradient(lead.storeName || lead.fullName), fontWeight: 600 }}>
-                  {initials(lead.storeName || lead.fullName)}
+                <Avatar size={40} style={{ background: avatarGradient(lead.fullName), fontWeight: 600 }}>
+                  {initials(lead.fullName)}
                 </Avatar>
                 <div>
                   <Text strong style={{ fontSize: 15, display: "block" }}>
-                    {lead.storeName || lead.fullName}
-                    {lead.storeCity ? ` — ${lead.storeCity}${lead.storeState ? `, ${lead.storeState}` : ""}` : ""}
+                    {lead.fullName}
                   </Text>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    FOFO{lead.leadNumber ? ` · Lead L-${lead.leadNumber}` : ""} · owner {lead.ownerName ?? "Unassigned"}
+                    FOFO{lead.leadNumber ? ` · Lead L-${lead.leadNumber}` : ""}
+                    {lead.storeName ? ` · ${lead.storeName}` : ""}
+                    {lead.storeCity ? ` — ${lead.storeCity}${lead.storeState ? `, ${lead.storeState}` : ""}` : ""} · owner {lead.ownerName ?? "Unassigned"}
                   </Text>
                 </div>
               </div>
@@ -215,10 +198,9 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
               )}
               {currentStep === 3 && <CommercialsStep leadId={leadId} lead={lead} onSaved={load} onNext={() => setCurrentStep(4)} onBack={() => setCurrentStep(2)} />}
               {currentStep === 4 && (
-                <ApprovalPushStep
+                <GoLivePushStep
                   leadId={leadId}
                   lead={lead}
-                  approvalSteps={approvalSteps}
                   onSaved={load}
                   onBack={() => setCurrentStep(3)}
                 />
@@ -228,57 +210,6 @@ export function FofoHandoffDetail({ leadId }: FofoHandoffDetailProps) {
         </div>
 
         <div style={{ flex: "0 1 320px", minWidth: 280 }}>
-          <div
-            style={{
-              border: `1px solid ${appTokens.borderLight}`,
-              borderRadius: appTokens.radius,
-              padding: 18,
-              marginBottom: 16,
-              background: appTokens.surface,
-              boxShadow: appTokens.shadowXs,
-            }}
-          >
-            <Text strong style={{ display: "block", marginBottom: 12 }}>
-              Approval chain
-            </Text>
-            {approvalSteps.length === 0 && (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                No one above this lead's owner in the reporting chain yet.
-              </Text>
-            )}
-            {approvalSteps.map((step) => (
-              <div key={step.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <Avatar size={28} style={{ background: avatarGradient(step.approverName ?? "?"), fontSize: 12, fontWeight: 600 }}>
-                      {step.approverName ? initials(step.approverName) : "?"}
-                    </Avatar>
-                    <div>
-                      <Text strong style={{ fontSize: 13, display: "block" }}>
-                        {step.approverName ?? "Unassigned"}
-                      </Text>
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {step.roleLabel}
-                        {step.conditionNote ? ` (${step.conditionNote})` : ""}
-                      </Text>
-                    </div>
-                  </div>
-                  <Tag color={STEP_STATUS_COLORS[step.status]}>{STEP_STATUS_LABELS[step.status]}</Tag>
-                </div>
-                {step.isCurrentTurn && user?.id === step.approverUserId && (
-                  <Space size={4} style={{ marginTop: 6, marginLeft: 36 }}>
-                    <Button size="small" type="primary" loading={decidingStepId === step.id} disabled={decidingStepId !== null && decidingStepId !== step.id} onClick={() => handleDecide(step.id, "approved")}>
-                      Approve
-                    </Button>
-                    <Button size="small" danger disabled={decidingStepId !== null} onClick={() => handleDecide(step.id, "rejected")}>
-                      Reject
-                    </Button>
-                  </Space>
-                )}
-              </div>
-            ))}
-          </div>
-
           <HandoffPayloadCard lead={lead} documents={documents} consent={consent} />
         </div>
       </div>
@@ -343,7 +274,7 @@ function HandoffPayloadCard({ lead, documents, consent }: { lead: FofoHandoff["l
       <PayloadRow label="Credit category" complete={Boolean(lead.creditCategory)} detail={lead.creditCategory || "Not set"} />
       <div style={{ background: "#f0f7ff", borderRadius: 6, padding: "8px 10px", marginTop: 10 }}>
         <Text style={{ fontSize: 11, color: "#1677ff" }}>
-          Pushing registers the store owner's app login in SKIA FOFO and records a reference code here.
+          Every step is optional - push anytime. Pushing registers the store owner's app login (their mobile number) in SKIA FOFO and records a reference code here.
         </Text>
       </div>
     </div>
@@ -503,7 +434,7 @@ function StoreStep({
         signageStatus: lead.signageStatus ?? undefined,
       }}
     >
-      <Form.Item name="storeName" label="Store name" rules={[{ required: true, message: "Required" }]}>
+      <Form.Item name="storeName" label="Store name">
         <Input />
       </Form.Item>
       <Form.Item name="storeAddress" label="Address line 1">
@@ -749,16 +680,14 @@ function CommercialsStep({
   );
 }
 
-function ApprovalPushStep({
+function GoLivePushStep({
   leadId,
   lead,
-  approvalSteps,
   onSaved,
   onBack,
 }: {
   leadId: string;
   lead: FofoHandoff["lead"];
-  approvalSteps: ApprovalStep[];
   onSaved: () => void;
   onBack: () => void;
 }) {
@@ -785,16 +714,6 @@ function ApprovalPushStep({
       onFinish={handleFinish}
       initialValues={{ targetGoLive: lead.targetGoLive ? dayjs(lead.targetGoLive) : undefined }}
     >
-      {approvalSteps.map((step) => (
-        <Form.Item key={step.id} label={step.roleLabel}>
-          <Input
-            disabled
-            value={`${step.status === "not_applicable" ? "Not required" : STEP_STATUS_LABELS[step.status]}${
-              step.approverName ? ` — ${step.approverName}` : ""
-            }`}
-          />
-        </Form.Item>
-      ))}
       <Form.Item name="targetGoLive" label="Target go-live">
         <DatePicker style={{ width: "100%" }} format="D MMM YYYY" disabledDate={(d) => d.isBefore(dayjs(), "day")} />
       </Form.Item>
@@ -802,11 +721,11 @@ function ApprovalPushStep({
         <Input disabled value={lead.onboardingAppId ?? "Not yet created"} />
       </Form.Item>
       <Form.Item label="Push status">
-        <Input disabled value={lead.pushStatus === "pushed" ? `Pushed ${formatDate(lead.pushedAt)}` : "Ready when approvals clear"} />
+        <Input disabled value={lead.pushStatus === "pushed" ? `Pushed ${formatDate(lead.pushedAt)}` : lead.phone ? "Ready to push" : "Add the client's mobile number to push"} />
       </Form.Item>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
-          Push to onboarding app from the button at the top once every step above is approved
+          Push to onboarding app from the button at the top - none of the steps are required
         </Text>
         <Space>
           <Button onClick={onBack}>Back</Button>

@@ -1,27 +1,22 @@
 import { useEffect, useState } from "react";
-import { Button, InputNumber, Modal, Tag, Typography, message } from "antd";
+import { Button, Tag, Typography, message } from "antd";
 import { useNavigate } from "react-router-dom";
-import * as appSettingsApi from "../../api/app-settings-api";
 import * as approvalBandApi from "../../api/approval-band-api";
 import * as levelApi from "../../api/level-api";
 import type { ApprovalBand, ApprovalRequestType } from "../../types/approval-band";
 import type { Level } from "../../types/level";
-import { errorMessageFrom } from "../../utils/api-error";
 import { appTokens } from "../../utils/design-system";
-import { formatExactCurrency } from "../../utils/lead-format";
 import { useHasPermission } from "../../hooks/use-permission";
 import { ApprovalBandDrawer } from "../ApprovalBandDrawer";
 
-const { Text, Title } = Typography;
-
-const THRESHOLD_KEY = "high_value_deal_threshold";
+const { Text } = Typography;
 
 interface Row {
   key: string;
   name: string;
   description: string;
-  status: "enforced" | "configured_only" | "not_built";
-  action: "edit_threshold" | "edit_bands" | null;
+  status: "configured_only" | "not_built";
+  action: "edit_bands" | null;
   bandType?: ApprovalRequestType;
 }
 
@@ -31,21 +26,17 @@ interface Row {
 export function ApprovalsTab() {
   const navigate = useNavigate();
   const hasPermission = useHasPermission();
-  // Same permissions the backend checks: PATCH /app-settings/:key and POST /approval-bands.
-  const canEditThreshold = hasPermission("app_settings.manage");
+  // Same permission the backend checks: POST /approval-bands.
   const canAddBand = hasPermission("approval_bands.create");
-  const [threshold, setThreshold] = useState<number | null>(null);
   const [bands, setBands] = useState<ApprovalBand[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
-  const [thresholdModalOpen, setThresholdModalOpen] = useState(false);
   const [addBandOpen, setAddBandOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
-    Promise.all([appSettingsApi.getSetting(THRESHOLD_KEY), approvalBandApi.listApprovalBands(), levelApi.listLevels()])
-      .then(([setting, bandsResult, levelsResult]) => {
-        setThreshold(Number(setting.value));
+    Promise.all([approvalBandApi.listApprovalBands(), levelApi.listLevels()])
+      .then(([bandsResult, levelsResult]) => {
         setBands(bandsResult);
         setLevels(levelsResult);
       })
@@ -63,13 +54,6 @@ export function ApprovalsTab() {
   const nextSortOrder = bands.length > 0 ? Math.max(...bands.map((b) => b.sortOrder)) + 1 : 0;
 
   const rows: Row[] = [
-    {
-      key: "deal_value",
-      name: "Deal value approval",
-      description: `Regional head sign-off required above ${threshold !== null ? formatExactCurrency(threshold) : "…"}, before a lead can be pushed to FOFO onboarding.`,
-      status: "enforced",
-      action: "edit_threshold",
-    },
     {
       key: "customer_creation",
       name: "Customer creation",
@@ -104,12 +88,10 @@ export function ApprovalsTab() {
   ];
 
   const STATUS_LABEL: Record<Row["status"], string> = {
-    enforced: "Enforced",
     configured_only: "Not enforced",
     not_built: "Not available",
   };
   const STATUS_COLOR: Record<Row["status"], string> = {
-    enforced: appTokens.success,
     configured_only: appTokens.warning,
     not_built: appTokens.textTertiary,
   };
@@ -129,8 +111,7 @@ export function ApprovalsTab() {
         </Text>
         <div>
           <Text style={{ fontSize: 12.5, color: appTokens.textTertiary }}>
-            Who signs off on what. "Enforced" rules hold the action until it's approved; "Not enforced" rules are configured but
-            not applied yet.
+            Who signs off on what. "Not enforced" rules are configured but not applied yet.
           </Text>
         </div>
       </div>
@@ -169,11 +150,6 @@ export function ApprovalsTab() {
             >
               {STATUS_LABEL[row.status]}
             </Tag>
-            {row.action === "edit_threshold" && canEditThreshold && (
-              <Button size="small" type="link" onClick={() => setThresholdModalOpen(true)}>
-                Edit
-              </Button>
-            )}
             {row.action === "edit_bands" && (
               <Button size="small" type="link" onClick={() => navigate("/sales-force-management")}>
                 Edit
@@ -191,16 +167,6 @@ export function ApprovalsTab() {
         </div>
       )}
 
-      <ThresholdModal
-        open={thresholdModalOpen}
-        onClose={() => setThresholdModalOpen(false)}
-        currentValue={threshold}
-        onSaved={(value) => {
-          setThreshold(value);
-          setThresholdModalOpen(false);
-        }}
-      />
-
       <ApprovalBandDrawer
         open={addBandOpen}
         band={null}
@@ -214,68 +180,5 @@ export function ApprovalsTab() {
         }}
       />
     </div>
-  );
-}
-
-interface ThresholdModalProps {
-  open: boolean;
-  onClose: () => void;
-  currentValue: number | null;
-  onSaved: (value: number) => void;
-}
-
-function ThresholdModal({ open, onClose, currentValue, onSaved }: ThresholdModalProps) {
-  const [value, setValue] = useState<number | null>(currentValue);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) setValue(currentValue);
-  }, [open, currentValue]);
-
-  const handleSave = async () => {
-    if (value === null) return;
-    setSaving(true);
-    try {
-      await appSettingsApi.setSetting(THRESHOLD_KEY, value);
-      message.success("Threshold updated");
-      onSaved(value);
-    } catch (err) {
-      message.error(errorMessageFrom(err, "Failed to update threshold"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      width={400}
-      footer={null}
-      title={
-        <Title level={5} style={{ margin: 0 }}>
-          Regional head approval threshold
-        </Title>
-      }
-    >
-      <Text style={{ fontSize: 12.5, color: appTokens.textTertiary, display: "block", marginBottom: 12 }}>
-        Deals above this value require the third (regional head) approval step; below it, that step is automatically
-        marked not applicable.
-      </Text>
-      <InputNumber
-        style={{ width: "100%" }}
-        min={0}
-        step={100000}
-        value={value}
-        onChange={setValue}
-        formatter={(v) => (v ? `₹ ${Number(v).toLocaleString("en-IN")}` : "")}
-      />
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button type="primary" loading={saving} onClick={handleSave}>
-          Save
-        </Button>
-      </div>
-    </Modal>
   );
 }
