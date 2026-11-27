@@ -1,7 +1,7 @@
 import { apiClient } from "./api-client";
 import { fetchAllPages } from "./fetch-all-pages";
 import type { ApiSuccess } from "../types/api";
-import type { CreateUserPayload, TeamMember, UpdateUserPayload } from "../types/user";
+import type { CreateUserPayload, TeamMember, UpdateUserPayload, UserTerritorySummary } from "../types/user";
 
 // Every caller wants the complete roster (owner pickers, assignment rules,
 // People list, report filters) - never a partial page.
@@ -22,8 +22,8 @@ export async function getNextEmployeeCode(): Promise<string> {
   return response.data.data.employeeCode;
 }
 
-export async function listTerritories(): Promise<string[]> {
-  const response = await apiClient.get<ApiSuccess<string[]>>("/users/territories");
+export async function listTerritories(userId?: string): Promise<UserTerritorySummary[]> {
+  const response = await apiClient.get<ApiSuccess<UserTerritorySummary[]>>("/users/territories", { params: { userId } });
   return response.data.data;
 }
 

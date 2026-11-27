@@ -30,8 +30,38 @@ export interface TeamMember {
   // purpose, so a lead can be swapped between them).
   operationType: OperationType | null;
   pincodes: string[];
+  // The locations they cover - their pincodes are filled from these.
+  territories: UserTerritory[];
   isActive: boolean;
   createdAt: string;
+}
+
+// One location a person covers: only a state = the whole state; + city =
+// the whole city; + area = that one area (post office) and its pincode.
+export interface UserTerritory {
+  id: string;
+  stateId: string;
+  stateName: string;
+  cityId: string | null;
+  cityName: string | null;
+  areaId: string | null;
+  areaName: string | null;
+  pincode: string | null;
+}
+
+// What create/update send - ids only.
+export interface UserTerritoryInput {
+  stateId: string;
+  cityId?: string;
+  areaId?: string;
+}
+
+// GET /users/territories
+export interface UserTerritorySummary {
+  userId: string;
+  userName: string;
+  territories: UserTerritory[];
+  pincodes: string[];
 }
 
 export interface CreateUserPayload {
@@ -52,6 +82,7 @@ export interface CreateUserPayload {
   levelId?: string;
   operationType?: OperationType;
   pincodes?: string[];
+  territories?: UserTerritoryInput[];
 }
 
 export interface UpdateUserPayload {
@@ -67,4 +98,5 @@ export interface UpdateUserPayload {
   isActive?: boolean;
   operationType?: OperationType | "";
   pincodes?: string[];
+  territories?: UserTerritoryInput[];
 }
