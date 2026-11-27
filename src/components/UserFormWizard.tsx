@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AutoComplete, Avatar, Button, Drawer, Form, Input, Radio, Select, Space, Tabs, Tag, Typography, message } from "antd";
+import { Avatar, Button, Drawer, Form, Input, Radio, Select, Space, Tabs, Tag, Typography, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import * as userApi from "../api/user-api";
 import type { CreateUserPayload, TeamMember, UserStatus } from "../types/user";
@@ -12,6 +12,7 @@ import { TargetsSection } from "./TargetsSection";
 import { IncentivePlanSection } from "./IncentivePlanSection";
 import { UserCommissionSection } from "./UserCommissionSection";
 import { errorMessageFrom } from "../utils/api-error";
+import { LocationPicker, toPickedLocation, type PickedLocation } from "./LocationPicker";
 
 const { Text } = Typography;
 
@@ -43,10 +44,9 @@ interface FormValues {
   status?: UserStatus;
   levelId: string;
   managerId?: string;
-  territory?: string;
   smartfloAgentNumber?: string;
   operationType?: "COCO" | "FOFO" | "Both";
-  pincodes?: string[];
+  locations?: PickedLocation[];
 }
 
 interface UserFormWizardProps {
@@ -189,8 +189,9 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
   const hasPermission = useHasPermission();
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
-  const [territories, setTerritories] = useState<string[]>([]);
   const [managerPickerExpanded, setManagerPickerExpanded] = useState(true);
+  // A state/city picked in the location picker but not added yet.
+  const [locationPending, setLocationPending] = useState<string | null>(null);
 
   const managerId = Form.useWatch("managerId", form);
   const levelId = Form.useWatch("levelId", form);
@@ -198,8 +199,8 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
 
   useEffect(() => {
     if (!open) return;
-    userApi.listTerritories().then(setTerritories).catch(() => undefined);
     setManagerPickerExpanded(true);
+    setLocationPending(null);
   }, [open]);
 
   useEffect(() => {
@@ -212,10 +213,9 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
         status: user.status,
         levelId: user.levelId ?? undefined,
         managerId: user.managerId ?? undefined,
-        territory: user.territory ?? undefined,
         smartfloAgentNumber: user.smartfloAgentNumber ?? undefined,
         operationType: user.operationType ?? undefined,
-        pincodes: user.pincodes ?? [],
+        locations: (user.territories ?? []).map(toPickedLocation),
       });
     } else {
       form.resetFields();
@@ -228,6 +228,13 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
   }, [open, user, form]);
 
   const selectedLevel = levels.find((l) => l.id === levelId);
+  // Their access tier: the picked Level's, or - for someone saved with no
+  // Level - the role already on their account (else a Field Sales person
+  // with no Level never saw their field-only settings).
+  const tier = selectedLevel?.securityTier ?? user?.role;
+  const isField = tier === "agent";
+  // Typed-by-hand pincodes from before locations existed.
+  const legacyPincodes = user && (user.territories ?? []).length === 0 ? user.pincodes ?? [] : [];
   // Someone with login access disabled shouldn't be newly assignable as a
   // manager - same reasoning offices/levels already apply to their own
   // isActive candidates elsewhere in this wizard. Doesn't affect anyone
@@ -269,6 +276,11 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
       message.error("Pick a reporting manager for this person (Position & geography tab) - or pick the top-most Level if they have none.");
       return;
     }
+    // Saving now would quietly drop what's picked in the dropdowns.
+    if (isField && locationPending) {
+      message.error(`${locationPending} is picked but not added - pick an area, or click "Add all of …" (Position & geography tab).`);
+      return;
+    }
     setSaving(true);
     try {
       const shared = {
@@ -276,15 +288,20 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
         managerId: isAdminLevel ? "" : values.managerId,
         smartfloAgentNumber: values.smartfloAgentNumber,
         mobile: values.mobile,
-        territory: values.territory,
         employeeCode: values.employeeCode,
         status: values.status,
         levelId: values.levelId,
         // Only meaningful for a field employee - the fields themselves are
         // hidden for every other tier, so this is always empty/undefined
         // for them regardless of what's left over from a previous selection.
-        operationType: selectedLevel?.securityTier === "agent" ? values.operationType : undefined,
-        pincodes: selectedLevel?.securityTier === "agent" ? values.pincodes : undefined,
+        operationType: isField ? values.operationType : undefined,
+        // Locations replace the person's pincodes, so they're only sent when
+        // actually changed - an untouched form keeps whatever is saved
+        // (including pincodes typed before locations existed).
+        territories:
+          isField && (!user || form.isFieldTouched("locations"))
+            ? (values.locations ?? []).map(({ stateId, cityId, areaId }) => ({ stateId, cityId, areaId }))
+            : undefined,
       };
       if (user) {
         await userApi.updateUser(user.id, shared);
@@ -587,68 +604,58 @@ export function UserFormWizard({ open, user, users, levels, onClose, onSaved }: 
                     </Form.Item>
                   </SectionCard>
 
-                  {/* Territory & office means nothing for a Call Center
-                      Executive - there's no FLC/SLC team split any more
-                      (every active Call Center Executive works every
-                      New/FLC/SLC lead - see TIER_TEAMMATE_CLAUSE in
-                      lead-service.ts), and they don't sit in a physical
-                      territory the way Field Sales does. Hidden entirely for
-                      this tier by explicit request, rather than showing an
-                      empty/irrelevant section. Smartflo agent number is
-                      pulled into its own section below so it still shows for
-                      Call Center (they place calls too). */}
-                  {selectedLevel?.securityTier !== "call_center" && (
+                  {/* Field Sales only - the locations they cover and the
+                      store type(s) they handle. Smartflo agent number is in
+                      its own section below so it shows for every tier. */}
+                  {isField && (
                     <SectionCard
                       icon="⌖"
-                      title="Territory & office"
-                      subtitle="Where they sit and which tier they work"
+                      title="Territory"
+                      subtitle="The places they cover and the store types they handle"
                       color={appTokens.success}
                       background="#f1faf1"
                     >
                       <Form.Item
-                        name="territory"
-                        label="Territory"
-                        tooltip="A new lead is auto-assigned to whoever has this exact territory - must match exactly, so pick an existing one from the list where possible, or type a new one"
+                        name="locations"
+                        label="Locations covered"
+                        tooltip="The states, cities and areas this field employee covers. Their pincodes are filled from these automatically - a lead in any of those pincodes gets offered to them when sent to Field Sales. More than one person can cover the same place, so a lead can be swapped between them."
+                        extra={
+                          legacyPincodes.length > 0 ? (
+                            <span>
+                              Pincodes typed earlier: {legacyPincodes.join(", ")}. Adding locations replaces them.
+                            </span>
+                          ) : user && user.pincodes.length > 0 ? (
+                            <span>Currently covers {user.pincodes.length} pincode{user.pincodes.length === 1 ? "" : "s"}.</span>
+                          ) : undefined
+                        }
+                        rules={[
+                          {
+                            validator: async (_, value: PickedLocation[] | undefined) => {
+                              if ((value?.length ?? 0) > 0) return;
+                              if (legacyPincodes.length > 0 && !form.isFieldTouched("locations")) return;
+                              throw new Error("Add at least one location - a field employee with none can never be matched to a lead");
+                            },
+                          },
+                        ]}
                       >
-                        <AutoComplete
-                          placeholder="e.g. Karnataka · Mysuru"
-                          options={territories.map((t) => ({ value: t }))}
-                          showSearch={{ filterOption: (input, option) => (option?.value as string).toLowerCase().includes(input.toLowerCase()) }}
+                        {/* Fresh picker (empty dropdowns) every time the drawer opens. */}
+                        <LocationPicker key={open ? user?.id ?? "new" : "closed"} onPendingChange={setLocationPending} />
+                      </Form.Item>
+                      <Form.Item
+                        name="operationType"
+                        label="Operation type"
+                        tooltip="Which store type(s) this person handles - a lead's own category (COCO/FOFO) must match, or be set to Both, for it to be offered to them"
+                      >
+                        <Select
+                          allowClear
+                          placeholder="Select an operation type"
+                          options={[
+                            { value: "COCO", label: "COCO" },
+                            { value: "FOFO", label: "FOFO" },
+                            { value: "Both", label: "Both" },
+                          ]}
                         />
                       </Form.Item>
-                      {selectedLevel?.securityTier === "agent" && (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                          <Form.Item
-                            name="pincodes"
-                            label="Serviceable pincodes"
-                            tooltip="Every pincode this field employee covers - a lead in any of these gets offered to them when sent to Field Sales. More than one person can cover the same pincode on purpose, so a lead can be swapped between them."
-                            rules={[
-                              {
-                                required: true,
-                                message: "At least one pincode is required - a field employee with none can never be matched to a lead",
-                                type: "array",
-                              },
-                            ]}
-                          >
-                            <Select mode="tags" placeholder="Type a pincode and press enter" tokenSeparators={[",", " "]} open={false} />
-                          </Form.Item>
-                          <Form.Item
-                            name="operationType"
-                            label="Operation type"
-                            tooltip="Which store type(s) this person handles - a lead's own category (COCO/FOFO) must match, or be set to Both, for it to be offered to them"
-                          >
-                            <Select
-                              allowClear
-                              placeholder="Select an operation type"
-                              options={[
-                                { value: "COCO", label: "COCO" },
-                                { value: "FOFO", label: "FOFO" },
-                                { value: "Both", label: "Both" },
-                              ]}
-                            />
-                          </Form.Item>
-                        </div>
-                      )}
                     </SectionCard>
                   )}
                   <SectionCard
